@@ -1,0 +1,8 @@
+{$TEST_DOMAIN} {
+	encode gzip
+	reverse_proxy test:3000
+}
+{$CANLI_DOMAIN} {
+	encode gzip
+	reverse_proxy canli:3000
+}

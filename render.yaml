@@ -1,0 +1,14 @@
+# Render.com "Blueprint": GitHub deposunu bağlayınca test ortamı ücretsiz olarak kurulur, her yüklemede kendini günceller.
+services:
+  - type: web
+    name: bagispanel-test
+    runtime: docker
+    plan: free
+    branch: test
+    autoDeploy: true
+    healthCheckPath: /api/saglik
+    envVars:
+      - { key: ORTAM, value: test }
+      - { key: DEMO, value: "1" }
+      - { key: SECURE, value: "1" }
+      - { key: ADMIN_PASSWORD, sync: false }   # Render ekranında siz yazarsınız

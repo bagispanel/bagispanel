@@ -1,0 +1,1 @@
+{"name":"bagispanel","version":"0.1.0","private":true,"description":"bağışpanel - aşama 1: giriş, kullanıcılar, birimler, yetkiler","scripts":{"start":"node --no-warnings server.js","test":"node --no-warnings test.js"},"engines":{"node":">=22.5"}}

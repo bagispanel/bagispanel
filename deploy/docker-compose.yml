@@ -1,0 +1,30 @@
+# Sunucuda /srv/bagispanel altında durur. İki ortam: test (siz takip edersiniz) ve canlı (gerçek kullanım).
+services:
+  test:
+    build: { context: ./app-test, args: { GIT_SHA: "${GIT_SHA_TEST:-yerel}" } }
+    environment: { ORTAM: test, ADMIN_PASSWORD: "${ADMIN_PASSWORD_TEST:-}" }
+    volumes: ["./data-test:/data"]
+    restart: unless-stopped
+  yedek-test:
+    build: { context: ./app-test }
+    command: ["node","--no-warnings","backup.js","--loop"]
+    volumes: ["./data-test:/data"]
+    restart: unless-stopped
+  canli:
+    build: { context: ./app-canli, args: { GIT_SHA: "${GIT_SHA_CANLI:-yerel}" } }
+    environment: { ORTAM: canlı, ADMIN_PASSWORD: "${ADMIN_PASSWORD_CANLI:-}" }
+    volumes: ["./data-canli:/data"]
+    restart: unless-stopped
+  yedek-canli:
+    build: { context: ./app-canli }
+    command: ["node","--no-warnings","backup.js","--loop"]
+    volumes: ["./data-canli:/data"]
+    restart: unless-stopped
+  caddy:                      # otomatik HTTPS (Let's Encrypt)
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    environment: { TEST_DOMAIN: "${TEST_DOMAIN}", CANLI_DOMAIN: "${CANLI_DOMAIN}" }
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy_data:/data"]
+    depends_on: [test, canli]
+    restart: unless-stopped
+volumes: { caddy_data: {} }
