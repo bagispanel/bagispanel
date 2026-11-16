@@ -57,9 +57,9 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
   const dernek = () => getA('dernek_adi', '[Dernek adı]');
   const fill = (m, v) => m.replace(/\{(\w+)\}/g, (_, k) => v[k] !== undefined ? v[k] : '{' + k + '}');
   const dstr = (s) => s ? String(s).slice(0, 10).split('-').reverse().join('.') : '-';
-  function sms(k, v, kime, user) { // gerçek gönderim sağlayıcısı bağlanana kadar kayıt altına alınır
+  function sms(k, v, kime, user, tel) { // gerçek gönderim sağlayıcısı bağlanana kadar kayıt altına alınır
     const t = db.prepare('SELECT m FROM sms_sablon WHERE k=?').get(k); if (!t) return;
-    db.prepare('INSERT INTO sms_log(mesaj,kime,sablon,kullanici) VALUES(?,?,?,?)').run(fill(t.m, { dernek: dernek(), ...v }), kime, k, user || null);
+    const mesaj = fill(t.m, { dernek: dernek(), ...v }); const id = +db.prepare('INSERT INTO sms_log(mesaj,kime,sablon,kullanici) VALUES(?,?,?,?)').run(mesaj, kime, k, user || null).lastInsertRowid; return { id, mesaj, tel };
   }
   ctx.sms = sms; ctx.dstr = dstr;
   R('GET', '/api/sablonlar', 'sablon|sms', 'g', async () => [200, { sablonlar: db.prepare('SELECT * FROM sms_sablon').all(), dernek: dernek() }]);
@@ -159,7 +159,7 @@ CREATE TABLE IF NOT EXISTS kn_sayac(k TEXT PRIMARY KEY, n INTEGER NOT NULL);`);
   function onayla(d, user) {
     if (typeof d.secenek === 'string') d.secenek = JSON.parse(d.secenek || '{}');
     const t = tur(d.tur_id), v = { ad: d.ad, tur: t.ad, bno: d.no };
-    sms('kabul', v, d.ad, user); if (t.sertifika) sms('sertifika', { ...v, link: 'https://…/sertifika/' + d.no }, d.ad, user);
+    ctx.sms('kabul', v, d.ad, user, d.tel); if (t.sertifika) ctx.sms('sertifika', { ...v, link: 'https://…/sertifika/' + d.no }, d.ad, user, d.tel);
     if (t.org !== 'Genel') yerlestir(d); kfix();
   }
   ctx.onayla = onayla;

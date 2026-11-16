@@ -33,3 +33,11 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 
 ## Ertelenenler
 - [ ] Web sitesi paneli (Sayfa Yönetimi, Menü Düzeni, Bağış Formları, Tasarım ve Alan Adı) taşınmadı.
+
+## İletişim (yapıldı)
+- Toplu SMS, Toplu E-posta, WhatsApp (gelen kutusu + şablonlu toplu), Gönderilen Mesajlar, İletişim Ayarları eklendi. Sistem Ayarları'ndaki "Entegrasyon" kaldırıldı (API anahtarı Web Sitesi → Web Sitesi Bağlantısı'na taşındı).
+- Deneme/canlı mod: deneme modunda hiçbir şey dışarı gitmez.
+- GERÇEK servislerle test EDİLMEDİ (yalnızca sahte sunucularla): Netgsm REST, Twilio, SMTP STARTTLS/SSL, Meta WhatsApp Cloud API. "Test mesajı gönder" ile doğrulanmalı.
+- Meta tarafında: webhook URL + doğrulama jetonu + App Secret, onaylı şablonlar gerekir.
+- Şifreler/anahtarlar DB'de düz metin (PostgreSQL/şifreleme aşamasında çözülecek).
+- İzin/İYS: dernek bağış mesajlarında İYS kapsamı hukukçuya sorulmalı.

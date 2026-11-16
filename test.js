@@ -212,5 +212,58 @@ server.listen(0, async () => {
     const cm = await mkUser('anatest', 'Çağrı merkezi'), m = await cm.q('GET', '/api/ana'); assert.equal(m.s, 200); assert.equal(m.j.ozet, undefined); assert.equal(m.j.son, undefined); assert.equal(m.j.gun30, undefined);
     assert.equal((await mk()('GET', '/api/ana')).s, 401);
   });
+
+  // ---- İletişim: SMS / e-posta / WhatsApp (sahte sunucularla)
+  const http = require('http'), net = require('net'), crypto = require('crypto');
+  const smsGelen = [], waGelen = [], smtpGelen = [];
+  const mock = http.createServer((q, r) => { let b = ''; q.on('data', d => b += d); q.on('end', () => { const j = b ? JSON.parse(b) : {}; if (q.url === '/sms') { smsGelen.push(j); r.end('{}'); } else { waGelen.push({ url: q.url, auth: q.headers.authorization, j }); r.setHeader('Content-Type', 'application/json'); r.end(JSON.stringify({ messages: [{ id: 'wamid.T' + waGelen.length }] })); } }); });
+  await new Promise(ok => mock.listen(0, '127.0.0.1', ok)); const mport = mock.address().port;
+  const smtp = net.createServer(s => { let veri = false, buf = ''; smtpGelen.push({ satir: [], govde: '' }); const cur = smtpGelen[smtpGelen.length - 1]; s.write('220 sahte\r\n'); s.on('data', d => { buf += d; let i; while ((i = buf.indexOf('\r\n')) >= 0) { const l = buf.slice(0, i); buf = buf.slice(i + 2); if (veri) { if (l === '.') { veri = false; s.write('250 ok\r\n'); } else cur.govde += l + '\n'; continue; } cur.satir.push(l); if (l.startsWith('EHLO')) s.write('250-sahte\r\n250 AUTH LOGIN\r\n'); else if (l === 'AUTH LOGIN') s.write('334 VXNlcm5hbWU6\r\n'); else if (cur.satir[cur.satir.length - 2] === 'AUTH LOGIN') s.write('334 UGFzc3dvcmQ6\r\n'); else if (/^[A-Za-z0-9+/=]+$/.test(l) && cur.satir.includes('AUTH LOGIN') && !cur.satir.some(x => x.startsWith('MAIL'))) s.write('235 ok\r\n'); else if (l === 'DATA') { veri = true; s.write('354 devam\r\n'); } else if (l === 'QUIT') { s.end('221 bye\r\n'); } else s.write('250 ok\r\n'); } }); });
+  await new Promise(ok => smtp.listen(0, '127.0.0.1', ok)); const sport = smtp.address().port;
+  const bekleG = async (id) => { for (let i = 0; i < 30; i++) { const g = (await admin('GET', '/api/toplu/' + id)).j; if (g.durum === 'Tamamlandı') return g; await new Promise(r => setTimeout(r, 400)); } throw new Error('gönderim bitmedi'); };
+  const SADECE = { min: 999999999 };
+  await t('iletişim ayarı: gizli alanlar geri dönmez, canlı moda geçiş yetkiyle', async () => {
+    const r = await admin('GET', '/api/iletisim/ayar'); assert.equal(r.s, 200); assert.equal(r.j.ayar.mod, 'deneme'); assert.equal(r.j.ayar.sms.sifre, '');
+    const cm = await mkUser('iletisimci', 'Çağrı merkezi'); assert.equal((await cm.q('GET', '/api/iletisim/ayar')).s, 403); assert.equal((await cm.q('POST', '/api/toplu', { kanal: 'sms', mesaj: 'x', onay: true, filtre: {} })).s, 403);
+  });
+  await t('toplu SMS deneme modu: hiçbir şey dışarı gitmez, kayda yazılır, onay zorunlu', async () => {
+    const h = (await admin('POST', '/api/toplu/hedef', { kanal: 'sms', filtre: {} })).j; assert.ok(h.adet > 0);
+    assert.equal((await admin('POST', '/api/toplu', { kanal: 'sms', mesaj: 'Merhaba {ad}', filtre: {} })).s, 400);
+    const r = await admin('POST', '/api/toplu', { kanal: 'sms', ad: 'deneme', mesaj: 'Merhaba {ad}, {dernek}', onay: true, filtre: {} }); assert.equal(r.s, 201); assert.equal(r.j.mod, 'deneme');
+    const g = await bekleG(r.j.id); assert.equal(g.deneme, r.j.adet); assert.equal(smsGelen.length, 0);
+    const log = (await admin('GET', '/api/sms')).j; assert.ok(log.some(x => x.kanal === 'SMS' && x.sablon === 'toplu:' + r.j.id && /Merhaba/.test(x.mesaj)));
+  });
+  await t('toplu SMS canlı: sağlayıcıya gider, ret edenler atlanır', async () => {
+    assert.equal((await admin('PUT', '/api/iletisim/ayar', { mod: 'canli', sms: { saglayici: 'ozel', url: `http://127.0.0.1:${mport}/sms`, baslik: 'DERNEK', sifre: 'gizli' } })).s, 200);
+    const r = await admin('POST', '/api/toplu', { kanal: 'sms', mesaj: 'Merhaba {ad}', onay: true, filtre: { ...SADECE, liste: 'Ali Veli;+90 555 000 11 11\n05550002222' } }); assert.equal(r.s, 201); assert.equal(r.j.adet, 2);
+    const g = await bekleG(r.j.id); assert.equal(g.gonderildi, 2); assert.equal(smsGelen.length, 2); assert.equal(smsGelen[0].to, '905550001111'); assert.equal(smsGelen[0].message, 'Merhaba Ali'); assert.equal(smsGelen[0].from, 'DERNEK');
+    assert.equal((await admin('GET', '/api/iletisim/ayar')).j.ayar.sms.sifre, ''); assert.equal((await admin('GET', '/api/iletisim/ayar')).j.ayar.sms.sifre_var, true);
+    const bc = (await admin('GET', '/api/bagiscilar')).j[0]; const once = (await admin('POST', '/api/toplu/hedef', { kanal: 'sms', filtre: {} })).j.adet;
+    assert.equal((await admin('PUT', `/api/bagiscilar/${bc.id}/izin`, { sms: 'ret' })).s, 200); assert.equal((await admin('POST', '/api/toplu/hedef', { kanal: 'sms', filtre: {} })).j.adet, once - 1);
+    assert.equal((await admin('PUT', `/api/bagiscilar/${bc.id}/izin`, { sms: null })).s, 200);
+  });
+  await t('toplu e-posta: SMTP oturumu (kimlik doğrulama, UTF-8 konu)', async () => {
+    assert.equal((await admin('PUT', '/api/iletisim/ayar', { mail: { host: '127.0.0.1', port: sport, guvenlik: 'yok', kullanici: 'u', sifre: 'p', adres: 'bilgi@dernek.org', ad: 'Dernek' } })).s, 200);
+    const r = await admin('POST', '/api/toplu', { kanal: 'mail', konu: 'Hoş geldiniz {ad}', mesaj: 'Merhaba {ad}\nSelam', onay: true, filtre: { ...SADECE, liste: 'Ali;ali@example.com' } }); assert.equal(r.s, 201);
+    const g = await bekleG(r.j.id); assert.equal(g.gonderildi, 1, JSON.stringify(g.alicilar));
+    const o = smtpGelen[smtpGelen.length - 1]; assert.ok(o.satir.includes('MAIL FROM:<bilgi@dernek.org>')); assert.ok(o.satir.includes('RCPT TO:<ali@example.com>')); assert.ok(/Subject: =\?UTF-8\?B\?/.test(o.govde));
+    assert.equal((await admin('POST', '/api/toplu/hedef', { kanal: 'mail', filtre: SADECE })).j.adet, 0);
+  });
+  await t('WhatsApp: şablonlu toplu gönderim, webhook imzası, gelen kutusu, 24 saat kuralı', async () => {
+    assert.equal((await admin('PUT', '/api/iletisim/ayar', { wa: { phone_id: 'PID', token: 'TOK', app_secret: 'sir', api_url: `http://127.0.0.1:${mport}/v21`, sablonlar: [{ ad: 'Bagis Duyuru', dil: 'tr', govde: 'Merhaba {{1}}', n: 1 }] } })).s, 200);
+    const ay = (await admin('GET', '/api/iletisim/ayar')).j.ayar; assert.equal(ay.wa.sablonlar[0].ad, 'bagis_duyuru'); assert.equal(ay.wa.token, '');
+    assert.equal((await admin('POST', '/api/toplu', { kanal: 'wa', sablon: 'yok', onay: true, filtre: SADECE })).s, 400);
+    const r = await admin('POST', '/api/toplu', { kanal: 'wa', sablon: 'bagis_duyuru', degisken: ['ad'], onay: true, filtre: { ...SADECE, liste: 'Ayşe Demir;+90 555 111 22 33' } }); assert.equal(r.s, 201); const g = await bekleG(r.j.id); assert.equal(g.gonderildi, 1);
+    const w = waGelen[waGelen.length - 1]; assert.equal(w.url, '/v21/PID/messages'); assert.equal(w.auth, 'Bearer TOK'); assert.equal(w.j.template.name, 'bagis_duyuru'); assert.equal(w.j.template.components[0].parameters[0].text, 'Ayşe'); assert.equal(w.j.to, '905551112233');
+    const web = async (m, p, body, imza) => fetch(base + p, { method: m, headers: { 'Content-Type': 'application/json', ...(imza ? { 'X-Hub-Signature-256': imza } : {}) }, body });
+    const vt = ay.wa.verify; assert.equal(await (await fetch(`${base}/api/wa/webhook?hub.mode=subscribe&hub.verify_token=${vt}&hub.challenge=4242`)).text(), '4242'); assert.equal((await fetch(`${base}/api/wa/webhook?hub.mode=subscribe&hub.verify_token=x&hub.challenge=1`)).status, 403);
+    const gelen = JSON.stringify({ entry: [{ changes: [{ value: { contacts: [{ wa_id: '905551112233', profile: { name: 'Ayşe D.' } }], messages: [{ from: '905551112233', id: 'wamid.IN1', type: 'text', text: { body: 'Selamünaleyküm, makbuzumu alabilir miyim?' } }], statuses: [{ id: 'wamid.T' + waGelen.length, status: 'delivered' }] } }] }] });
+    assert.equal((await web('POST', '/api/wa/webhook', gelen, 'sha256=00')).status, 403);
+    assert.equal((await web('POST', '/api/wa/webhook', gelen, 'sha256=' + crypto.createHmac('sha256', 'sir').update(gelen).digest('hex'))).status, 200);
+    const kon = (await admin('GET', '/api/wa/konusmalar')).j; assert.equal(kon.length, 1); assert.equal(kon[0].okunmamis, 1); assert.equal(kon[0].pencere, true); assert.equal(kon[0].bekliyor, true);
+    assert.equal((await admin('GET', '/api/toplu/' + r.j.id)).j.alicilar[0].durum, 'Teslim edildi');
+    assert.equal((await admin('POST', '/api/wa/yanit', { tel: '905551112233', metin: 'Aleykümselam, gönderiyoruz.' })).s, 200); assert.equal(waGelen[waGelen.length - 1].j.type, 'text');
+    assert.equal((await admin('GET', '/api/wa/konusma?tel=905551112233')).j.mesajlar.length, 2); assert.equal((await admin('GET', '/api/wa/konusmalar')).j[0].okunmamis, 0);
+  });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });

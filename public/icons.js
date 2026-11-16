@@ -34,9 +34,9 @@ sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l
 moon:'<path d="M20 14A8 8 0 1 1 10 4a6.5 6.5 0 0 0 10 10z"/>',
 sliders:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
 up:'<path d="M6 15l6-6 6 6"/>',down:'<path d="M6 9l6 6 6-6"/>',alert:'<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h0"/>',
-wallet:'<path d="M3 7h16a2 2 0 0 1 2 2v10H5a2 2 0 0 1-2-2z"/><path d="M3 7l12-3v3"/>',check:'<path d="M5 12l5 5 9-10"/>'};
+wa:'<path d="M12 3a9 9 0 0 0-7.7 13.6L3 21l4.5-1.2A9 9 0 1 0 12 3z"/><path d="M9.5 8.5c0 3 3 6 6 6l1-1.800-2-1-1 1c-1-.5-2-1.500-2.500-2.500l1-1z"/>',wallet:'<path d="M3 7h16a2 2 0 0 1 2 2v10H5a2 2 0 0 1-2-2z"/><path d="M3 7l12-3v3"/>',check:'<path d="M5 12l5 5 9-10"/>'};
 const IC=(n,s=20)=>`<svg class="ic" aria-hidden="true" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${_P[n]||_P.heart}</svg>`;
-const MIC={alin:'plus',bekleyen:'clock',turler:'tag',rapor:'chart',orgK:'paw',orgS:'drop',orgD:'video',spage:'file',smenu:'menu',sform:'clip',sset:'palette',bagisci:'users',sms:'mail',partner:'build',banka:'bank',ulke:'flag',pdfay:'filetext',numara:'hash',entegre:'plug',sablon:'msg',kullanici:'user',birim:'shield',denetim:'eye'},
+const MIC={alin:'plus',bekleyen:'clock',turler:'tag',rapor:'chart',orgK:'paw',orgS:'drop',orgD:'video',spage:'file',smenu:'menu',sform:'clip',sset:'palette',bagisci:'users',sms:'mail',tsms:'msg',tmail:'mail',twa:'wa',iayar:'sliders',partner:'build',banka:'bank',ulke:'flag',pdfay:'filetext',numara:'hash',entegre:'plug',sablon:'msg',kullanici:'user',birim:'shield',denetim:'eye'},
  GIC={'Bağış Yönetimi':'heart','Saha Organizasyonu':'layers','Web Sitesi':'globe','Bağışçı İlişkileri':'users','İletişim':'msg','Sistem Ayarları':'gear'};
 const katIc=n=>{n=String(n||'').toLocaleLowerCase('tr');return /kurban/.test(n)?'paw':/su|kuyu/.test(n)?'drop':/eğitim|egitim|kuran|kur'an|burs/.test(n)?'book':/fidan|ağaç/.test(n)?'sprout':'heart'};
 try{const t=localStorage.getItem('bp_tema');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}

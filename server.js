@@ -8,7 +8,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.
 const send = (res, code, obj, h = {}) => { const b = JSON.stringify(obj); res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...h }); res.end(b); };
 const fail = (res, code, msg) => send(res, code, { hata: msg });
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map(c => c.trim().split('=')).filter(x => x[0]).map(([k, ...v]) => [k, decodeURIComponent(v.join('='))]));
-const readBody = (req) => new Promise((ok, no) => { let b = ''; req.on('data', c => { b += c; if (b.length > 2.5e6) { no(new Error('big')); req.destroy(); } }); req.on('end', () => { try { ok(b ? JSON.parse(b) : {}); } catch (e) { no(new Error('json')); } }); });
+const readBody = (req) => new Promise((ok, no) => { let b = ''; req.on('data', c => { b += c; if (b.length > 2.5e6) { no(new Error('big')); req.destroy(); } }); req.on('end', () => { req.rawBody = b; try { ok(b ? JSON.parse(b) : {}); } catch (e) { no(new Error('json')); } }); });
 const ip = (req) => req.socket.remoteAddress || '';
 const secure = (req) => process.env.SECURE === '1' || req.headers['x-forwarded-proto'] === 'https';
 const setCookie = (req, t, maxAge) => `bp=${t}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${secure(req) ? '; Secure' : ''}`;
@@ -183,7 +183,7 @@ R('GET', '/api/audit', 'denetim', 'g', async () => [200, db.prepare('SELECT * FR
 
 // ---- modüller (her biri kendi tablolarını ve uçlarını tanımlar)
 const ctx = { R, Err, A, db, tx, str, ip, usage: { ulke: [], partner: [], banka: [], tur: [] }, used: (k, v) => ctx.usage[k].reduce((n, f) => n + f(v), 0) };
-['ayarlar', 'bagis', 'org', 'ana', 'demo'].forEach(m => require('./mod/' + m)(ctx));
+['ayarlar', 'bagis', 'org', 'ana', 'iletisim', 'demo'].forEach(m => require('./mod/' + m)(ctx));
 
 // ---- sunucu
 const server = http.createServer(async (req, res) => {
@@ -194,7 +194,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const r = routes.find(r => r.m === req.method && r.re.test(url.pathname));
       if (!r) return fail(res, 404, 'Bulunamadı.');
-      if (req.method !== 'GET') { // CSRF: özel başlık + aynı kaynak
+      if (req.method !== 'GET' && url.pathname !== '/api/wa/webhook') { // CSRF (WhatsApp webhook'u imzayla doğrulanır): özel başlık + aynı kaynak
         if (req.headers['x-bp'] !== '1') return fail(res, 403, 'Geçersiz istek.');
         const o = req.headers.origin; if (o && new URL(o).host !== req.headers.host) return fail(res, 403, 'Geçersiz kaynak.');
       }
@@ -206,14 +206,14 @@ const server = http.createServer(async (req, res) => {
         if (c.user.must_change && !okPath) return fail(res, 403, 'Önce şifrenizi değiştirin.');
         if (r.menu !== 'auth' && !r.menu.split('|').some(m => A.can(c.perms, m, r.act))) return fail(res, 403, 'Bu işlem için yetkiniz yok.');
       }
-      const out = await r.h(c); if (out[1] && out[1].raw) { const f = out[1].raw, ext = path.extname(f).slice(1); if (!fs.existsSync(f)) return fail(res, 404, 'Dosya yok.'); res.writeHead(200, { 'Content-Type': ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg', 'Cache-Control': 'private, max-age=60' }); return fs.createReadStream(f).pipe(res); } return send(res, out[0], out[1], out[2]);
+      const out = await r.h(c); if (out[1] && out[1].text !== undefined) { res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }); return res.end(String(out[1].text)); } if (out[1] && out[1].raw) { const f = out[1].raw, ext = path.extname(f).slice(1); if (!fs.existsSync(f)) return fail(res, 404, 'Dosya yok.'); res.writeHead(200, { 'Content-Type': ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg', 'Cache-Control': 'private, max-age=60' }); return fs.createReadStream(f).pipe(res); } return send(res, out[0], out[1], out[2]);
     } catch (e) { if (e instanceof Err) return fail(res, e.c, e.message); if (e.message === 'json') return fail(res, 400, 'Geçersiz veri.'); if (e.message === 'big') return fail(res, 413, 'Veri çok büyük.'); console.error(e); return fail(res, 500, 'Sunucu hatası.'); }
   }
   let f = path.normalize(path.join(PUB, url.pathname === '/' ? 'index.html' : url.pathname));
   if (!f.startsWith(PUB) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) f = path.join(PUB, 'index.html');
   res.writeHead(200, { 'Content-Type': MIME[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-cache' }); fs.createReadStream(f).pipe(res);
 });
-const pw = A.seed();
+const pw = A.seed(); A.syncPerm();
 if (pw) console.log(`\n  İLK KURULUM\n  Kullanıcı adı: admin\n  Geçici şifre : ${pw}\n  (İlk girişte şifrenizi değiştirmeniz istenecek. Bu şifre bir daha gösterilmez.)\n`);
 if (require.main === module) server.listen(PORT, () => console.log(`bağışpanel çalışıyor: http://localhost:${PORT}`));
 module.exports = { server };

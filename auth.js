@@ -63,4 +63,12 @@ function seed() {
   }
   return pw;
 }
-module.exports = { MENU, KEYS, ACT, hash, verify, pwErr, effective, can, isAdmin, adminCount, newSession, sessionUser, endSession, endUserSessions, audit, lockLeft, failed, okLogin, seed };
+// Sonradan eklenen menülerin yetki satırları eksikse tamamlanır: yönetim birimi (kullanıcı+birim yönetimi olan) tam yetki, Başkan görme, diğerleri kapalı.
+function syncPerm() {
+  const ins = db.prepare('INSERT INTO birim_yetki(birim_id,menu,g,e,d,s) VALUES(?,?,?,?,?,?)');
+  db.prepare('SELECT id, ad FROM birimler').all().forEach(b => {
+    const var_ = new Set(db.prepare('SELECT menu FROM birim_yetki WHERE birim_id=?').all(b.id).map(r => r.menu)), yon = db.prepare("SELECT e FROM birim_yetki WHERE birim_id=? AND menu='kullanici'").get(b.id);
+    KEYS.forEach(k => { if (var_.has(k)) return; const p = yon && yon.e ? [1, 1, 1, 1] : b.ad === 'Başkan' ? [1, 0, 0, 0] : [0, 0, 0, 0]; ins.run(b.id, k, ...p); });
+  });
+}
+module.exports = { syncPerm, MENU, KEYS, ACT, hash, verify, pwErr, effective, can, isAdmin, adminCount, newSession, sessionUser, endSession, endUserSessions, audit, lockLeft, failed, okLogin, seed };
