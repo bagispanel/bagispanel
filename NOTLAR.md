@@ -72,3 +72,11 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 - Bağışçı Rehberi'nden bağış yapmadan "+ Yeni bağışçı ekle".
 - Dönemsel Karşılaştırma: istenen iki ay (örn. Haz 2026 / Haz 2025) yan yana; Bağışçı Analizi: aylık yeni bağışçı kazanımı.
 - İleride: gönüllü görev/vardiya takibi, gönüllü–Kalıcı Eser ilişkisi, gönüllüye toplu mesaj.
+
+## Kalıcı Eser Projeleri (yapıldı)
+- Saha Organizasyonu → Kalıcı Eser Projeleri. Proje kartı: tür (cami, sağlık ocağı, okul…), ülke/bölge/konum detayı, m², kapasite, hedef tutar (TL/USD/EUR + kur), sorumlu kişi, partner kuruluş (Partner Kurumlar'dan), sorumlu gönüllü, durum, tarihler.
+- Sayaç: seçilen bağış türlerine yapılan ONAYLI bağışlar + elle girilen tutar; hedefe göre yüzde. İnşaat ilerlemesi ayrı (% ve notlar).
+- Çizim/belge yükleme: PDF/PNG/JPEG/WEBP, en çok 1,5 MB, proje başına 40 dosya (uploads/eser/). Büyük çizimler (CAD, çok sayfalı PDF) için ileride gerçek dosya yükleme / nesne depolama gerekir.
+- Web sitesi: GET /api/dis/kalici-eser ve /api/dis/kalici-eser/<id> (x-api-key). Yalnızca "Web sitesinde göster" işaretli projeler; kişisel veri/sorumlu telefonu yok. Sitede sayaç bu uçtan çekilir.
+- Kur elle girilir (otomatik kur yok). Bağış türü birden fazla projeye bağlanırsa her ikisinin sayacına da işler.
+- İleride: proje bazlı rapor/PDF, fotoğraf galerisi, harcama kalemleri (bütçe/gerçekleşen), gönüllü görev ataması, bağışçıya "projeniz %X tamam" bildirimi.

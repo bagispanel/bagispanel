@@ -335,6 +335,22 @@ server.listen(0, async () => {
     assert.equal((await admin('DELETE', '/api/gonullu/' + c.j.id)).s, 200);
     const u = (await mkUser('gonulsuz1', 'Çağrı merkezi')).q; assert.equal((await u('GET', '/api/gonullu')).s, 403);
   });
+  await t('kalıcı eser: proje, sayaç, belge, not, web API, yetki', async () => {
+    const ba = { ad: 'Çad Cami', tur: 'Cami', ulke: 'Çad', bolge: 'Ndjamena', alan: 450, hedef: 15000, para: 'USD', kur: 40, elle: 100, durum: 'Fon toplama', web: true };
+    assert.equal((await admin('POST', '/api/eser', { ...ba, para: 'USD', kur: '' })).s, 400);
+    assert.equal((await admin('POST', '/api/eser', { ...ba, partner: 'Yok Kurum' })).s, 400);
+    const turF = await turId('Fitre'); const c = await admin('POST', '/api/eser', { ...ba, tur_ids: [turF] }); assert.equal(c.s, 201, JSON.stringify(c.j));
+    const g = (await admin('GET', '/api/eser/' + c.j.id)).j; assert.ok(g.toplanan >= 100 && g.yuzde > 0 && g.hedef === 15000 && Array.isArray(g.dosyalar));
+    const pdf = 'data:application/pdf;base64,' + Buffer.from('%PDF-1.4 test').toString('base64');
+    assert.equal((await admin('POST', `/api/eser/${c.j.id}/dosya`, { ad: 'plan.pdf', tip: 'Çizim / plan', veri: pdf })).s, 201);
+    assert.equal((await admin('POST', `/api/eser/${c.j.id}/dosya`, { ad: 'x.pdf', tip: 'Çizim / plan', veri: 'data:application/pdf;base64,' + Buffer.from('MZ not pdf').toString('base64') })).s, 400);
+    const d = (await admin('GET', '/api/eser/' + c.j.id)).j.dosyalar; assert.equal(d.length, 1);
+    assert.equal((await admin('POST', `/api/eser/${c.j.id}/not`, { metin: 'Temel atıldı', ilerleme: 15 })).s, 201); assert.equal((await admin('GET', '/api/eser/' + c.j.id)).j.ilerleme, 15);
+    const k = (await admin('POST', '/api/entegre/anahtar', { ad: 'Eser sitesi' })).j.anahtar, hd = { 'x-api-key': k };
+    assert.equal((await fetch(base + '/api/dis/kalici-eser')).status, 401); const pj = await (await fetch(base + '/api/dis/kalici-eser', { headers: hd })).json(); assert.equal(pj.length, 1); assert.equal(pj[0].insaat_yuzde, 15); assert.ok(!('sorumlu_tel' in pj[0]));
+    const u = (await mkUser('eserci1', 'Çağrı merkezi')).q; assert.equal((await u('GET', '/api/eser')).s, 403);
+    assert.equal((await admin('DELETE', '/api/eser/' + c.j.id)).s, 200); assert.equal((await admin('GET', '/api/eser')).j.liste.length, 0);
+  });
   await t('WhatsApp: şablonlu toplu gönderim, webhook imzası, gelen kutusu, 24 saat kuralı', async () => {
     assert.equal((await admin('PUT', '/api/iletisim/ayar', { wa: { phone_id: 'PID', token: 'TOK', app_secret: 'sir', api_url: `http://127.0.0.1:${mport}/v21`, sablonlar: [{ ad: 'Bagis Duyuru', dil: 'tr', govde: 'Merhaba {{1}}', n: 1 }] } })).s, 200);
     const ay = (await admin('GET', '/api/iletisim/ayar')).j.ayar; assert.equal(ay.wa.sablonlar[0].ad, 'bagis_duyuru'); assert.equal(ay.wa.token, '');

@@ -183,7 +183,7 @@ R('GET', '/api/audit', 'denetim', 'g', async () => [200, db.prepare('SELECT * FR
 
 // ---- modüller (her biri kendi tablolarını ve uçlarını tanımlar)
 const ctx = { R, Err, A, db, tx, str, ip, usage: { ulke: [], partner: [], banka: [], tur: [] }, used: (k, v) => ctx.usage[k].reduce((n, f) => n + f(v), 0) };
-['ayarlar', 'bagis', 'org', 'ana', 'iletisim', 'calisma', 'sube', 'gonullu', 'analiz', 'demo'].forEach(m => require('./mod/' + m)(ctx));
+['ayarlar', 'bagis', 'org', 'ana', 'iletisim', 'calisma', 'sube', 'gonullu', 'eser', 'analiz', 'demo'].forEach(m => require('./mod/' + m)(ctx));
 
 // ---- sunucu
 const server = http.createServer(async (req, res) => {
@@ -206,7 +206,7 @@ const server = http.createServer(async (req, res) => {
         if (c.user.must_change && !okPath) return fail(res, 403, 'Önce şifrenizi değiştirin.');
         if (r.menu !== 'auth' && !r.menu.split('|').some(m => A.can(c.perms, m, r.act))) return fail(res, 403, 'Bu işlem için yetkiniz yok.');
       }
-      const out = await r.h(c); if (out[1] && out[1].text !== undefined) { res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }); return res.end(String(out[1].text)); } if (out[1] && out[1].raw) { const f = out[1].raw, ext = path.extname(f).slice(1); if (!fs.existsSync(f)) return fail(res, 404, 'Dosya yok.'); res.writeHead(200, { 'Content-Type': ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg', 'Cache-Control': 'private, max-age=60' }); return fs.createReadStream(f).pipe(res); } return send(res, out[0], out[1], out[2]);
+      const out = await r.h(c); if (out[1] && out[1].text !== undefined) { res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }); return res.end(String(out[1].text)); } if (out[1] && out[1].raw) { const f = out[1].raw, ext = path.extname(f).slice(1); if (!fs.existsSync(f)) return fail(res, 404, 'Dosya yok.'); res.writeHead(200, { 'Content-Type': ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'pdf' ? 'application/pdf' : 'image/jpeg', 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, max-age=60' }); return fs.createReadStream(f).pipe(res); } return send(res, out[0], out[1], out[2]);
     } catch (e) { if (e instanceof Err) return fail(res, e.c, e.message); if (e.message === 'json') return fail(res, 400, 'Geçersiz veri.'); if (e.message === 'big') return fail(res, 413, 'Veri çok büyük.'); console.error(e); return fail(res, 500, 'Sunucu hatası.'); }
   }
   let f = path.normalize(path.join(PUB, url.pathname === '/' ? 'index.html' : url.pathname));
