@@ -107,14 +107,14 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   });
 
   // ---- PDF ayarları ve listeler
-  const TAS = { hisse: ['tek', 'iki', 'yatay'], kucuk: ['tek'], diger: ['liste', 'kart', 'buyuk'], tabela: ['klasik', 'ad', 'bayrak'] };
-  const PDFS = () => { const a = getA('pdf', {}); return { vb: a.vb || 50, pre: a.pre || 'VL-', tasarim: { hisse: 'tek', diger: 'liste', tabela: 'klasik', ...(a.tasarim || {}), kucuk: 'tek' }, tabela: { w: 210, h: 297, ...(a.tabela || {}) } }; };
+  const TAS = { hisse: ['tek', 'iki', 'yatay'], kucuk: ['tek'], diger: ['20', '40', '60', '80', '100'], tabela: ['klasik', 'ad', 'bayrak'] };
+  const PDFS = () => { const a = getA('pdf', {}); const dg = TAS.diger.includes((a.tasarim || {}).diger) ? a.tasarim.diger : '40'; return { vb: +dg, pre: a.pre || 'VL-', tasarim: { hisse: 'tek', tabela: 'klasik', ...(a.tasarim || {}), kucuk: 'tek', diger: dg }, tabela: { w: 210, h: 297, ...(a.tabela || {}) } }; };
   R('GET', '/api/pdf', 'pdfay|orgK|orgS|orgD', 'g', async () => [200, { ayar: PDFS(), secenek: TAS, listeler: db.prepare('SELECT no,tarih,ids FROM pdf_liste ORDER BY no DESC LIMIT 200').all().map(x => ({ no: x.no, tarih: x.tarih, adet: JSON.parse(x.ids).length })) }]);
   R('PUT', '/api/pdf', 'pdfay', 'd', async (c) => {
-    const cur = PDFS(), b = c.body, n = b.vb === undefined ? cur.vb : Math.floor(+b.vb); if (!(n >= 5 && n <= 500)) throw new Err(400, 'Videolu bağış listesinde PDF başına isim 5 ile 500 arasında olmalı.');
+    const cur = PDFS(), b = c.body;
     const t = { ...cur.tasarim }; Object.entries(b.tasarim || {}).forEach(([k, v]) => { if (!TAS[k] || !TAS[k].includes(v)) throw new Err(400, 'Geçersiz tasarım seçimi.'); t[k] = v; });
     const tb = { ...cur.tabela }; if (b.tabela) { const w = +b.tabela.w, h = +b.tabela.h; if (!(w >= 50 && w <= 1500 && h >= 50 && h <= 1500)) throw new Err(400, 'Tabela boyutu 50–1500 mm arasında olmalı.'); tb.w = Math.round(w); tb.h = Math.round(h); }
-    setA('pdf', { ...getA('pdf', {}), vb: n, tasarim: t, tabela: tb }); return [200, { ok: 1 }];
+    setA('pdf', { ...getA('pdf', {}), tasarim: t, tabela: tb }); return [200, { ok: 1 }];
   });
   const plKey = (u) => [u.tur_id, u.ulke, u.partner || ''].join('|');
   R('POST', '/api/pdf/olustur', 'orgD', 'd', async (c) => {
