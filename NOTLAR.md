@@ -41,3 +41,9 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 - Meta tarafında: webhook URL + doğrulama jetonu + App Secret, onaylı şablonlar gerekir.
 - Şifreler/anahtarlar DB'de düz metin (PostgreSQL/şifreleme aşamasında çözülecek).
 - İzin/İYS: dernek bağış mesajlarında İYS kapsamı hukukçuya sorulmalı.
+
+## Çağrı merkezi (ilk sürüm yapıldı)
+- İletişim → Çağrı Merkezi: aranacaklar listesi, görüşme sonucu/not kaydı, görüşme kayıtları, günlük sayılar.
+- Aramayı başlatma: şimdilik `tel:` bağlantısı (cihazdaki telefon/softphone). Santral webhook'u: İletişim Ayarları → Çağrı merkezi (POST JSON + anahtar). Gerçek santralle (3CX/Asterisk/Netgsm santral) DENENMEDİ.
+- Bağışçı profilinde "SMS istemiyor" ve "Aranmak istemiyor" düğmeleri; toplu gönderimde istemeyenler numarasız ayrı listede görünür.
+- İleride: tarayıcıdan tek tıkla arama (santral click-to-call API'si), gelen arama açılır penceresi, ses kaydı oynatma, ağırlıklı aranacak sıra.

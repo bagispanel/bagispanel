@@ -142,9 +142,9 @@ CREATE INDEX IF NOT EXISTS ix_wa_tel ON wa_mesaj(tel);
   R('GET', '/api/toplu/bagiscilar', 'tsms|tmail|twa', 'g', async (c) => {
     const p = new URL(c.req.url, 'http://x').searchParams, kanal = p.get('kanal'); kontrol(c, kanal, 'g'); const q = str(p.get('q'), 60).toLowerCase();
     const rows = db.prepare(`SELECT b.id, b.ad, b.tel, b.eposta, b.izin, MAX(g.tarih) son, COALESCE(SUM(g.tl),0) toplam, COUNT(g.id) adet FROM bagiscilar b LEFT JOIN bagislar g ON g.bagisci_id=b.id AND g.durum='Onaylı' GROUP BY b.id ORDER BY b.ad`).all();
-    let uygun = 0, ret = 0, yok = 0; const L = [];
-    rows.forEach(b => { const hedef = kanal === 'mail' ? String(b.eposta || '').trim() : b.tel; if (kanal === 'mail' ? !mailOk(hedef) : digits(hedef).length < 10) { yok++; return; } const iz = b.izin ? JSON.parse(b.izin) : {}; if (iz[kanal] === 'ret') { ret++; return; } uygun++; if (q && !(String(b.ad).toLowerCase().includes(q) || String(hedef).toLowerCase().includes(q))) return; L.push({ id: b.id, ad: b.ad, hedef, son: b.son, toplam: b.toplam, adet: b.adet }); });
-    return [200, { liste: L.slice(0, 500), eslesen: L.length, uygun, ret, yok }];
+    let uygun = 0, ret = 0, yok = 0; const L = [], RL = [];
+    rows.forEach(b => { const hedef = kanal === 'mail' ? String(b.eposta || '').trim() : b.tel; if (kanal === 'mail' ? !mailOk(hedef) : digits(hedef).length < 10) { yok++; return; } const iz = b.izin ? JSON.parse(b.izin) : {}; if (iz[kanal] === 'ret') { ret++; if (!q || String(b.ad).toLowerCase().includes(q)) RL.push({ id: b.id, ad: b.ad }); return; } uygun++; if (q && !(String(b.ad).toLowerCase().includes(q) || String(hedef).toLowerCase().includes(q))) return; L.push({ id: b.id, ad: b.ad, hedef, son: b.son, toplam: b.toplam, adet: b.adet }); });
+    return [200, { liste: L.slice(0, 500), eslesen: L.length, uygun, ret, yok, retliste: RL.slice(0, 200) }];
   });
   R('GET', '/api/wa/ozet', 'twa', 'g', async () => {
     const q = (sql, ...a) => db.prepare(sql).get(...a) || {}, bugun = new Date().toISOString().slice(0, 10);
@@ -209,7 +209,7 @@ CREATE INDEX IF NOT EXISTS ix_wa_tel ON wa_mesaj(tel);
   // ---------- bağışçı iletişim izni ----------
   R('PUT', '/api/bagiscilar/([0-9]+)/izin', 'bagisci', 'e', async (c) => {
     const b = db.prepare('SELECT * FROM bagiscilar WHERE id=?').get(+c.m[1]); if (!b) throw new Err(404, 'Bağışçı yok.'); const cur = b.izin ? JSON.parse(b.izin) : {};
-    ['sms', 'mail', 'wa'].forEach(k => { const v = (c.body || {})[k]; if (v === undefined) return; if (v === null || v === '') delete cur[k]; else if (['izinli', 'ret'].includes(v)) cur[k] = v; });
+    ['sms', 'mail', 'wa', 'ara'].forEach(k => { const v = (c.body || {})[k]; if (v === undefined) return; if (v === null || v === '') delete cur[k]; else if (['izinli', 'ret'].includes(v)) cur[k] = v; });
     db.prepare('UPDATE bagiscilar SET izin=? WHERE id=?').run(JSON.stringify(cur), b.id); A.audit(c.user, 'bagisci_izin', b.ad, ip(c.req)); return [200, { izin: cur }];
   });
 
@@ -234,5 +234,42 @@ CREATE INDEX IF NOT EXISTS ix_wa_tel ON wa_mesaj(tel);
       (v.messages || []).forEach(m => { const t = m.type === 'text' ? (m.text || {}).body : '[' + m.type + ']'; const tel = digits(m.from), bg = db.prepare('SELECT id,tel FROM bagiscilar').all().find(b => e164(b.tel) === tel); db.prepare('INSERT OR IGNORE INTO wa_mesaj(wid,tel,ad,yon,tip,govde,bagisci_id) VALUES(?,?,?,?,?,?,?)').run(m.id, tel, adlar[m.from] || '', 'gelen', m.type, String(t || '').slice(0, 2000), bg ? bg.id : null); });
       (v.statuses || []).forEach(s => { const d = { delivered: 'Teslim edildi', read: 'Okundu', failed: 'Hata', sent: 'Gönderildi' }[s.status]; if (d && s.id) db.prepare("UPDATE toplu_alici SET durum=?, hata=? WHERE mid=? AND durum<>'Okundu'").run(d, d === 'Hata' ? str(((s.errors || [])[0] || {}).title || 'Teslim edilemedi', 200) : null, s.id); }); }));
     return [200, { ok: 1 }];
+  });
+
+  // ---------- Çağrı merkezi ----------
+  db.exec("CREATE TABLE IF NOT EXISTS cagri(id INTEGER PRIMARY KEY, bagisci_id INTEGER, tel TEXT, ad TEXT, yon TEXT NOT NULL DEFAULT 'giden', sonuc TEXT, notu TEXT, sure INTEGER, dahili TEXT, kullanici TEXT, kaynak TEXT NOT NULL DEFAULT 'elle', kayit_url TEXT, zaman TEXT NOT NULL DEFAULT (datetime('now','localtime')))");
+  db.exec('CREATE INDEX IF NOT EXISTS ix_cagri_b ON cagri(bagisci_id)');
+  const CSON = ['Görüştük', 'Bağış sözü verdi', 'Ulaşılamadı / açmadı', 'Meşgul', 'Daha sonra ara', 'Yanlış numara', 'Aranmak istemiyor'];
+  const cAyar = () => { let a = getA('cagri_ayar', null); if (!a || !a.anahtar) { a = { saglayici: (a || {}).saglayici || 'tel', anahtar: crypto.randomBytes(18).toString('hex') }; setA('cagri_ayar', a); } return a; };
+  const bulBagisci = (tel) => { const d = e164(tel); if (d.length < 7) return null; return db.prepare('SELECT id,ad,tel FROM bagiscilar').all().find(b => { const x = e164(b.tel); return x === d || (x.length >= 10 && d.length >= 10 && x.slice(-10) === d.slice(-10)); }) || null; };
+  R('GET', '/api/cagri/ayar', 'iayar', 'g', async () => { const a = cAyar(); return [200, { saglayici: a.saglayici, anahtar: a.anahtar, webhook: '/api/cagri/webhook' }]; });
+  R('PUT', '/api/cagri/ayar', 'iayar', 'e', async (c) => { const a = cAyar(), b = c.body || {}; if (b.saglayici !== undefined) { if (!['tel', 'santral'].includes(b.saglayici)) throw new Err(400, 'Geçersiz seçim.'); a.saglayici = b.saglayici; } if (b.yenile) a.anahtar = crypto.randomBytes(18).toString('hex'); setA('cagri_ayar', a); A.audit(c.user, 'cagri_ayar', '', ip(c.req)); return [200, { saglayici: a.saglayici, anahtar: a.anahtar }]; });
+  R('GET', '/api/cagri/ozet', 'cagri', 'g', async () => {
+    const g = (sql, ...a) => (db.prepare(sql).get(...a) || {}).n || 0, bugun = new Date().toISOString().slice(0, 10), B = db.prepare('SELECT izin FROM bagiscilar WHERE izin IS NOT NULL').all();
+    return [200, { sonuclar: CSON, saglayici: cAyar().saglayici, bugunGiden: g("SELECT COUNT(*) n FROM cagri WHERE yon='giden' AND date(zaman)=?", bugun), bugunGelen: g("SELECT COUNT(*) n FROM cagri WHERE yon='gelen' AND date(zaman)=?", bugun), bugunUlasilan: g("SELECT COUNT(*) n FROM cagri WHERE date(zaman)=? AND sonuc IN ('Görüştük','Bağış sözü verdi')", bugun), sozler: g("SELECT COUNT(*) n FROM cagri WHERE date(zaman)=? AND sonuc='Bağış sözü verdi'", bugun), cevapsiz: g("SELECT COUNT(*) n FROM cagri WHERE yon='gelen' AND sonuc='Cevapsız' AND date(zaman)=?", bugun), aranmaz: B.filter(x => { try { return JSON.parse(x.izin).ara === 'ret'; } catch (e) { return false; } }).length, toplam: g('SELECT COUNT(*) n FROM cagri') }];
+  });
+  R('GET', '/api/cagri/aranacak', 'cagri', 'g', async (c) => {
+    const p = new URL(c.req.url, 'http://x').searchParams, q = str(p.get('q'), 60).toLowerCase(), pasif = p.get('gun') === '0' ? 0 : Math.max(1, Math.min(3650, +p.get('gun') || 90)), esik = pasif ? new Date(Date.now() - pasif * 86400000).toISOString().slice(0, 10) : '0000', son3 = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10) + ' 00:00:00';
+    const rows = db.prepare(`SELECT b.id, b.ad, b.tel, b.izin, MAX(g.tarih) son, COALESCE(SUM(g.tl),0) toplam, COUNT(g.id) adet, (SELECT sonuc FROM cagri x WHERE x.bagisci_id=b.id ORDER BY x.id DESC LIMIT 1) csonuc, (SELECT zaman FROM cagri x WHERE x.bagisci_id=b.id ORDER BY x.id DESC LIMIT 1) czaman FROM bagiscilar b LEFT JOIN bagislar g ON g.bagisci_id=b.id AND g.durum='Onaylı' GROUP BY b.id`).all();
+    let hariç = 0; const L = [];
+    rows.forEach(b => { if (digits(b.tel).length < 7) return; const iz = b.izin ? JSON.parse(b.izin) : {}; if (iz.ara === 'ret') { hariç++; return; } if (pasif && b.son && b.son >= esik) return; if (b.czaman && b.czaman >= son3) return; if (b.csonuc === 'Yanlış numara') return; if (q && !(String(b.ad).toLowerCase().includes(q) || String(b.tel).includes(q))) return; L.push({ id: b.id, ad: b.ad, tel: b.tel, son: b.son, toplam: b.toplam, adet: b.adet, csonuc: b.csonuc, czaman: b.czaman }); });
+    L.sort((a, b) => (b.toplam - a.toplam)); return [200, { liste: L.slice(0, 300), adet: L.length, hariç, gun: pasif }];
+  });
+  R('GET', '/api/cagri/kayit', 'cagri', 'g', async (c) => { const p = new URL(c.req.url, 'http://x').searchParams, bid = +p.get('bagisci') || 0; return [200, db.prepare('SELECT * FROM cagri' + (bid ? ' WHERE bagisci_id=?' : '') + ' ORDER BY id DESC LIMIT 200').all(...(bid ? [bid] : []))]; });
+  R('POST', '/api/cagri', 'cagri', 'e', async (c) => {
+    const b = c.body || {}, sonuc = str(b.sonuc, 40); if (!CSON.includes(sonuc)) throw new Err(400, 'Görüşme sonucunu seçin.');
+    let bg = b.bagisci_id ? db.prepare('SELECT id,ad,tel FROM bagiscilar WHERE id=?').get(+b.bagisci_id) : null; if (!bg) throw new Err(400, 'Bağışçı bulunamadı.');
+    db.prepare("INSERT INTO cagri(bagisci_id,tel,ad,yon,sonuc,notu,kullanici) VALUES(?,?,?,?,?,?,?)").run(bg.id, bg.tel, bg.ad, 'giden', sonuc, str(b.notu, 500) || null, c.user.kadi);
+    if (sonuc === 'Aranmak istemiyor') { const row = db.prepare('SELECT izin FROM bagiscilar WHERE id=?').get(bg.id), cur = row.izin ? JSON.parse(row.izin) : {}; cur.ara = 'ret'; db.prepare('UPDATE bagiscilar SET izin=? WHERE id=?').run(JSON.stringify(cur), bg.id); }
+    return [200, { ok: 1 }];
+  });
+  // Santral (3CX, Asterisk, Yeastar, Netgsm santral vb.) arama bitince bu adrese HTTP isteği gönderir
+  R('POST', '/api/cagri/webhook', null, null, async (c) => {
+    const a = cAyar(), p = new URL(c.req.url, 'http://x').searchParams, anahtar = p.get('anahtar') || c.req.headers['x-webhook-key'] || '';
+    if (!anahtar || anahtar.length !== a.anahtar.length || !crypto.timingSafeEqual(Buffer.from(anahtar), Buffer.from(a.anahtar))) throw new Err(403, 'Anahtar geçersiz.');
+    const b = c.body || {}, numara = str(b.numara || b.tel || b.caller || b.from || '', 40), yon = /^(giden|out|outbound)/i.test(String(b.yon || b.direction || '')) ? 'giden' : 'gelen', durum = String(b.durum || b.status || '').toLowerCase();
+    const sonuc = /(cevapsiz|cevapsız|missed|no.?answer|noanswer|busy|failed)/.test(durum) ? (yon === 'gelen' ? 'Cevapsız' : 'Ulaşılamadı / açmadı') : 'Görüştük', bg = bulBagisci(numara);
+    db.prepare("INSERT INTO cagri(bagisci_id,tel,ad,yon,sonuc,sure,dahili,kullanici,kaynak,kayit_url) VALUES(?,?,?,?,?,?,?,?,?,?)").run(bg ? bg.id : null, numara, bg ? bg.ad : null, yon, sonuc, Math.max(0, Math.min(86400, +b.sure || +b.duration || 0)), str(b.dahili || b.extension || '', 20) || null, null, 'santral', /^https:\/\//.test(String(b.kayit_url || '')) ? str(b.kayit_url, 300) : null);
+    return [200, { ok: 1, eslesti: !!bg }];
   });
 };

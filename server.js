@@ -194,7 +194,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const r = routes.find(r => r.m === req.method && r.re.test(url.pathname));
       if (!r) return fail(res, 404, 'Bulunamadı.');
-      if (req.method !== 'GET' && url.pathname !== '/api/wa/webhook') { // CSRF (WhatsApp webhook'u imzayla doğrulanır): özel başlık + aynı kaynak
+      if (req.method !== 'GET' && url.pathname !== '/api/wa/webhook' && url.pathname !== '/api/cagri/webhook') { // CSRF (WhatsApp webhook'u imzayla doğrulanır): özel başlık + aynı kaynak
         if (req.headers['x-bp'] !== '1') return fail(res, 403, 'Geçersiz istek.');
         const o = req.headers.origin; if (o && new URL(o).host !== req.headers.host) return fail(res, 403, 'Geçersiz kaynak.');
       }

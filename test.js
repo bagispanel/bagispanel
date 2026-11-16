@@ -257,6 +257,22 @@ server.listen(0, async () => {
     assert.equal((await admin('POST', '/api/toplu/hedef', { kanal: 'sms', filtre: { ids: [] } })).j.adet, 0);
     const o = (await admin('GET', '/api/wa/ozet')); assert.equal(o.s, 200); assert.equal(o.j.gun7.length, 7); assert.ok('okunmamis' in o.j && 'bekleyen' in o.j);
   });
+  await t('SMS istemiyor / aranmak istemiyor + çağrı merkezi', async () => {
+    const L = (await admin('GET', '/api/toplu/bagiscilar?kanal=sms')).j, b = L.liste[0];
+    assert.equal((await admin('PUT', `/api/bagiscilar/${b.id}/izin`, { sms: 'ret', ara: 'ret' })).s, 200);
+    const L2 = (await admin('GET', '/api/toplu/bagiscilar?kanal=sms')).j; assert.ok(!L2.liste.find(x => x.id === b.id)); const r = L2.retliste.find(x => x.id === b.id); assert.ok(r && !('hedef' in r) && !('tel' in r));
+    assert.equal((await admin('POST', '/api/toplu/hedef', { kanal: 'sms', filtre: { ids: [b.id] } })).j.adet, 0);
+    const ar = (await admin('GET', '/api/cagri/aranacak?gun=30')).j; assert.ok(!ar.liste.find(x => x.id === b.id)); assert.ok(ar.hariç >= 1);
+    const b2 = ar.liste[0]; assert.equal((await admin('POST', '/api/cagri', { bagisci_id: b2.id, sonuc: 'Aranmak istemiyor', notu: 'x' })).s, 200);
+    assert.ok(!(await admin('GET', '/api/cagri/aranacak?gun=30')).j.liste.find(x => x.id === b2.id));
+    assert.equal((await admin('POST', '/api/cagri', { bagisci_id: b2.id, sonuc: 'yok' })).s, 400);
+    const ay = (await admin('GET', '/api/cagri/ayar')).j; assert.ok(ay.anahtar.length >= 20);
+    const wh = (k, body) => fetch(`${base}/api/cagri/webhook?anahtar=${k}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    assert.equal((await wh('yanlis', { numara: '05' })).status, 403);
+    const tel = b2.tel; const w = await wh(ay.anahtar, { numara: tel, yon: 'gelen', durum: 'missed', sure: 0 }); assert.equal(w.status, 200); assert.equal((await w.json()).eslesti, true);
+    const k = (await admin('GET', '/api/cagri/kayit')).j; assert.ok(k.find(x => x.kaynak === 'santral' && x.sonuc === 'Cevapsız' && x.bagisci_id === b2.id));
+    assert.equal((await admin('GET', '/api/cagri/ozet')).j.cevapsiz >= 1, true);
+  });
   await t('WhatsApp: şablonlu toplu gönderim, webhook imzası, gelen kutusu, 24 saat kuralı', async () => {
     assert.equal((await admin('PUT', '/api/iletisim/ayar', { wa: { phone_id: 'PID', token: 'TOK', app_secret: 'sir', api_url: `http://127.0.0.1:${mport}/v21`, sablonlar: [{ ad: 'Bagis Duyuru', dil: 'tr', govde: 'Merhaba {{1}}', n: 1 }] } })).s, 200);
     const ay = (await admin('GET', '/api/iletisim/ayar')).j.ayar; assert.equal(ay.wa.sablonlar[0].ad, 'bagis_duyuru'); assert.equal(ay.wa.token, '');
