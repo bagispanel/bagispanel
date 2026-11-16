@@ -107,8 +107,8 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   });
 
   // ---- PDF ayarları ve listeler
-  const TAS = { hisse: ['tek', 'iki', 'yatay'], kucuk: ['tek', 'dort', 'liste'], diger: ['liste', 'kart', 'buyuk'], tabela: ['klasik', 'ad', 'bayrak'] };
-  const PDFS = () => { const a = getA('pdf', {}); return { vb: a.vb || 50, pre: a.pre || 'VL-', tasarim: { hisse: 'tek', kucuk: 'dort', diger: 'liste', tabela: 'klasik', ...(a.tasarim || {}) }, tabela: { w: 210, h: 297, ...(a.tabela || {}) } }; };
+  const TAS = { hisse: ['tek', 'iki', 'yatay'], kucuk: ['tek'], diger: ['liste', 'kart', 'buyuk'], tabela: ['klasik', 'ad', 'bayrak'] };
+  const PDFS = () => { const a = getA('pdf', {}); return { vb: a.vb || 50, pre: a.pre || 'VL-', tasarim: { hisse: 'tek', diger: 'liste', tabela: 'klasik', ...(a.tasarim || {}), kucuk: 'tek' }, tabela: { w: 210, h: 297, ...(a.tabela || {}) } }; };
   R('GET', '/api/pdf', 'pdfay|orgK|orgS|orgD', 'g', async () => [200, { ayar: PDFS(), secenek: TAS, listeler: db.prepare('SELECT no,tarih,ids FROM pdf_liste ORDER BY no DESC LIMIT 200').all().map(x => ({ no: x.no, tarih: x.tarih, adet: JSON.parse(x.ids).length })) }]);
   R('PUT', '/api/pdf', 'pdfay', 'd', async (c) => {
     const cur = PDFS(), b = c.body, n = b.vb === undefined ? cur.vb : Math.floor(+b.vb); if (!(n >= 5 && n <= 500)) throw new Err(400, 'Videolu bağış listesinde PDF başına isim 5 ile 500 arasında olmalı.');
