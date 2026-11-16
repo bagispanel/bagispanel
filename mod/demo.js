@@ -1,7 +1,7 @@
 // Deneme verisi: DEMO=1 iken ve hiç bağış yoksa her bağış türünden 30 bağış ekler (canlı deneme ortamı için).
 module.exports = function (ctx) {
   const { db, h } = ctx;
-  if (process.env.DEMO !== '1' || db.prepare('SELECT 1 FROM bagislar').get()) return;
+  const yukle = () => {
   const trs = (n) => Number(n).toLocaleString('tr-TR');
   const ek = db.prepare('INSERT OR IGNORE INTO bagis_turleri(kat,ad,org,cap,fiyat,birim,tam,sertifika,ulke,kuyu,seri) VALUES(?,?,?,?,?,?,?,?,?,?,?)');
   const kuyu = (nv, bic, f, pay, ulke) => { const tip = nv.replace(/^.+?\s+[-–·]\s+/, ''), fon = bic === 'Fon', tam = bic === 'Tam fiyat';
@@ -29,5 +29,12 @@ module.exports = function (ctx) {
     }
   });
   db.exec("UPDATE bagislar SET tarih=date('now','-' || (30 + (id*37)%420) || ' day') WHERE bagisci_id%6=0");
-  console.log(`Deneme verisi yüklendi: ${sayi} bağış.`);
+  console.log(`Deneme verisi yüklendi: ${sayi} bağış.`); return sayi;
+  };
+  if (process.env.DEMO !== '1') return;
+  if (!db.prepare('SELECT 1 FROM bagislar').get()) yukle();
+  ctx.R('POST', '/api/demo/yenile', 'birim', 's', async (c) => { // yalnızca deneme ortamı: bağış verisini silip yeniden yükler
+    ctx.tx(() => { ['paylar', 'birimler_org', 'bagislar', 'bagiscilar', 'sms_log', 'pdf_liste', 'sayac', 'kn_sayac'].forEach(t => db.exec('DELETE FROM ' + t)); });
+    return [200, { n: yukle() }];
+  });
 };

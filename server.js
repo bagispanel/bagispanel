@@ -61,7 +61,7 @@ R('POST', '/api/login', null, null, async (c) => {
 });
 R('POST', '/api/logout', 'auth', null, async (c) => { A.endSession(c.token); A.audit(c.user, 'cikis', null, ip(c.req)); return [200, { ok: 1 }, { 'Set-Cookie': setCookie(c.req, '', 0) }]; });
 R('GET', '/api/saglik', null, null, async () => [200, { ok: 1, surum: process.env.GIT_SHA || 'yerel', ortam: process.env.ORTAM || 'yerel' }]);
-R('GET', '/api/me', 'auth', null, async (c) => [200, { surum: process.env.GIT_SHA || 'yerel', ortam: process.env.ORTAM || 'yerel', user: { id: c.user.id, ad: c.user.ad, kadi: c.user.kadi, birim: c.user.birim_ad, must_change: !!c.user.must_change, telefon: c.user.telefon, eposta: c.user.eposta, foto: !!c.user.foto }, perms: c.perms, menu: A.MENU }]);
+R('GET', '/api/me', 'auth', null, async (c) => [200, { demo: process.env.DEMO === '1', surum: process.env.GIT_SHA || 'yerel', ortam: process.env.ORTAM || 'yerel', user: { id: c.user.id, ad: c.user.ad, kadi: c.user.kadi, birim: c.user.birim_ad, must_change: !!c.user.must_change, telefon: c.user.telefon, eposta: c.user.eposta, foto: !!c.user.foto }, perms: c.perms, menu: A.MENU }]);
 R('POST', '/api/sifre', 'auth', null, async (c) => {
   const { eski, yeni } = c.body;
   if (!A.verify(String(eski || ''), c.user.pass)) throw new Err(400, 'Mevcut şifre hatalı.');

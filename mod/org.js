@@ -107,9 +107,15 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   });
 
   // ---- PDF ayarları ve listeler
-  const PDFS = () => getA('pdf', { vb: 50, pre: 'VL-' });
-  R('GET', '/api/pdf', 'pdfay|orgK|orgD', 'g', async () => [200, { ayar: PDFS(), listeler: db.prepare('SELECT no,tarih,ids FROM pdf_liste ORDER BY no DESC LIMIT 200').all().map(x => ({ no: x.no, tarih: x.tarih, adet: JSON.parse(x.ids).length })) }]);
-  R('PUT', '/api/pdf', 'pdfay', 'd', async (c) => { const n = Math.floor(+c.body.vb); if (!(n >= 5 && n <= 500)) throw new Err(400, 'Liste başına isim 5 ile 500 arasında olmalı.'); setA('pdf', { ...PDFS(), vb: n }); return [200, { ok: 1 }]; });
+  const TAS = { hisse: ['tek', 'iki', 'yatay'], kucuk: ['tek', 'dort', 'liste'], diger: ['liste', 'kart', 'buyuk'], tabela: ['klasik', 'ad', 'bayrak'] };
+  const PDFS = () => { const a = getA('pdf', {}); return { vb: a.vb || 50, pre: a.pre || 'VL-', tasarim: { hisse: 'tek', kucuk: 'dort', diger: 'liste', tabela: 'klasik', ...(a.tasarim || {}) }, tabela: { w: 210, h: 297, ...(a.tabela || {}) } }; };
+  R('GET', '/api/pdf', 'pdfay|orgK|orgS|orgD', 'g', async () => [200, { ayar: PDFS(), secenek: TAS, listeler: db.prepare('SELECT no,tarih,ids FROM pdf_liste ORDER BY no DESC LIMIT 200').all().map(x => ({ no: x.no, tarih: x.tarih, adet: JSON.parse(x.ids).length })) }]);
+  R('PUT', '/api/pdf', 'pdfay', 'd', async (c) => {
+    const cur = PDFS(), b = c.body, n = b.vb === undefined ? cur.vb : Math.floor(+b.vb); if (!(n >= 5 && n <= 500)) throw new Err(400, 'Videolu bağış listesinde PDF başına isim 5 ile 500 arasında olmalı.');
+    const t = { ...cur.tasarim }; Object.entries(b.tasarim || {}).forEach(([k, v]) => { if (!TAS[k] || !TAS[k].includes(v)) throw new Err(400, 'Geçersiz tasarım seçimi.'); t[k] = v; });
+    const tb = { ...cur.tabela }; if (b.tabela) { const w = +b.tabela.w, h = +b.tabela.h; if (!(w >= 50 && w <= 1500 && h >= 50 && h <= 1500)) throw new Err(400, 'Tabela boyutu 50–1500 mm arasında olmalı.'); tb.w = Math.round(w); tb.h = Math.round(h); }
+    setA('pdf', { ...getA('pdf', {}), vb: n, tasarim: t, tabela: tb }); return [200, { ok: 1 }];
+  });
   const plKey = (u) => [u.tur_id, u.ulke, u.partner || ''].join('|');
   R('POST', '/api/pdf/olustur', 'orgD', 'd', async (c) => {
     const ids = (Array.isArray(c.body.ids) ? c.body.ids : []).map(Number).filter(Boolean); if (!ids.length) throw new Err(400, 'Önce satır seçin.');
@@ -125,7 +131,7 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
     const p = new URL(c.req.url, 'http://x').searchParams, no = p.get('no'); let ids = no ? JSON.parse((db.prepare('SELECT ids FROM pdf_liste WHERE no=?').get(no) || { ids: '[]' }).ids) : (p.get('ids') || '').split(',').map(Number).filter(Boolean);
     if (!ids.length) return [200, { liste: [] }];
     const us = db.prepare(`SELECT u.*, t.ad turad, t.kat, t.org, t.seri FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE u.id IN (${ids.map(() => '?').join(',')}) ORDER BY u.id`).all(...ids), mn = { Kurban: 'orgK', 'Su kuyusu': 'orgS', 'Diğer': 'orgD' };
-    return [200, { dernek: getA('dernek_adi', '[Dernek adı]'), liste: us.filter(u => A.can(c.perms, mn[u.org], 'g')).map(u => ({ id: u.id, kod: u.kod, ad: u.ad, tur: u.turad, kat: u.kat, org: u.org, cap: u.cap, ulke: u.ulke, partner: u.partner, kno: knoOf(u), ks: u.ks, konum: u.konum, pl: u.pl, dt: dtGet(u), ni: u.seri, paylar: db.prepare('SELECT p.no,p.ad,g.no bno FROM paylar p JOIN bagislar g ON g.id=p.bagis_id WHERE p.birim_id=? ORDER BY p.id').all(u.id) })) }];
+    return [200, { dernek: getA('dernek_adi', '[Dernek adı]'), liste: us.filter(u => A.can(c.perms, mn[u.org], 'g')).map(u => ({ id: u.id, kod: u.kod, ad: u.ad, tur: u.turad, kat: u.kat, org: u.org, cap: u.cap, ulke: u.ulke, partner: u.partner, kno: knoOf(u), ks: u.ks, konum: u.konum, pl: u.pl, hayvan: u.hayvan, dt: dtGet(u), ni: u.seri, paylar: db.prepare('SELECT p.no,p.ad,g.no bno FROM paylar p JOIN bagislar g ON g.id=p.bagis_id WHERE p.birim_id=? ORDER BY p.id').all(u.id) })) }];
   });
 
   // ---- entegrasyon: anahtarlı dış API
