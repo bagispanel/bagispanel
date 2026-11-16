@@ -193,5 +193,11 @@ server.listen(0, async () => {
     assert.deepEqual(ad, ['Ali A', 'Cem C', 'Sahip Kisi', 'Sahip Kisi', 'Veli B']); assert.ok(L.flatMap(u => u.paylar).every(p => /^KS-/.test(p.no)));
     const k2 = await turId('Akika · küçükbaş'); await bag({ tur_id: k2, tel: '541 300 80 10', ad: 'Koyun Sahibi', hy: 'Koyun' }); assert.equal((await admin('GET', '/api/org/kurban?q=Koyun Sahibi')).j.liste[0].hayvan, 'Koyun');
   });
+  await t('pdf ayarları: tasarım ve tabela boyutu kaydedilir, geçersiz reddedilir', async () => {
+    assert.equal((await admin('PUT', '/api/pdf', { vb: 100, tasarim: { hisse: 'iki', kucuk: 'tek' }, tabela: { w: 400, h: 300 } })).s, 200);
+    const a = (await admin('GET', '/api/pdf')).j.ayar; assert.equal(a.vb, 100); assert.equal(a.tasarim.hisse, 'iki'); assert.equal(a.tasarim.diger, 'liste'); assert.equal(a.tabela.w, 400);
+    assert.equal((await admin('PUT', '/api/pdf', { tasarim: { hisse: 'yok' } })).s, 400); assert.equal((await admin('PUT', '/api/pdf', { tabela: { w: 5, h: 300 } })).s, 400); assert.equal((await admin('PUT', '/api/pdf', { vb: 2 })).s, 400);
+    await admin('PUT', '/api/pdf', { vb: 50, tasarim: { hisse: 'tek', kucuk: 'dort' }, tabela: { w: 210, h: 297 } });
+  });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });
