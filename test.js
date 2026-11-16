@@ -200,10 +200,10 @@ server.listen(0, async () => {
     await admin('PUT', '/api/pdf', { tasarim: { hisse: 'tek', kucuk: 'tek', diger: '40' }, tabela: { w: 210, h: 297 } });
   });
   await t('ülke bayrağı yüklenir, geçersiz görsel reddedilir, kaldırılır', async () => {
-    const ul = (await admin('GET', '/api/ulkeler')).j.find(x => x.ad === 'Testistan'); assert.ok(ul);
+    const yeni = await admin('POST', '/api/ulkeler', { ad: 'Bayrakistan' }); assert.equal(yeni.s, 201); const ul = { id: yeni.j.id };
     const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
     assert.equal((await admin('PUT', `/api/ulkeler/${ul.id}/bayrak`, { bayrak: png })).s, 200);
-    assert.equal((await admin('GET', '/api/ulkeler')).j.find(x => x.ad === 'Testistan').bayrak, png);
+    assert.equal((await admin('GET', '/api/ulkeler')).j.find(x => x.ad === 'Bayrakistan').bayrak, png);
     assert.equal((await admin('PUT', `/api/ulkeler/${ul.id}/bayrak`, { bayrak: 'data:text/html;base64,PGI+' })).s, 400);
     assert.equal((await admin('PUT', `/api/ulkeler/${ul.id}/bayrak`, { bayrak: null })).s, 200);
   });
