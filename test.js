@@ -105,5 +105,77 @@ server.listen(0, async () => {
     const T = (await admin('GET', '/api/turler')).j; assert.ok(T.turler.length >= 3 && T.kategoriler.includes('Test Kategori'));
   });
   await t('ayarlar: yetkisiz kullanıcı ekleyemez', async () => { const u = await mkUser('cagri9', 'Çağrı merkezi'); assert.equal((await u.q('POST', '/api/ulkeler', { ad: 'Z', kita: 'Asya' })).s, 403); });
+  const turId = async (pre) => (await admin('GET', '/api/turler')).j.turler.find(x => x.ad.startsWith(pre)).id;
+  const bag = (o) => admin('POST', '/api/bagislar', { kod: '+90', tel: '541 300 00 01', ad: 'Ayşe Test', odeme: 'Nakit', ...o });
+  await t('bağış: genel bağış alınır, bağışçı otomatik kaydolur, sms yazılır', async () => {
+    const r = await bag({ tur_id: await turId('Fitre'), tutar: 100 }); assert.equal(r.s, 201); assert.ok(r.j.yeni); assert.match(r.j.no, /^BG-\d{4}-\d{5}$/);
+    assert.equal((await bag({ tur_id: await turId('Zekât'), tutar: 50 })).j.yeni, false);
+    assert.ok((await admin('GET', '/api/sms')).j.some(x => x.mesaj.includes('alınmıştır')));
+  });
+  await t('bağış: hatalı telefon / tutar / havalede banka zorunlu', async () => {
+    const f = await turId('Fitre');
+    assert.equal((await bag({ tur_id: f, tutar: 10, tel: '123' })).s, 400); assert.equal((await bag({ tur_id: f, tutar: 0 })).s, 400);
+    assert.equal((await bag({ tur_id: f, tutar: 10, odeme: 'Havale/EFT' })).s, 400);
+  });
+  await t('kurban: 7 hisse gruba yerleşir, dolunca adım 1', async () => {
+    const v = await turId('Vacip · hisseli');
+    for (let i = 0; i < 7; i++) assert.equal((await bag({ tur_id: v, tel: '541 300 10 0' + i, ad: 'K' + i })).s, 201);
+    const o = (await admin('GET', '/api/org/kurban')).j; const u = o.liste.find(x => x.tur_id === v); assert.equal(u.paylar.length, 7); assert.equal(u.sts, 1); assert.match(u.kod, /^K\d\d-B-0001$/);
+  });
+  await t('kurban: bekleyen bağış organizasyona düşmez, onayla düşer', async () => {
+    const k = await turId('Adak · küçükbaş'); const r = await bag({ tur_id: k, durum: 'Bekleyen', tel: '541 300 20 00', ad: 'Bekleyen K' });
+    assert.equal((await admin('GET', '/api/org/kurban?q=Bekleyen K')).j.toplam, 0);
+    assert.equal((await admin('POST', '/api/bagislar/onayla', { ids: [r.j.id] })).j.n, 1); assert.equal((await admin('GET', '/api/org/kurban?q=Bekleyen K')).j.toplam, 1);
+  });
+  await t('kurban: ülke ata, kesildi, video, gönder (sıra zorunlu)', async () => {
+    const v = await turId('Vacip · hisseli'), u = (await admin('GET', '/api/org/kurban')).j.liste.find(x => x.tur_id === v);
+    assert.equal((await admin('POST', '/api/org/islem', { a: 'k', ids: [u.id] })).s, 409);
+    assert.equal((await admin('POST', '/api/org/islem', { a: 'c', ids: [u.id], ulke: 'Çad', partner: 'Test Dernek' })).s, 200);
+    assert.equal((await admin('POST', '/api/org/islem', { a: 'k', ids: [u.id] })).s, 200);
+    assert.equal((await admin('POST', '/api/org/islem', { a: 'g', ids: [u.id] })).s, 409);
+    assert.equal((await admin('POST', '/api/org/islem', { a: 'v', ids: [u.id], video: 'kurban1.mp4' })).s, 200);
+    assert.equal((await admin('POST', '/api/org/islem', { a: 'g', ids: [u.id] })).s, 200);
+    assert.ok((await admin('GET', '/api/sms')).j.filter(x => x.sablon === 'video').length >= 7);
+  });
+  await t('iptal: kesilmiş kurbanın bağışı iptal edilemez, bekleyen iptal olur', async () => {
+    const v = await turId('Vacip · hisseli'), b = (await admin('GET', '/api/bagislar')).j.liste.find(x => x.tur_id === v && x.ad === 'K0');
+    assert.equal((await admin('POST', `/api/bagislar/${b.id}/iptal`, { sebep: 'Hatalı giriş' })).s, 409);
+    const k = await turId('Akika · küçükbaş'), r = await bag({ tur_id: k, tel: '541 300 30 00', ad: 'Iptal K' }); assert.equal((await admin('POST', `/api/bagislar/${r.j.id}/iptal`, { sebep: 'Mükerrer (çift) kayıt' })).s, 200);
+    assert.equal((await admin('GET', '/api/org/kurban?q=Iptal K')).j.toplam, 0);
+  });
+  await t('kuyu: hisseli dolunca numara verilir, kuyu serisi sayaçlanır', async () => {
+    const ky = await turId('Testistan - Çeşme'); const L = []; for (let i = 0; i < 7; i++) L.push(await bag({ tur_id: ky, adet: 1, tel: '541 300 40 0' + i, ad: 'Ky' + i }));
+    L.forEach(x => assert.equal(x.s, 201)); const u = (await admin('GET', '/api/org/kuyu')).j.liste.find(x => x.tur_id === ky); assert.equal(u.ulke, 'Testistan'.length ? u.ulke : ''); assert.equal(u.kn, 1); assert.match(u.kod, /^KY-\d{4}-0001$/);
+  });
+  await t('numaralandırma: sayaç geri alınamaz', async () => {
+    const n = (await admin('GET', '/api/numara')).j; assert.ok(n.seriler.some(s => s.ad === 'Genel')); assert.equal((await admin('PUT', '/api/numara/sayac', { k: 'Genel', n: 1 })).s, 409); assert.equal((await admin('PUT', '/api/numara/sayac', { k: 'Genel', n: 100 })).s, 200);
+  });
+  await t('fon: hedef aşılınca fazlası devreder', async () => {
+    assert.equal((await admin('POST', '/api/turler', { sec: 'kuyu', ad: 'Anne Fatma Fonu', bicim: 'Fon', fiyat: 1000 })).s, 201);
+    const f = await turId('Anne Fatma Fonu'); await bag({ tur_id: f, tutar: 700, tel: '541 300 50 00', ad: 'Fon1' }); await bag({ tur_id: f, tutar: 500, tel: '541 300 50 01', ad: 'Fon2' });
+    const L = (await admin('GET', '/api/org/kuyu')).j.liste.filter(x => x.tur_id === f); assert.equal(L.length, 1); assert.equal(L[0].sts >= 1, true); assert.equal(L[0].tas, 200);
+    await bag({ tur_id: f, tutar: 100, tel: '541 300 50 02', ad: 'Fon3' }); assert.equal((await admin('GET', '/api/org/kuyu')).j.liste.filter(x => x.tur_id === f).length, 2);
+  });
+  await t('videolu bağış: her adet ayrı kayıt, pdf listesi numaralanır', async () => {
+    const vb = await turId('Kuranı Kerim'); await bag({ tur_id: vb, adet: 3, tel: '541 300 60 00', ad: 'VB' });
+    const L = (await admin('GET', '/api/org/diger')).j.liste; assert.equal(L.length >= 3, true);
+    const ids = L.map(x => x.id); await admin('POST', '/api/org/islem', { a: 'c', ids, ulke: 'Mali' });
+    const r = (await admin('POST', '/api/pdf/olustur', { ids })).j; assert.equal(r.yeni.length, 1); assert.match(r.yeni[0], /^VL-\d{4}-0001$/);
+    assert.equal((await admin('POST', '/api/pdf/olustur', { ids })).j.yeni.length, 0);
+  });
+  await t('sms şablonu düzenlenir, rapor toplamı', async () => {
+    assert.equal((await admin('PUT', '/api/sablonlar/kabul', { m: 'Merhaba {ad} {bno} {dernek}' })).s, 200);
+    const r = (await admin('GET', '/api/bagislar?durum=Onaylı')).j; assert.ok(r.liste.length > 10 && r.toplam['Onaylı'] > 0);
+  });
+  await t('entegrasyon: anahtarlı dış bağış bekleyen düşer, tekrar kaydedilmez', async () => {
+    const k = (await admin('POST', '/api/entegre/anahtar', { ad: 'Web sitesi' })).j.anahtar; const f = await turId('Fitre');
+    const post = (body, key) => fetch(base + '/api/dis/bagis', { method: 'POST', headers: { 'content-type': 'application/json', 'x-bp': '1', 'x-api-key': key }, body: JSON.stringify(body) });
+    const body = { kod: '+90', tel: '541 300 70 00', ad: 'Site Bağışçı', tur_id: f, tutar: 200, odeme: 'Kredi kartı / online', xid: 'SITE-1' };
+    assert.equal((await post(body, 'yanlis')).status, 401); const r1 = await post(body, k); assert.equal(r1.status, 201); const r2 = await post(body, k); assert.equal((await r2.json()).tekrar, true);
+    assert.ok((await admin('GET', '/api/bagislar?durum=Bekleyen')).j.liste.some(x => x.kaynak === 'Web sitesi'));
+  });
+  await t('yetki: çağrı merkezi organizasyonu görür ama işlem yapamaz', async () => {
+    const u = await mkUser('cagri10', 'Çağrı merkezi'); assert.equal((await u.q('POST', '/api/org/islem', { a: 'k', ids: [1] })).s, 403); assert.equal((await u.q('GET', '/api/org/kurban')).s, 200);
+  });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });
