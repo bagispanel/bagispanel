@@ -22,8 +22,8 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
     let L = rows.map(u => { const k = u.kj ? JSON.parse(u.kj) : null; return { id: u.id, tur_id: u.tur_id, tur: u.turad, kat: u.kat, kod: u.kod, ad: u.ad, cap: u.cap, adim: u.adim, sts: sts(u), ulke: u.ulke, partner: u.partner, hayvan: u.hayvan, hedef: u.hedef, devir: u.devir, tas: u.tas, solo: !!u.solo, kn: u.kn, kno: knoOf(u), ks: u.ks, konum: u.konum, video: u.video, pl: u.pl, dt: dtGet(u), ni: org === 'Kurban' ? u.seri : (k ? k.tip : u.turad), bicim: k ? k.bicim : '', paylar: (by[u.id] || []).map(x => ({ bagisci_id: x.bagisci_id, id: x.id, no: x.no, ad: x.ad, tel: x.tel, tarih: x.tarih, tutar: x.tutar, vs: x.vs, bno: x.bno, bagisci: x.bad })), toplam: (by[u.id] || []).reduce((a, x) => a + (x.tutar || 0), 0) + (u.devir || 0) }; });
     const cnts = [0, 0, 0, 0, 0, 0]; L.forEach(u => cnts[u.sts]++);
     const f = (k, v) => v && v !== 'Tümü';
-    if (f(0, p.get('hy')) && p.get('hy') === 'Büyükbaş') L = L.filter(u => u.cap > 1); if (p.get('hy') === 'Küçükbaş') L = L.filter(u => u.cap === 1 && (!f(0, p.get('hs')) || u.hayvan === p.get('hs')));
-    if (f(0, p.get('ni'))) L = L.filter(u => u.ni === p.get('ni')); if (f(0, p.get('bc'))) L = L.filter(u => u.bicim === p.get('bc')); if (f(0, p.get('cat'))) L = L.filter(u => u.kat === p.get('cat'));
+    if (f(0, p.get('hy')) && p.get('hy') === 'Büyükbaş') L = L.filter(u => u.cap > 1); if (p.get('hy') === 'Küçükbaş') L = L.filter(u => u.cap === 1);
+    if (f(0, p.get('ni'))) L = L.filter(u => u.tur === p.get('ni')); if (f(0, p.get('bc'))) L = L.filter(u => u.bicim === p.get('bc')); if (f(0, p.get('cat'))) L = L.filter(u => u.kat === p.get('cat'));
     if (p.get('ct') === 'Atanmamış') L = L.filter(u => !u.ulke); else if (f(0, p.get('ct'))) L = L.filter(u => u.ulke === p.get('ct'));
     if (p.get('pt') === 'Atanmamış') L = L.filter(u => !u.partner); else if (f(0, p.get('pt'))) L = L.filter(u => u.partner === p.get('pt'));
     const d1 = p.get('d1'), d2 = p.get('d2'); if (d1 || d2) L = L.filter(u => u.paylar.some(s => (!d1 || s.tarih >= d1) && (!d2 || s.tarih <= d2)));
