@@ -10,7 +10,7 @@ CREATE INDEX IF NOT EXISTS ix_gorev_a ON gorev(atanan_id, durum);
   const ad = (id) => (db.prepare('SELECT ad FROM users WHERE id=?').get(id) || {}).ad || '-';
   const kisi = (id) => { const u = db.prepare('SELECT u.id,u.ad,b.ad birim FROM users u JOIN birimler b ON b.id=u.birim_id WHERE u.id=? AND u.aktif=1').get(+id); if (!u) throw new Err(400, 'Kişi bulunamadı.'); return u; };
   R('GET', '/api/profil/kisiler', 'auth', null, async (c) => [200, db.prepare('SELECT u.id,u.ad,b.ad birim FROM users u JOIN birimler b ON b.id=u.birim_id WHERE u.aktif=1 AND u.id<>? ORDER BY u.ad').all(c.user.id)]);
-  R('GET', '/api/profil/ozet', 'auth', null, async (c) => { const g = (s, ...a) => (db.prepare(s).get(...a) || {}).n || 0, bugun = new Date().toISOString().slice(0, 10); return [200, { mesaj: g('SELECT COUNT(*) n FROM ic_mesaj WHERE alici_id=? AND okundu=0 AND a_sil=0', c.user.id), gorev: g("SELECT COUNT(*) n FROM gorev WHERE atanan_id=? AND durum<>'Tamamlandı'", c.user.id), geciken: g("SELECT COUNT(*) n FROM gorev WHERE atanan_id=? AND durum<>'Tamamlandı' AND son_tarih IS NOT NULL AND son_tarih<?", c.user.id, bugun) }]; });
+  R('GET', '/api/profil/ozet', 'auth', null, async (c) => { const g = (s, ...a) => (db.prepare(s).get(...a) || {}).n || 0, bugun = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10); return [200, { mesaj: g('SELECT COUNT(*) n FROM ic_mesaj WHERE alici_id=? AND okundu=0 AND a_sil=0', c.user.id), gorev: g("SELECT COUNT(*) n FROM gorev WHERE atanan_id=? AND durum<>'Tamamlandı'", c.user.id), geciken: g("SELECT COUNT(*) n FROM gorev WHERE atanan_id=? AND durum<>'Tamamlandı' AND son_tarih IS NOT NULL AND son_tarih<?", c.user.id, bugun) }]; });
 
   // ---- Mesaj Merkezi ----
   R('GET', '/api/mesaj', 'auth', null, async (c) => {
@@ -52,7 +52,7 @@ CREATE INDEX IF NOT EXISTS ix_gorev_a ON gorev(atanan_id, durum);
   R('PUT', '/api/gorev/([0-9]+)', 'auth', null, async (c) => {
     const g = db.prepare('SELECT * FROM gorev WHERE id=?').get(+c.m[1]); if (!g || (g.atanan_id !== c.user.id && g.olusturan_id !== c.user.id)) throw new Err(404, 'Görev yok.');
     const d = (c.body || {}).durum; if (!DUR.includes(d)) throw new Err(400, 'Durum geçersiz.');
-    db.prepare('UPDATE gorev SET durum=?, bitis=? WHERE id=?').run(d, d === 'Tamamlandı' ? new Date().toISOString().slice(0, 10) : null, g.id);
+    db.prepare('UPDATE gorev SET durum=?, bitis=? WHERE id=?').run(d, d === 'Tamamlandı' ? new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10) : null, g.id);
     if (d === 'Tamamlandı' && g.olusturan_id !== c.user.id) db.prepare('INSERT INTO ic_mesaj(gonderen_id,alici_id,konu,govde) VALUES(?,?,?,?)').run(c.user.id, g.olusturan_id, 'Görev tamamlandı: ' + g.baslik, `${c.user.ad} atadığınız görevi tamamladı.`);
     return [200, { ok: 1 }];
   });

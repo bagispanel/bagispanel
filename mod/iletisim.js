@@ -147,7 +147,7 @@ CREATE INDEX IF NOT EXISTS ix_wa_tel ON wa_mesaj(tel);
     return [200, { liste: L.slice(0, 500), eslesen: L.length, uygun, ret, yok, retliste: RL.slice(0, 200) }];
   });
   R('GET', '/api/wa/ozet', 'twa', 'g', async () => {
-    const q = (sql, ...a) => db.prepare(sql).get(...a) || {}, bugun = new Date().toISOString().slice(0, 10);
+    const q = (sql, ...a) => db.prepare(sql).get(...a) || {}, bugun = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
     const gelen = q("SELECT COUNT(*) n, SUM(okundu=0) ok0 FROM wa_mesaj WHERE yon='gelen'"), kon = db.prepare("SELECT tel, MAX(id) i, MAX(CASE WHEN yon='gelen' THEN zaman END) sg FROM wa_mesaj GROUP BY tel").all();
     let bekl = 0, acik = 0; kon.forEach(k => { const m = db.prepare('SELECT yon FROM wa_mesaj WHERE id=?').get(k.i); if (m.yon === 'gelen') bekl++; if (k.sg && (Date.now() - new Date(k.sg.replace(' ', 'T')).getTime()) < 86400000) acik++; });
     const gun7 = []; for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const k = d.toISOString().slice(0, 10); gun7.push({ gun: k, gelen: q("SELECT COUNT(*) n FROM wa_mesaj WHERE yon='gelen' AND date(zaman)=?", k).n, giden: q("SELECT COUNT(*) n FROM toplu_alici a JOIN toplu_gonderim g ON g.id=a.gid WHERE g.kanal='wa' AND a.durum<>'Bekliyor' AND date(a.zaman)=?", k).n + q("SELECT COUNT(*) n FROM wa_mesaj WHERE yon='giden' AND date(zaman)=?", k).n }); }
@@ -245,7 +245,7 @@ CREATE INDEX IF NOT EXISTS ix_wa_tel ON wa_mesaj(tel);
   R('GET', '/api/cagri/ayar', 'iayar', 'g', async () => { const a = cAyar(); return [200, { saglayici: a.saglayici, anahtar: a.anahtar, webhook: '/api/cagri/webhook' }]; });
   R('PUT', '/api/cagri/ayar', 'iayar', 'e', async (c) => { const a = cAyar(), b = c.body || {}; if (b.saglayici !== undefined) { if (!['tel', 'santral'].includes(b.saglayici)) throw new Err(400, 'Geçersiz seçim.'); a.saglayici = b.saglayici; } if (b.yenile) a.anahtar = crypto.randomBytes(18).toString('hex'); setA('cagri_ayar', a); A.audit(c.user, 'cagri_ayar', '', ip(c.req)); return [200, { saglayici: a.saglayici, anahtar: a.anahtar }]; });
   R('GET', '/api/cagri/ozet', 'cagri', 'g', async () => {
-    const g = (sql, ...a) => (db.prepare(sql).get(...a) || {}).n || 0, bugun = new Date().toISOString().slice(0, 10), B = db.prepare('SELECT izin FROM bagiscilar WHERE izin IS NOT NULL').all();
+    const g = (sql, ...a) => (db.prepare(sql).get(...a) || {}).n || 0, bugun = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10), B = db.prepare('SELECT izin FROM bagiscilar WHERE izin IS NOT NULL').all();
     return [200, { sonuclar: CSON, saglayici: cAyar().saglayici, bugunGiden: g("SELECT COUNT(*) n FROM cagri WHERE yon='giden' AND date(zaman)=?", bugun), bugunGelen: g("SELECT COUNT(*) n FROM cagri WHERE yon='gelen' AND date(zaman)=?", bugun), bugunUlasilan: g("SELECT COUNT(*) n FROM cagri WHERE date(zaman)=? AND sonuc IN ('Görüştük','Bağış sözü verdi')", bugun), sozler: g("SELECT COUNT(*) n FROM cagri WHERE date(zaman)=? AND sonuc='Bağış sözü verdi'", bugun), cevapsiz: g("SELECT COUNT(*) n FROM cagri WHERE yon='gelen' AND sonuc='Cevapsız' AND date(zaman)=?", bugun), aranmaz: B.filter(x => { try { return JSON.parse(x.izin).ara === 'ret'; } catch (e) { return false; } }).length, toplam: g('SELECT COUNT(*) n FROM cagri') }];
   });
   R('GET', '/api/cagri/aranacak', 'cagri', 'g', async (c) => {

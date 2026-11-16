@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS sms_log(id INTEGER PRIMARY KEY, zaman TEXT NOT NULL D
 CREATE TABLE IF NOT EXISTS sms_sablon(k TEXT PRIMARY KEY, ad TEXT NOT NULL, n TEXT NOT NULL, m TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
 `);
-  const RATE = { TL: 1, USD: 35, EUR: 38 }, YIL = () => new Date().getFullYear(), iso = () => new Date().toISOString().slice(0, 10);
+  const RATE = { TL: 1, USD: 35, EUR: 38 }, YIL = () => new Date().getFullYear(), iso = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
   const nm = (s) => String(s || '').toLocaleLowerCase('tr').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
   const next = (k) => { const r = db.prepare('SELECT n FROM sayac WHERE k=?').get(k); const n = r ? r.n : 1; db.prepare('INSERT INTO sayac(k,n) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET n=?').run(k, n + 1, n + 1); return n; };
   const peek = (k) => (db.prepare('SELECT n FROM sayac WHERE k=?').get(k) || { n: 1 }).n;

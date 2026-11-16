@@ -80,3 +80,16 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 - Web sitesi: GET /api/dis/kalici-eser ve /api/dis/kalici-eser/<id> (x-api-key). Yalnızca "Web sitesinde göster" işaretli projeler; kişisel veri/sorumlu telefonu yok. Sitede sayaç bu uçtan çekilir.
 - Kur elle girilir (otomatik kur yok). Bağış türü birden fazla projeye bağlanırsa her ikisinin sayacına da işler.
 - İleride: proje bazlı rapor/PDF, fotoğraf galerisi, harcama kalemleri (bütçe/gerçekleşen), gönüllü görev ataması, bağışçıya "projeniz %X tamam" bildirimi.
+
+## Sponsorluk Yönetimi (yapıldı)
+- Menü: Sponsorluk Yönetimi → Öğrenci ve Yetim Kartları, Sponsorluklar ve Ödemeler, Takip ve Raporlar.
+- Kart: yetim / hafız (ikisi birden olabilir), ülke-bölge, doğum tarihi veya yaş, kimlik no (sponsora GÖSTERİLMEZ), okul/medrese, cüz ve son ezber yeri, bulunduğu yer (derneğin kendi yeri veya Partner Kurum), fotoğraf/video/belge, gelişme notları, "eğitimi/hafızlığı tamamladı".
+- Sponsorluk: bağışçı + öğrenci, süre (12/18/24/36 veya özel ay), aylık tutar, TL/USD/EUR, aylık taksit veya peşin; kısmi ödemeler serbest. Beklenen tutar başlangıç gününe göre aylık hesaplanır; gecikme = eksik tutar / aylık.
+- Her ödeme gerçek bağış kaydı olarak (Sponsorluk kategorisi: Yetim/Hafız/Öğrenci Sponsorluğu) işlenir → bağış raporlarında, makbuzda, analizlerde görünür.
+- Sponsora giden kart: /sponsor.html?t=<token> (giriş gerekmez, tahmin edilemez 24 haneli bağlantı). Tamamlanınca aynı bağlantıdan "&s=1" ile yazdırılabilir sertifika. SMS şablonları Mesaj Şablonları'ndan düzenlenir (spatama, sphatirla, spgelisme, sptamam).
+- Ödeme hatırlatma: elle (satır/toplu) veya otomatik (Takip ve Raporlar'da kapalı geliyor; eşik ve tekrar aralığı ayarlanır). SMS'ler İletişim Ayarları'ndaki deneme/canlı moda uyar.
+- DİKKAT: çocukların kişisel verisi — velinin/vasinin yazılı izni ve KVKK aydınlatması kurumca alınmalı; kart linki yalnızca sponsora gider, "paylaşmayın" uyarısı var. Hukukçuya danışın.
+- Sınırlar: video en çok 1,8 MB (kısa klip), PDF/foto 1,5 MB (fotoğraf otomatik küçülür). Büyük video için gerçek dosya yükleme/nesne depolama gerekir. Otomatik kur yok (bağış kuru sabit tablo).
+- Düzeltme: gece 00:00–03:00 arasında UTC/yerel tarih farkı bazı günlük sayaçları yanlış güne bakıyordu; tüm "bugün" hesapları yerel saate alındı.
+- Menüden çıkınca açık kalan "yeni/düzenle" formları artık kapanıyor.
+- İleride: sponsor portalı (kendi ödemelerini görme/online ödeme), toplu fotoğraf yıllık güncelleme hatırlatması, sertifikanın PDF şablonu, öğrenci transferi (partner değişimi geçmişi), sponsorluk yenileme hatırlatması.

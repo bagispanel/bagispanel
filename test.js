@@ -351,6 +351,37 @@ server.listen(0, async () => {
     const u = (await mkUser('eserci1', 'Çağrı merkezi')).q; assert.equal((await u('GET', '/api/eser')).s, 403);
     assert.equal((await admin('DELETE', '/api/eser/' + c.j.id)).s, 200); assert.equal((await admin('GET', '/api/eser')).j.liste.length, 0);
   });
+  await t('sponsorluk: öğrenci kartı, sponsor atama, taksit/gecikme, hatırlatma, kart linki, sertifika', async () => {
+    const ob = { ad: 'Ahmed Musa', ulke: 'Çad', bolge: 'Ndjamena', dogum: '2012-03-04', yetim: true, hafiz: true, yetim_durum: 'Babasız (yetim)', okul_tur: 'Medrese', okul_ad: 'Nur Medresesi', cuz: 5, yer: 'Dernek' };
+    assert.equal((await admin('POST', '/api/sp/ogrenci', { ...ob, yetim: false, hafiz: false })).s, 400);
+    assert.equal((await admin('POST', '/api/sp/ogrenci', { ...ob, ulke: 'Yokistan' })).s, 400);
+    const o = await admin('POST', '/api/sp/ogrenci', ob); assert.equal(o.s, 201, JSON.stringify(o.j));
+    const png = 'data:image/png;base64,' + Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47]), Buffer.from('xxxx')]).toString('base64');
+    assert.equal((await admin('POST', `/api/sp/ogrenci/${o.j.id}/medya`, { ad: 'f.png', veri: png })).s, 201);
+    assert.equal((await admin('POST', `/api/sp/ogrenci/${o.j.id}/medya`, { ad: 'f.png', veri: 'data:image/png;base64,' + Buffer.from('nopenope').toString('base64') })).s, 400);
+    const bg = (await admin('POST', '/api/bagiscilar', { kod: '+90', tel: '0535 444 55 66', ad: 'Sponsor Ayşe' })).j.id;
+    const cok = (await admin('GET', '/api/sp/ogrenci')).j; assert.equal(cok.ozet.bekleyen, 1);
+    const eski = new Date(); eski.setMonth(eski.getMonth() - 4); const bas = eski.toISOString().slice(0, 10);
+    assert.equal((await admin('POST', '/api/sp/sponsorluk', { ogrenci_id: o.j.id, bagisci_id: 999999, sure: 12, aylik: 500 })).s, 400);
+    const sp = await admin('POST', '/api/sp/sponsorluk', { ogrenci_id: o.j.id, bagisci_id: bg, sure: 12, aylik: 500, para: 'TL', baslangic: bas, ilk_odeme: { tutar: 500, odeme: 'Nakit' } }); assert.equal(sp.s, 201, JSON.stringify(sp.j)); assert.ok(/sponsor\.html\?t=[a-f0-9]{24}/.test(sp.j.link));
+    assert.equal((await admin('POST', '/api/sp/sponsorluk', { ogrenci_id: o.j.id, bagisci_id: bg, sure: 12, aylik: 500 })).s, 409);
+    let d = (await admin('GET', '/api/sp/sponsorluk/' + sp.j.id)).j; assert.equal(d.odenen, 500); assert.ok(d.gecikme_ay >= 3 && d.odeme_durum === 'Gecikmiş', JSON.stringify([d.gecikme_ay, d.odeme_durum]));
+    let rp = (await admin('GET', '/api/sp/rapor')).j; assert.equal(rp.kpi.gecikmis, 1); assert.equal(rp.odemeyenler.length, 1);
+    { const hr = await admin('POST', `/api/sp/sponsorluk/${sp.j.id}/hatirlat`); assert.equal(hr.s, 200, JSON.stringify(hr.j)); }
+    assert.equal((await admin('POST', '/api/sp/hatirlat-toplu', { esik: 2 })).j.gonderilen, 0); // bugün zaten hatırlatıldı
+    assert.equal((await admin('POST', `/api/sp/sponsorluk/${sp.j.id}/odeme`, { tutar: 2000, odeme: 'Nakit' })).s, 201);
+    d = (await admin('GET', '/api/sp/sponsorluk/' + sp.j.id)).j; assert.ok(d.gecikme_ay === 0 && d.odeme_durum === 'Güncel'); assert.ok(d.odemeler.every(x => x.bagis_no));
+    assert.ok((await admin('GET', '/api/bagislar?kat=Sponsorluk')).j.liste.length >= 2);
+    const tok = sp.j.link.split('t=')[1], pub = await fetch(base + '/api/sp/kart/' + tok); assert.equal(pub.status, 200); const kj = await pub.json(); assert.equal(kj.ogrenci.ad, 'Ahmed Musa'); assert.ok(!('kimlik' in kj.ogrenci)); assert.equal(kj.medya.length, 1);
+    assert.equal((await fetch(base + `/api/sp/pmedya/${tok}/${kj.medya[0].id}`)).headers.get('content-type'), 'image/png'); assert.equal((await fetch(base + '/api/sp/kart/' + 'a'.repeat(24))).status, 404);
+    assert.equal((await admin('POST', `/api/sp/ogrenci/${o.j.id}/not`, { metin: 'Bakara tamamlandı', cuz: 6, bildir: true })).j.bildirilen, 1);
+    assert.equal((await admin('POST', `/api/sp/ogrenci/${o.j.id}/tamamla`, { tur: 'Hafızlığı', bildir: true })).j.bildirilen, 1);
+    const g = (await admin('GET', '/api/sp/ogrenci/' + o.j.id)).j; assert.equal(g.durum, 'Tamamladı'); assert.equal(g.cuz, 30);
+    assert.ok((await admin('GET', '/api/sms')).j.some(x => x.sablon === 'sptamam'));
+    assert.equal((await admin('DELETE', '/api/sp/ogrenci/' + o.j.id)).s, 409);
+    assert.equal((await admin('POST', `/api/sp/sponsorluk/${sp.j.id}/iptal`)).s, 200);
+    const u = (await mkUser('sponsorsuz1', 'Çağrı merkezi')).q; for (const e of ['ogrenci', 'sponsorluk', 'rapor']) assert.equal((await u('GET', '/api/sp/' + e)).s, 403);
+  });
   await t('WhatsApp: şablonlu toplu gönderim, webhook imzası, gelen kutusu, 24 saat kuralı', async () => {
     assert.equal((await admin('PUT', '/api/iletisim/ayar', { wa: { phone_id: 'PID', token: 'TOK', app_secret: 'sir', api_url: `http://127.0.0.1:${mport}/v21`, sablonlar: [{ ad: 'Bagis Duyuru', dil: 'tr', govde: 'Merhaba {{1}}', n: 1 }] } })).s, 200);
     const ay = (await admin('GET', '/api/iletisim/ayar')).j.ayar; assert.equal(ay.wa.sablonlar[0].ad, 'bagis_duyuru'); assert.equal(ay.wa.token, '');

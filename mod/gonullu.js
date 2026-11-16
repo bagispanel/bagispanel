@@ -16,13 +16,13 @@ module.exports = function (ctx) {
   function oku(b, yeni) {
     const o = {}; o.ad = str(b.ad, 80); if (!o.ad) throw new Err(400, 'Ad soyad zorunlu.');
     o.tel = tel(b.tel, 'Telefon'); if (!o.tel) throw new Err(400, 'Telefon zorunlu.');
-    o.dogum = dt(b.dogum, 'Doğum tarihi'); if (o.dogum && (o.dogum > new Date().toISOString().slice(0, 10) || yas(o.dogum) > 110)) throw new Err(400, 'Doğum tarihi geçersiz.');
+    o.dogum = dt(b.dogum, 'Doğum tarihi'); if (o.dogum && (o.dogum > new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10) || yas(o.dogum) > 110)) throw new Err(400, 'Doğum tarihi geçersiz.');
     o.cinsiyet = sec(b.cinsiyet, CONST.cinsiyet, 'Cinsiyet'); o.medeni = sec(b.medeni, CONST.medeni, 'Medeni durum'); o.egitim = sec(b.egitim, CONST.egitim, 'Eğitim durumu');
     const m = String(b.eposta || '').trim().toLowerCase(); if (m && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)) throw new Err(400, 'E-posta geçersiz.'); o.eposta = m || null;
     o.il = str(b.il, 40) || null; o.ilce = str(b.ilce, 60) || null; o.adres = str(b.adres, 250) || null; o.meslek = str(b.meslek, 80) || null; o.diller = str(b.diller, 120) || null;
     o.ehliyet = b.ehliyet ? 1 : 0; o.yurtdisi = b.yurtdisi ? 1 : 0; o.alanlar = liste(b.alanlar, CONST.alanlar, 'İlgi alanı'); o.musait = liste(b.musait, CONST.musait, 'Müsaitlik');
     o.acil_ad = str(b.acil_ad, 80) || null; o.acil_tel = tel(b.acil_tel, 'Acil durum telefonu'); o.sube_id = +b.sube_id || null; if (o.sube_id && !db.prepare('SELECT 1 FROM subeler WHERE id=?').get(o.sube_id)) throw new Err(400, 'Şube bulunamadı.');
-    o.durum = sec(b.durum, CONST.durum, 'Durum') || 'Aday'; o.katilim = dt(b.katilim, 'Katılım tarihi'); if (o.durum === 'Aktif' && !o.katilim) o.katilim = new Date().toISOString().slice(0, 10);
+    o.durum = sec(b.durum, CONST.durum, 'Durum') || 'Aday'; o.katilim = dt(b.katilim, 'Katılım tarihi'); if (o.durum === 'Aktif' && !o.katilim) o.katilim = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
     o.kvkk = b.kvkk ? 1 : 0; if (!o.kvkk) throw new Err(400, 'Kişisel verilerin işlenmesine ilişkin aydınlatma onayı işaretlenmeli.'); o.notlar = str(b.notlar, 800) || null; return o;
   }
   const K = ['ad', 'dogum', 'cinsiyet', 'medeni', 'tel', 'eposta', 'il', 'ilce', 'adres', 'meslek', 'egitim', 'diller', 'ehliyet', 'alanlar', 'musait', 'yurtdisi', 'acil_ad', 'acil_tel', 'sube_id', 'durum', 'katilim', 'kvkk', 'notlar'];

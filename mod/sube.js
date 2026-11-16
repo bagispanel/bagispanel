@@ -9,7 +9,7 @@ module.exports = function (ctx) {
   const dt = (v, ad) => { v = String(v || '').trim(); if (!v) return null; if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(new Date(v))) throw new Err(400, ad + ' geçersiz.'); return v; };
   const gun = (a, n) => { const d = new Date(a); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
   function uyarilar(s, kurum) {
-    const w = [], bugun = new Date().toISOString().slice(0, 10); if (s.durum !== 'Aktif') return w;
+    const w = [], bugun = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10); if (s.durum !== 'Aktif') return w;
     const sure = kurum === 'vakif' ? 31 : 30;
     if (s.tur === 'Şube') {
       if (s.acilis_tarihi && !s.bildirim_tarihi) { const son = gun(s.acilis_tarihi, sure); w.push(son < bugun ? { t: 'er', m: `Açılış bildirimi yapılmamış; süre ${son} tarihinde doldu.` } : { t: 'wr', m: `Açılış bildirimi için son gün: ${son}.` }); }
@@ -36,7 +36,7 @@ module.exports = function (ctx) {
     ['karar_tarihi', 'acilis_tarihi', 'bildirim_tarihi', 'yonetici_bildirim_tarihi', 'genel_kurul_tarihi', 'gorev_bitis', 'kapanis_tarihi', 'kapanis_bildirim_tarihi'].forEach(k => o[k] = dt(b[k], k));
     o.karar_no = str(b.karar_no, 40) || null; o.bildirim_no = str(b.bildirim_no, 60) || null; o.sorumlu = str(b.sorumlu, 80) || null; o.sorumlu_unvan = str(b.sorumlu_unvan, 60) || null; o.sorumlu_tel = str(b.sorumlu_tel, 30) || null;
     o.yonetim = str(b.yonetim, 1500) || null; o.iban = String(b.iban || '').replace(/\s/g, '').toUpperCase().slice(0, 34) || null; o.notlar = str(b.notlar, 800) || null;
-    o.durum = b.durum === 'Kapalı' ? 'Kapalı' : 'Aktif'; if (o.durum === 'Kapalı' && !o.kapanis_tarihi) o.kapanis_tarihi = new Date().toISOString().slice(0, 10);
+    o.durum = b.durum === 'Kapalı' ? 'Kapalı' : 'Aktif'; if (o.durum === 'Kapalı' && !o.kapanis_tarihi) o.kapanis_tarihi = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
     return o;
   }
   const var_ad = (ad, ex) => { const n = ad.toLocaleLowerCase('tr'); return db.prepare('SELECT id,ad FROM subeler').all().some(x => x.id !== ex && x.ad.toLocaleLowerCase('tr') === n); };
