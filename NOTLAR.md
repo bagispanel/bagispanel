@@ -65,3 +65,10 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 - Deneme verisi artık son ~11 aya yayılıyor (analizler dolu görünsün diye).
 - Mevcut kurulumlarda yeni analiz yetkileri yalnızca yönetici birimlerine otomatik verilir; diğer birimlere Birimler ve Yetkiler'den açılmalı.
 - İleride: şube bazlı analiz, hedef/gerçekleşen, PDF/Excel dışa aktarım, haftalık e-posta özeti.
+
+## Gönüllü Yönetimi + yeni bağışçı + dönem karşılaştırma (yapıldı)
+- Menü: "Bağışçı ve Gönüllü İlişkileri" → Bağışçı Rehberi, Gönüllü Yönetimi. Kurum Yönetimi'ne Partner Kurumlar ve Banka Hesapları da taşındı.
+- Gönüllü formu: kişisel, iletişim, meslek/yetkinlik, ilgi alanı, müsaitlik, yurt dışı, acil kişi, durum (Aday/Aktif/Pasif), KVKK onayı (zorunlu). Süzgeçler: durum, medeni durum, cinsiyet, il, ilgi alanı, müsaitlik, yaş aralığı, yurt dışı, ehliyet, şube. CSV dışa aktarım. Silme = KVKK silme talebi (kalıcı).
+- Bağışçı Rehberi'nden bağış yapmadan "+ Yeni bağışçı ekle".
+- Dönemsel Karşılaştırma: istenen iki ay (örn. Haz 2026 / Haz 2025) yan yana; Bağışçı Analizi: aylık yeni bağışçı kazanımı.
+- İleride: gönüllü görev/vardiya takibi, gönüllü–Kalıcı Eser ilişkisi, gönüllüye toplu mesaj.

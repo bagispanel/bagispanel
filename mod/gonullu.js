@@ -1,0 +1,39 @@
+// Gönüllü yönetimi: başvuru/kayıt formu, durum takibi ve süzme. Kişisel veri: aydınlatma onayı kaydı tutulur; silme yetkisi ayrıdır (KVKK silme talebi için).
+module.exports = function (ctx) {
+  const { R, Err, db, str, ip, A } = ctx;
+  db.exec(`CREATE TABLE IF NOT EXISTS gonulluler(id INTEGER PRIMARY KEY, ad TEXT NOT NULL, dogum TEXT, cinsiyet TEXT, medeni TEXT, tel TEXT NOT NULL UNIQUE, eposta TEXT, il TEXT, ilce TEXT, adres TEXT, meslek TEXT, egitim TEXT, diller TEXT,
+    ehliyet INTEGER NOT NULL DEFAULT 0, alanlar TEXT NOT NULL DEFAULT '[]', musait TEXT NOT NULL DEFAULT '[]', yurtdisi INTEGER NOT NULL DEFAULT 0, acil_ad TEXT, acil_tel TEXT, sube_id INTEGER, durum TEXT NOT NULL DEFAULT 'Aday', katilim TEXT,
+    kvkk INTEGER NOT NULL DEFAULT 0, kvkk_tarih TEXT, notlar TEXT, kayit TEXT NOT NULL DEFAULT (datetime('now','localtime')))`);
+  const CONST = { cinsiyet: ['Kadın', 'Erkek'], medeni: ['Bekâr', 'Evli', 'Dul', 'Boşanmış'], egitim: ['İlköğretim', 'Lise', 'Ön lisans', 'Lisans', 'Yüksek lisans', 'Doktora'], durum: ['Aday', 'Aktif', 'Pasif'],
+    alanlar: ['Saha ve organizasyon', 'Yardım dağıtımı', 'Bağış toplama', 'Sosyal medya ve iletişim', 'Çeviri ve dil', 'Eğitim ve mentorluk', 'Sağlık', 'Teknik ve bilişim', 'Hukuk ve muhasebe', 'Yurt dışı görevleri'], musait: ['Hafta içi gündüz', 'Hafta içi akşam', 'Hafta sonu', 'Esnek'] };
+  const digits = (t) => String(t || '').replace(/\D/g, '');
+  const tel = (v, ad) => { const raw = String(v || '').trim(); let d = digits(raw); if (!d) return null; if (raw[0] === '+') { if (d.length < 8 || d.length > 15) throw new Err(400, ad + ' geçersiz.'); return '+' + d; } if (d.startsWith('00')) d = d.slice(2); else if (d.length === 11 && d[0] === '0') d = '90' + d.slice(1); else if (d.length === 10) d = '90' + d; if (d.length < 10 || d.length > 15) throw new Err(400, ad + ' geçersiz.'); return '+' + d; };
+  const dt = (v, ad) => { v = String(v || '').trim(); if (!v) return null; if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(new Date(v))) throw new Err(400, ad + ' geçersiz.'); return v; };
+  const sec = (v, L, ad) => { v = String(v || ''); if (!v) return null; if (!L.includes(v)) throw new Err(400, ad + ' geçersiz.'); return v; };
+  const liste = (v, L, ad) => { const a = Array.isArray(v) ? v : []; a.forEach(x => { if (!L.includes(x)) throw new Err(400, ad + ' geçersiz.'); }); return JSON.stringify([...new Set(a)]); };
+  const yas = (d) => { if (!d) return null; const b = new Date(d), n = new Date(); let y = n.getFullYear() - b.getFullYear(); if (n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) y--; return y; };
+  const satir = (g) => ({ ...g, alanlar: JSON.parse(g.alanlar || '[]'), musait: JSON.parse(g.musait || '[]'), yas: yas(g.dogum), sube: g.sube_id ? (db.prepare('SELECT ad FROM subeler WHERE id=?').get(g.sube_id) || {}).ad || null : null });
+  function oku(b, yeni) {
+    const o = {}; o.ad = str(b.ad, 80); if (!o.ad) throw new Err(400, 'Ad soyad zorunlu.');
+    o.tel = tel(b.tel, 'Telefon'); if (!o.tel) throw new Err(400, 'Telefon zorunlu.');
+    o.dogum = dt(b.dogum, 'Doğum tarihi'); if (o.dogum && (o.dogum > new Date().toISOString().slice(0, 10) || yas(o.dogum) > 110)) throw new Err(400, 'Doğum tarihi geçersiz.');
+    o.cinsiyet = sec(b.cinsiyet, CONST.cinsiyet, 'Cinsiyet'); o.medeni = sec(b.medeni, CONST.medeni, 'Medeni durum'); o.egitim = sec(b.egitim, CONST.egitim, 'Eğitim durumu');
+    const m = String(b.eposta || '').trim().toLowerCase(); if (m && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)) throw new Err(400, 'E-posta geçersiz.'); o.eposta = m || null;
+    o.il = str(b.il, 40) || null; o.ilce = str(b.ilce, 60) || null; o.adres = str(b.adres, 250) || null; o.meslek = str(b.meslek, 80) || null; o.diller = str(b.diller, 120) || null;
+    o.ehliyet = b.ehliyet ? 1 : 0; o.yurtdisi = b.yurtdisi ? 1 : 0; o.alanlar = liste(b.alanlar, CONST.alanlar, 'İlgi alanı'); o.musait = liste(b.musait, CONST.musait, 'Müsaitlik');
+    o.acil_ad = str(b.acil_ad, 80) || null; o.acil_tel = tel(b.acil_tel, 'Acil durum telefonu'); o.sube_id = +b.sube_id || null; if (o.sube_id && !db.prepare('SELECT 1 FROM subeler WHERE id=?').get(o.sube_id)) throw new Err(400, 'Şube bulunamadı.');
+    o.durum = sec(b.durum, CONST.durum, 'Durum') || 'Aday'; o.katilim = dt(b.katilim, 'Katılım tarihi'); if (o.durum === 'Aktif' && !o.katilim) o.katilim = new Date().toISOString().slice(0, 10);
+    o.kvkk = b.kvkk ? 1 : 0; if (!o.kvkk) throw new Err(400, 'Kişisel verilerin işlenmesine ilişkin aydınlatma onayı işaretlenmeli.'); o.notlar = str(b.notlar, 800) || null; return o;
+  }
+  const K = ['ad', 'dogum', 'cinsiyet', 'medeni', 'tel', 'eposta', 'il', 'ilce', 'adres', 'meslek', 'egitim', 'diller', 'ehliyet', 'alanlar', 'musait', 'yurtdisi', 'acil_ad', 'acil_tel', 'sube_id', 'durum', 'katilim', 'kvkk', 'notlar'];
+  const nm = (s) => String(s || '').toLocaleLowerCase('tr');
+  R('GET', '/api/gonullu', 'gonullu', 'g', async (c) => {
+    const p = new URL(c.req.url, 'http://x').searchParams, g = (k) => p.get(k) || '', qd = digits(g('q')), q = nm(g('q'));
+    const hepsi = db.prepare('SELECT * FROM gonulluler ORDER BY id DESC').all().map(satir), say = (f) => hepsi.reduce((o, x) => { const k = x[f] || '—'; o[k] = (o[k] || 0) + 1; return o; }, {});
+    const L = hepsi.filter(x => (!q || nm(x.ad).includes(q) || nm(x.meslek).includes(q) || (qd.length >= 3 && digits(x.tel).includes(qd))) && (!g('durum') || x.durum === g('durum')) && (!g('medeni') || x.medeni === g('medeni')) && (!g('cinsiyet') || x.cinsiyet === g('cinsiyet')) && (!g('il') || x.il === g('il')) && (!g('alan') || x.alanlar.includes(g('alan'))) && (!g('musait') || x.musait.includes(g('musait'))) && (!g('yurtdisi') || x.yurtdisi) && (!g('ehliyet') || x.ehliyet) && (!g('sube') || String(x.sube_id) === g('sube')) && (!g('yas_min') || (x.yas != null && x.yas >= +g('yas_min'))) && (!g('yas_max') || (x.yas != null && x.yas <= +g('yas_max'))));
+    return [200, { liste: L, adet: L.length, toplam: hepsi.length, sayim: { durum: say('durum'), medeni: say('medeni'), cinsiyet: say('cinsiyet'), il: say('il'), yurtdisi: hepsi.filter(x => x.yurtdisi).length, ehliyet: hepsi.filter(x => x.ehliyet).length }, sabit: CONST, subeler: db.prepare("SELECT id,ad FROM subeler WHERE durum='Aktif' ORDER BY ad").all() }];
+  });
+  R('POST', '/api/gonullu', 'gonullu', 'e', async (c) => { const o = oku(c.body || {}); const v = db.prepare('SELECT ad FROM gonulluler WHERE tel=?').get(o.tel); if (v) throw new Err(409, 'Bu telefon zaten kayıtlı: ' + v.ad + '.'); const id = +db.prepare(`INSERT INTO gonulluler(${K.join(',')},kvkk_tarih) VALUES(${K.map(() => '?').join(',')},date('now','localtime'))`).run(...K.map(k => o[k])).lastInsertRowid; A.audit(c.user, 'gonullu_eklendi', o.ad, ip(c.req)); return [201, { id }]; });
+  R('PUT', '/api/gonullu/([0-9]+)', 'gonullu', 'd', async (c) => { const id = +c.m[1]; if (!db.prepare('SELECT 1 FROM gonulluler WHERE id=?').get(id)) throw new Err(404, 'Kayıt yok.'); const o = oku(c.body || {}); const v = db.prepare('SELECT ad FROM gonulluler WHERE tel=? AND id<>?').get(o.tel, id); if (v) throw new Err(409, 'Bu telefon başka bir gönüllüde kayıtlı: ' + v.ad + '.'); db.prepare(`UPDATE gonulluler SET ${K.map(k => k + '=?').join(',')} WHERE id=?`).run(...K.map(k => o[k]), id); A.audit(c.user, 'gonullu_guncellendi', o.ad, ip(c.req)); return [200, { ok: 1 }]; });
+  R('DELETE', '/api/gonullu/([0-9]+)', 'gonullu', 's', async (c) => { const g = db.prepare('SELECT ad FROM gonulluler WHERE id=?').get(+c.m[1]); if (!g) throw new Err(404, 'Kayıt yok.'); db.prepare('DELETE FROM gonulluler WHERE id=?').run(+c.m[1]); A.audit(c.user, 'gonullu_silindi', g.ad, ip(c.req)); return [200, { ok: 1 }]; });
+};

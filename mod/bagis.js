@@ -87,6 +87,17 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
     const kat = {}; ok.forEach(x => kat[x.kat] = (kat[x.kat] || 0) + x.tl);
     return [200, { bagisci: b, bagislar: L, enyuksek: ok.slice().sort((x, y) => y.tl - x.tl)[0] || null, toplam: ok.reduce((a, x) => a + x.tl, 0), adet: ok.length, bekleyen: L.filter(x => x.durum === 'Bekleyen').length, iptal: L.filter(x => x.durum === 'İptal').length, ilk, son, gun, kategori: kat, kurban: sayi('Kurban'), kuyu: sayi('Su kuyusu'), video: sayi('Diğer') }];
   });
+  R('POST', '/api/bagiscilar', 'bagisci', 'e', async (c) => { // bağış yapmadan da rehbere kişi eklenebilir
+    const b = c.body || {}, tel = normPh(b.kod, b.tel), ad = str(b.ad, 80); if (!ad) throw new Err(400, 'Ad soyad zorunlu.');
+    const var_ = db.prepare('SELECT id,ad FROM bagiscilar WHERE tel=?').get(tel); if (var_) throw new Err(409, `Bu telefon zaten kayıtlı: ${var_.ad}.`);
+    const mail = String(b.eposta || '').trim().toLowerCase(); if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) throw new Err(400, 'E-posta geçersiz.');
+    const id = +db.prepare('INSERT INTO bagiscilar(tel,ad,eposta,adres) VALUES(?,?,?,?)').run(tel, ad, mail || null, str(b.adres, 160) || null).lastInsertRowid; A.audit(c.user, 'bagisci_eklendi', ad, ip(c.req)); return [201, { id }];
+  });
+  R('PUT', '/api/bagiscilar/([0-9]+)', 'bagisci', 'd', async (c) => {
+    const id = +c.m[1], b = c.body || {}, cur = db.prepare('SELECT * FROM bagiscilar WHERE id=?').get(id); if (!cur) throw new Err(404, 'Bağışçı yok.');
+    const ad = str(b.ad, 80); if (!ad) throw new Err(400, 'Ad soyad zorunlu.'); const mail = String(b.eposta || '').trim().toLowerCase(); if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) throw new Err(400, 'E-posta geçersiz.');
+    db.prepare('UPDATE bagiscilar SET ad=?, eposta=?, adres=? WHERE id=?').run(ad, mail || null, str(b.adres, 160) || null, id); A.audit(c.user, 'bagisci_guncellendi', ad, ip(c.req)); return [200, { ok: 1 }];
+  });
   R('GET', '/api/bagiscilar/ara', 'alin', 'g', async (c) => { // telefondan kayıtlı bağışçıyı bul
     const t = new URL(c.req.url, 'http://x').searchParams; let tel; try { tel = normPh(t.get('kod'), t.get('tel')); } catch (e) { return [200, null]; }
     return [200, db.prepare('SELECT id,tel,ad,eposta,adres FROM bagiscilar WHERE tel=?').get(tel) || null];

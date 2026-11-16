@@ -319,6 +319,22 @@ server.listen(0, async () => {
     const il = (await admin('GET', '/api/analiz/iletisim')); assert.equal(il.s, 200); assert.ok('ret' in il.j && 'wa' in il.j);
     const u = (await mkUser('analizci1', 'Çağrı merkezi')).q; for (const e of ['karsilastirma', 'tur', 'bagisci', 'saha', 'iletisim']) assert.equal((await u('GET', '/api/analiz/' + e)).s, 403);
   });
+  await t('yeni bağışçı, dönem karşılaştırma, kazanım, gönüllü yönetimi', async () => {
+    const r = await admin('POST', '/api/bagiscilar', { kod: '+90', tel: '0532 999 88 77', ad: 'Rehber Kişisi' }); assert.equal(r.s, 201, JSON.stringify(r.j));
+    assert.equal((await admin('POST', '/api/bagiscilar', { kod: '+90', tel: '05329998877', ad: 'Aynı' })).s, 409);
+    assert.equal((await admin('POST', '/api/bagiscilar', { kod: '+90', tel: '05329998866', ad: '' })).s, 400);
+    const ym = new Date().toISOString().slice(0, 7), dn = await admin('GET', `/api/analiz/donem?a=${ym}&b=${(+ym.slice(0, 4) - 1)}-${ym.slice(5)}`); assert.equal(dn.s, 200); assert.ok(dn.j.a && dn.j.b && dn.j.a.gun.length === 31);
+    assert.equal((await admin('GET', '/api/analiz/yillik')).s, 200);
+    assert.ok('kazanim' in (await admin('GET', '/api/analiz/bagisci')).j);
+    const g = { ad: 'Zeynep Kaya', tel: '0533 111 22 33', il: 'Ankara', medeni: 'Bekâr', cinsiyet: 'Kadın', dogum: '2000-05-01', alanlar: ['Saha ve organizasyon'], musait: [], durum: 'Aday', kvkk: true };
+    assert.equal((await admin('POST', '/api/gonullu', { ...g, kvkk: false })).s, 400);
+    const c = await admin('POST', '/api/gonullu', g); assert.equal(c.s, 201, JSON.stringify(c.j));
+    assert.equal((await admin('POST', '/api/gonullu', g)).s, 409);
+    assert.equal((await admin('GET', '/api/gonullu?medeni=' + encodeURIComponent('Bekâr') + '&il=Ankara')).j.adet, 1);
+    assert.equal((await admin('GET', '/api/gonullu?medeni=Evli')).j.adet, 0);
+    assert.equal((await admin('DELETE', '/api/gonullu/' + c.j.id)).s, 200);
+    const u = (await mkUser('gonulsuz1', 'Çağrı merkezi')).q; assert.equal((await u('GET', '/api/gonullu')).s, 403);
+  });
   await t('WhatsApp: şablonlu toplu gönderim, webhook imzası, gelen kutusu, 24 saat kuralı', async () => {
     assert.equal((await admin('PUT', '/api/iletisim/ayar', { wa: { phone_id: 'PID', token: 'TOK', app_secret: 'sir', api_url: `http://127.0.0.1:${mport}/v21`, sablonlar: [{ ad: 'Bagis Duyuru', dil: 'tr', govde: 'Merhaba {{1}}', n: 1 }] } })).s, 200);
     const ay = (await admin('GET', '/api/iletisim/ayar')).j.ayar; assert.equal(ay.wa.sablonlar[0].ad, 'bagis_duyuru'); assert.equal(ay.wa.token, '');

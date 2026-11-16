@@ -37,7 +37,9 @@ module.exports = function (ctx) {
     const bant = [['500 ₺ altı', 0, 500], ['500 – 1.000 ₺', 500, 1000], ['1.000 – 5.000 ₺', 1000, 5000], ['5.000 – 20.000 ₺', 5000, 20000], ['20.000 ₺ üstü', 20000, 1e15]].map(([ad, a, b]) => ({ ad, n: per.filter(x => x.toplam >= a && x.toplam < b).length }));
     const gec = (n) => per.filter(x => x.son < gun(n)).length, k12 = per.filter(x => x.son >= gun(365)), k12g = k12.filter(x => x.ilk < gun(365));
     const toplam = q1('SELECT COUNT(*) n FROM bagiscilar').n, tutar = per.reduce((n, x) => n + x.toplam, 0);
-    return [200, { toplam, bagisYapan: per.length, hic: toplam - per.length, tekrarOrani: per.length ? Math.round(per.filter(x => x.adet > 1).length / per.length * 1000) / 10 : 0, ortalamaToplam: per.length ? tutar / per.length : 0, ortalamaAdet: per.length ? per.reduce((n, x) => n + x.adet, 0) / per.length : 0, seri, bant, pasif: { g90: gec(90), g180: gec(180), g365: gec(365) }, enIyi: per.sort((a, b) => b.toplam - a.toplam).slice(0, 10).map(x => ({ id: x.id, ad: x.ad, toplam: x.toplam, adet: x.adet, son: x.son })), yeniSon30: per.filter(x => x.ilk >= gun(30)).length, bugun }];
+    const kay = Object.fromEntries(q("SELECT substr(kayit,1,7) k, COUNT(*) n FROM bagiscilar GROUP BY k").map(x => [x.k, x.n])), ilk = Object.fromEntries(q(`SELECT substr(f.ilk,1,7) k, COUNT(*) n, SUM(f.t) t FROM (SELECT g.bagisci_id, MIN(g.tarih) ilk, (SELECT SUM(x.tl) FROM bagislar x WHERE x.bagisci_id=g.bagisci_id AND x.durum='Onaylı' AND x.tarih=MIN(g.tarih)) t FROM bagislar g WHERE ${OK} GROUP BY g.bagisci_id) f GROUP BY k`).map(x => [x.k, x]));
+    const kazanim = A.map(a => ({ k: a.k, ad: a.ad, kayit: kay[a.k] || 0, ilkBagis: (ilk[a.k] || {}).n || 0, ilkTutar: (ilk[a.k] || {}).t || 0 }));
+    return [200, { kazanim, toplam, bagisYapan: per.length, hic: toplam - per.length, tekrarOrani: per.length ? Math.round(per.filter(x => x.adet > 1).length / per.length * 1000) / 10 : 0, ortalamaToplam: per.length ? tutar / per.length : 0, ortalamaAdet: per.length ? per.reduce((n, x) => n + x.adet, 0) / per.length : 0, seri, bant, pasif: { g90: gec(90), g180: gec(180), g365: gec(365) }, enIyi: per.sort((a, b) => b.toplam - a.toplam).slice(0, 10).map(x => ({ id: x.id, ad: x.ad, toplam: x.toplam, adet: x.adet, son: x.son })), yeniSon30: per.filter(x => x.ilk >= gun(30)).length, bugun }];
   });
 
   R('GET', '/api/analiz/saha', 'rsaha', 'g', async () => {
@@ -58,5 +60,25 @@ module.exports = function (ctx) {
     const wa = tablo('wa_mesaj') ? q1("SELECT SUM(yon='gelen') gelen, SUM(yon='giden') giden, SUM(yon='gelen' AND okundu=0) okunmamis FROM wa_mesaj WHERE date(zaman)>=?", bas) : {};
     const ret = q("SELECT izin FROM bagiscilar WHERE izin IS NOT NULL").reduce((o, x) => { try { const i = JSON.parse(x.izin); ['sms', 'mail', 'wa', 'ara'].forEach(k => { if (i[k] === 'ret') o[k] = (o[k] || 0) + 1; }); } catch (e) { /* bozuk kayıt */ } return o; }, {});
     return [200, { bas, sms, gunluk, toplu, alici, cagri, wa: { gelen: wa.gelen || 0, giden: wa.giden || 0, okunmamis: wa.okunmamis || 0 }, ret }];
+  });
+
+  // İki ayı (ör. Haziran 2026 ve Haziran 2025) yan yana karşılaştırır
+  const donemOzet = (k) => { const b = k + '-01', y = +k.slice(0, 4), m = +k.slice(5, 7), son = `${k}-${pad(new Date(y, m, 0).getDate())}`;
+    const t = q1(`SELECT COALESCE(SUM(tl),0) tutar, COUNT(*) adet, COUNT(DISTINCT bagisci_id) kisi FROM bagislar g WHERE ${OK} AND g.tarih>=? AND g.tarih<=?`, b, son);
+    const kat = q(`SELECT t.kat ad, SUM(g.tl) tutar, COUNT(*) adet FROM bagislar g JOIN bagis_turleri t ON t.id=g.tur_id WHERE ${OK} AND g.tarih>=? AND g.tarih<=? GROUP BY t.kat`, b, son);
+    const gun = Array(31).fill(0); q(`SELECT CAST(substr(g.tarih,9,2) AS INTEGER) d, SUM(g.tl) t FROM bagislar g WHERE ${OK} AND g.tarih>=? AND g.tarih<=? GROUP BY d`, b, son).forEach(x => { gun[x.d - 1] = x.t; });
+    const yeni = q1(`SELECT COUNT(*) n FROM (SELECT bagisci_id, MIN(tarih) ilk FROM bagislar g WHERE ${OK} GROUP BY bagisci_id) WHERE ilk>=? AND ilk<=?`, b, son).n;
+    return { k, ad: AY[m - 1] + ' ' + y, gunSayisi: new Date(y, m, 0).getDate(), tutar: t.tutar, adet: t.adet, kisi: t.kisi, yeni, ort: t.adet ? t.tutar / t.adet : 0, kat, gun }; };
+  R('GET', '/api/analiz/donem', 'rkarsi', 'g', async (c) => {
+    const p = new URL(c.req.url, 'http://x').searchParams, ok = (v) => /^\d{4}-(0[1-9]|1[0-2])$/.test(v || ''), a = ok(p.get('a')) ? p.get('a') : ayAnahtar(new Date()), b = ok(p.get('b')) ? p.get('b') : `${+a.slice(0, 4) - 1}-${a.slice(5, 7)}`;
+    const A1 = donemOzet(a), B1 = donemOzet(b), adlar = [...new Set([...A1.kat.map(x => x.ad), ...B1.kat.map(x => x.ad)])];
+    const kategori = adlar.map(ad => { const x = A1.kat.find(z => z.ad === ad) || { tutar: 0, adet: 0 }, y = B1.kat.find(z => z.ad === ad) || { tutar: 0, adet: 0 }; return { ad, a: x.tutar, b: y.tutar, aAdet: x.adet, bAdet: y.adet, degisim: fark(x.tutar, y.tutar) }; }).sort((u, v) => (v.a + v.b) - (u.a + u.b));
+    return [200, { a: A1, b: B1, degisim: { tutar: fark(A1.tutar, B1.tutar), adet: fark(A1.adet, B1.adet), kisi: fark(A1.kisi, B1.kisi), ort: fark(A1.ort, B1.ort), yeni: fark(A1.yeni, B1.yeni) }, kategori }];
+  });
+  // Yıl × ay tablosu: her ayın yıllara göre toplamı
+  R('GET', '/api/analiz/yillik', 'rkarsi', 'g', async () => {
+    const yil = new Date().getFullYear(), yillar = [yil - 4, yil - 3, yil - 2, yil - 1, yil], r = q(`SELECT substr(g.tarih,1,4) y, CAST(substr(g.tarih,6,2) AS INTEGER) m, SUM(g.tl) tutar, COUNT(*) adet FROM bagislar g WHERE ${OK} AND g.tarih>=? GROUP BY y, m`, `${yillar[0]}-01-01`);
+    const hucre = (y, m) => r.find(x => +x.y === y && x.m === m) || { tutar: 0, adet: 0 };
+    return [200, { yillar, matris: AY.map((ad, i) => ({ ad, tutar: yillar.map(y => hucre(y, i + 1).tutar), adet: yillar.map(y => hucre(y, i + 1).adet) })), toplam: yillar.map(y => r.filter(x => +x.y === y).reduce((n, x) => n + x.tutar, 0)), adetToplam: yillar.map(y => r.filter(x => +x.y === y).reduce((n, x) => n + x.adet, 0)) }];
   });
 };
