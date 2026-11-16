@@ -249,6 +249,14 @@ server.listen(0, async () => {
     const o = smtpGelen[smtpGelen.length - 1]; assert.ok(o.satir.includes('MAIL FROM:<bilgi@dernek.org>')); assert.ok(o.satir.includes('RCPT TO:<ali@example.com>')); assert.ok(/Subject: =\?UTF-8\?B\?/.test(o.govde));
     assert.equal((await admin('POST', '/api/toplu/hedef', { kanal: 'mail', filtre: SADECE })).j.adet, 0);
   });
+  await t('alıcı seçimi: bağışçı listesi ve yalnızca seçilenlere gönderim; WhatsApp özeti', async () => {
+    const L = (await admin('GET', '/api/toplu/bagiscilar?kanal=sms')).j; assert.ok(L.liste.length >= 2 && L.uygun >= 2);
+    const ara = (await admin('GET', '/api/toplu/bagiscilar?kanal=sms&q=' + encodeURIComponent(L.liste[0].ad.split(' ')[0]))).j; assert.ok(ara.liste.length >= 1);
+    const ids = [L.liste[0].id, L.liste[1].id];
+    assert.equal((await admin('POST', '/api/toplu/hedef', { kanal: 'sms', filtre: { ids } })).j.adet, 2);
+    assert.equal((await admin('POST', '/api/toplu/hedef', { kanal: 'sms', filtre: { ids: [] } })).j.adet, 0);
+    const o = (await admin('GET', '/api/wa/ozet')); assert.equal(o.s, 200); assert.equal(o.j.gun7.length, 7); assert.ok('okunmamis' in o.j && 'bekleyen' in o.j);
+  });
   await t('WhatsApp: şablonlu toplu gönderim, webhook imzası, gelen kutusu, 24 saat kuralı', async () => {
     assert.equal((await admin('PUT', '/api/iletisim/ayar', { wa: { phone_id: 'PID', token: 'TOK', app_secret: 'sir', api_url: `http://127.0.0.1:${mport}/v21`, sablonlar: [{ ad: 'Bagis Duyuru', dil: 'tr', govde: 'Merhaba {{1}}', n: 1 }] } })).s, 200);
     const ay = (await admin('GET', '/api/iletisim/ayar')).j.ayar; assert.equal(ay.wa.sablonlar[0].ad, 'bagis_duyuru'); assert.equal(ay.wa.token, '');

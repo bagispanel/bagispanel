@@ -125,8 +125,9 @@ CREATE INDEX IF NOT EXISTS ix_wa_tel ON wa_mesaj(tel);
     const rows = db.prepare(`SELECT b.id, b.ad, b.tel, b.eposta, b.izin, MAX(g.tarih) son, COALESCE(SUM(g.tl),0) toplam, COUNT(g.id) adet FROM bagiscilar b LEFT JOIN bagislar g ON g.bagisci_id=b.id AND g.durum='Onaylı' GROUP BY b.id`).all();
     const katlar = f.kat ? new Set(db.prepare("SELECT DISTINCT g.bagisci_id id FROM bagislar g JOIN bagis_turleri t ON t.id=g.tur_id WHERE g.durum='Onaylı' AND t.kat=?").all(str(f.kat, 60)).map(x => x.id)) : null;
     const orgs = f.org ? new Set(db.prepare("SELECT DISTINCT g.bagisci_id id FROM bagislar g JOIN bagis_turleri t ON t.id=g.tur_id WHERE g.durum='Onaylı' AND t.org=?").all(str(f.org, 20)).map(x => x.id)) : null;
-    const out = [], gor = new Set();
+    const out = [], gor = new Set(), ids = Array.isArray(f.ids) ? new Set(f.ids.map(Number)) : null;
     rows.forEach(b => {
+      if (ids && !ids.has(b.id)) return;
       const izin = b.izin ? JSON.parse(b.izin) : {}, hedef = kanal === 'mail' ? String(b.eposta || '').trim() : b.tel;
       if (kanal === 'mail' ? !mailOk(hedef) : digits(hedef).length < 10) return;
       if (izin[kanal] === 'ret') return; if (f.izin === 'sadece' && izin[kanal] !== 'izinli') return;
@@ -138,6 +139,22 @@ CREATE INDEX IF NOT EXISTS ix_wa_tel ON wa_mesaj(tel);
     String(f.liste || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean).slice(0, 5000).forEach(l => { const [a, b] = l.includes(';') ? [l.split(';')[0], l.split(';')[1]] : ['', l], t = String(b || '').trim(), k = kanal === 'mail' ? t.toLowerCase() : e164(t); if (kanal === 'mail' ? !mailOk(t) : digits(t).length < 10) return; if (gor.has(k)) return; gor.add(k); out.push({ bagisci_id: null, ad: a.trim() || 'Sayın bağışçımız', hedef: kanal === 'mail' ? t : k }); });
     return out;
   }
+  R('GET', '/api/toplu/bagiscilar', 'tsms|tmail|twa', 'g', async (c) => {
+    const p = new URL(c.req.url, 'http://x').searchParams, kanal = p.get('kanal'); kontrol(c, kanal, 'g'); const q = str(p.get('q'), 60).toLowerCase();
+    const rows = db.prepare(`SELECT b.id, b.ad, b.tel, b.eposta, b.izin, MAX(g.tarih) son, COALESCE(SUM(g.tl),0) toplam, COUNT(g.id) adet FROM bagiscilar b LEFT JOIN bagislar g ON g.bagisci_id=b.id AND g.durum='Onaylı' GROUP BY b.id ORDER BY b.ad`).all();
+    let uygun = 0, ret = 0, yok = 0; const L = [];
+    rows.forEach(b => { const hedef = kanal === 'mail' ? String(b.eposta || '').trim() : b.tel; if (kanal === 'mail' ? !mailOk(hedef) : digits(hedef).length < 10) { yok++; return; } const iz = b.izin ? JSON.parse(b.izin) : {}; if (iz[kanal] === 'ret') { ret++; return; } uygun++; if (q && !(String(b.ad).toLowerCase().includes(q) || String(hedef).toLowerCase().includes(q))) return; L.push({ id: b.id, ad: b.ad, hedef, son: b.son, toplam: b.toplam, adet: b.adet }); });
+    return [200, { liste: L.slice(0, 500), eslesen: L.length, uygun, ret, yok }];
+  });
+  R('GET', '/api/wa/ozet', 'twa', 'g', async () => {
+    const q = (sql, ...a) => db.prepare(sql).get(...a) || {}, bugun = new Date().toISOString().slice(0, 10);
+    const gelen = q("SELECT COUNT(*) n, SUM(okundu=0) ok0 FROM wa_mesaj WHERE yon='gelen'"), kon = db.prepare("SELECT tel, MAX(id) i, MAX(CASE WHEN yon='gelen' THEN zaman END) sg FROM wa_mesaj GROUP BY tel").all();
+    let bekl = 0, acik = 0; kon.forEach(k => { const m = db.prepare('SELECT yon FROM wa_mesaj WHERE id=?').get(k.i); if (m.yon === 'gelen') bekl++; if (k.sg && (Date.now() - new Date(k.sg.replace(' ', 'T')).getTime()) < 86400000) acik++; });
+    const gun7 = []; for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const k = d.toISOString().slice(0, 10); gun7.push({ gun: k, gelen: q("SELECT COUNT(*) n FROM wa_mesaj WHERE yon='gelen' AND date(zaman)=?", k).n, giden: q("SELECT COUNT(*) n FROM toplu_alici a JOIN toplu_gonderim g ON g.id=a.gid WHERE g.kanal='wa' AND a.durum<>'Bekliyor' AND date(a.zaman)=?", k).n + q("SELECT COUNT(*) n FROM wa_mesaj WHERE yon='giden' AND date(zaman)=?", k).n }); }
+    const d = db.prepare("SELECT a.durum, COUNT(*) n FROM toplu_alici a JOIN toplu_gonderim g ON g.id=a.gid WHERE g.kanal='wa' GROUP BY a.durum").all(), D = Object.fromEntries(d.map(x => [x.durum, x.n]));
+    const son = db.prepare("SELECT id, ad, zaman, durum FROM toplu_gonderim WHERE kanal='wa' ORDER BY id DESC LIMIT 5").all();
+    return [200, { okunmamis: gelen.ok0 || 0, gelenToplam: gelen.n || 0, bekleyen: bekl, acik, konusma: kon.length, bugunGelen: q("SELECT COUNT(*) n FROM wa_mesaj WHERE yon='gelen' AND date(zaman)=?", bugun).n, bugunGiden: gun7[6].giden, teslim: (D['Teslim edildi'] || 0) + (D['Okundu'] || 0), okundu: D['Okundu'] || 0, gonderildi: (D['Gönderildi'] || 0) + (D['Teslim edildi'] || 0) + (D['Okundu'] || 0), hata: D['Hata'] || 0, gun7, son }];
+  });
   const kanalMenu = { sms: 'tsms', mail: 'tmail', wa: 'twa' };
   const kontrol = (c, kanal, g) => { if (!kanalMenu[kanal]) throw new Err(400, 'Kanal seçin.'); if (!A.can(c.perms, kanalMenu[kanal], g)) throw new Err(403, 'Bu işlem için yetkiniz yok.'); };
   R('POST', '/api/toplu/hedef', 'tsms|tmail|twa', 'g', async (c) => { kontrol(c, c.body.kanal, 'g'); const L = alicilar(c.body.kanal, c.body.filtre); return [200, { adet: L.length, ornek: L.slice(0, 5).map(x => x.ad) }]; });
