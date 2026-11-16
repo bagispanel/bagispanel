@@ -1,0 +1,42 @@
+// Simgeler (çizgi stili, 24px) ve tema tercihi.
+const _P={
+home:'<path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/>',
+heart:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.5-7 10-7 10z"/>',
+plus:'<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
+clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+tag:'<path d="M3 12V4h8l9 9-8 8-9-9z"/><circle cx="7.5" cy="8.5" r="1.2"/>',
+chart:'<path d="M5 20V11M12 20V4M19 20v-6"/>',
+layers:'<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',
+paw:'<circle cx="6.5" cy="10" r="1.7"/><circle cx="10" cy="6" r="1.7"/><circle cx="14" cy="6" r="1.7"/><circle cx="17.5" cy="10" r="1.7"/><path d="M12 12c-3 0-5 3-5 5 0 2 2 2.5 5 2.5s5-.5 5-2.5c0-2-2-5-5-5z"/>',
+drop:'<path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/>',
+video:'<rect x="3" y="6" width="12" height="12" rx="2"/><path d="M15 10l6-3v10l-6-3"/>',
+globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>',
+file:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>',
+filetext:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 17h6"/>',
+menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+clip:'<path d="M9 3h6v3H9z"/><path d="M6 5h12v16H6z"/><path d="M9 11h6M9 15h6"/>',
+palette:'<path d="M12 3a9 9 0 1 0 0 18c1.5 0 2-1 1.5-2.2-.5-1.3.3-2.3 1.7-2.3H17a4 4 0 0 0 4-4c0-5-4-9.5-9-9.5z"/><circle cx="7.5" cy="11" r="1"/><circle cx="11" cy="7" r="1"/><circle cx="15.5" cy="8" r="1"/>',
+users:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 3-5.5 6-5.5s6 2 6 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14.5c2.5 0 4.5 1.5 4.5 4"/>',
+user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+msg:'<path d="M4 5h16v11H9l-5 4z"/>',
+mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
+build:'<path d="M4 21V5l8-2v18"/><path d="M12 9h8v12M4 21h16M7 9h2M7 13h2M7 17h2"/>',
+bank:'<path d="M3 9l9-5 9 5H3z"/><path d="M5 11v7M10 11v7M14 11v7M19 11v7M3 20h18"/>',
+flag:'<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+hash:'<path d="M5 9h14M5 15h14M10 4L8 20M16 4l-2 16"/>',
+plug:'<path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/>',
+shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
+eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+book:'<path d="M4 5c3-1 6-1 8 1 2-2 5-2 8-1v14c-3-1-6-1-8 1-2-2-5-2-8-1z"/><path d="M12 6v14"/>',
+sprout:'<path d="M12 21v-9"/><path d="M12 12c0-4 3-6 7-6 0 4-3 6-7 6z"/><path d="M12 14c0-3-2-5-6-5 0 3 2 5 6 5z"/>',
+sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
+moon:'<path d="M20 14A8 8 0 1 1 10 4a6.5 6.5 0 0 0 10 10z"/>',
+sliders:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+up:'<path d="M6 15l6-6 6 6"/>',down:'<path d="M6 9l6 6 6-6"/>',alert:'<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h0"/>',
+wallet:'<path d="M3 7h16a2 2 0 0 1 2 2v10H5a2 2 0 0 1-2-2z"/><path d="M3 7l12-3v3"/>',check:'<path d="M5 12l5 5 9-10"/>'};
+const IC=(n,s=20)=>`<svg class="ic" aria-hidden="true" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${_P[n]||_P.heart}</svg>`;
+const MIC={alin:'plus',bekleyen:'clock',turler:'tag',rapor:'chart',orgK:'paw',orgS:'drop',orgD:'video',spage:'file',smenu:'menu',sform:'clip',sset:'palette',bagisci:'users',sms:'mail',partner:'build',banka:'bank',ulke:'flag',pdfay:'filetext',numara:'hash',entegre:'plug',sablon:'msg',kullanici:'user',birim:'shield',denetim:'eye'},
+ GIC={'Bağış Yönetimi':'heart','Saha Organizasyonu':'layers','Web Sitesi':'globe','Bağışçı İlişkileri':'users','İletişim':'msg','Sistem Ayarları':'gear'};
+const katIc=n=>{n=String(n||'').toLocaleLowerCase('tr');return /kurban/.test(n)?'paw':/su|kuyu/.test(n)?'drop':/eğitim|egitim|kuran|kur'an|burs/.test(n)?'book':/fidan|ağaç/.test(n)?'sprout':'heart'};
+try{const t=localStorage.getItem('bp_tema');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}

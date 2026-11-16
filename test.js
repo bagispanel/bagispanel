@@ -199,8 +199,16 @@ server.listen(0, async () => {
     assert.equal((await admin('PUT', '/api/pdf', { tasarim: { hisse: 'yok' } })).s, 400); assert.equal((await admin('PUT', '/api/pdf', { tabela: { w: 5, h: 300 } })).s, 400); assert.equal((await admin('PUT', '/api/pdf', { tasarim: { diger: '33' } })).s, 400);
     await admin('PUT', '/api/pdf', { tasarim: { hisse: 'tek', kucuk: 'tek', diger: '40' }, tabela: { w: 210, h: 297 } });
   });
+  await t('ülke bayrağı yüklenir, geçersiz görsel reddedilir, kaldırılır', async () => {
+    const ul = (await admin('GET', '/api/ulkeler')).j.find(x => x.ad === 'Testistan'); assert.ok(ul);
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    assert.equal((await admin('PUT', `/api/ulkeler/${ul.id}/bayrak`, { bayrak: png })).s, 200);
+    assert.equal((await admin('GET', '/api/ulkeler')).j.find(x => x.ad === 'Testistan').bayrak, png);
+    assert.equal((await admin('PUT', `/api/ulkeler/${ul.id}/bayrak`, { bayrak: 'data:text/html;base64,PGI+' })).s, 400);
+    assert.equal((await admin('PUT', `/api/ulkeler/${ul.id}/bayrak`, { bayrak: null })).s, 200);
+  });
   await t('ana sayfa özeti: yönetici tutarları görür, çağrı merkezi görmez', async () => {
-    const a = await admin('GET', '/api/ana'); assert.equal(a.s, 200); assert.ok(a.j.ozet && a.j.gun30.length === 30 && Array.isArray(a.j.isler) && Array.isArray(a.j.son));
+    const a = await admin('GET', '/api/ana'); assert.equal(a.s, 200); assert.ok(a.j.ozet && a.j.gun30.length === 30 && Array.isArray(a.j.isler) && Array.isArray(a.j.son)); assert.ok(a.j.isler.some(x => x.k === 'bekleyen'));
     const cm = await mkUser('anatest', 'Çağrı merkezi'), m = await cm.q('GET', '/api/ana'); assert.equal(m.s, 200); assert.equal(m.j.ozet, undefined); assert.equal(m.j.son, undefined); assert.equal(m.j.gun30, undefined);
     assert.equal((await mk()('GET', '/api/ana')).s, 401);
   });

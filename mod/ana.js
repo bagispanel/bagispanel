@@ -33,6 +33,7 @@ module.exports = function (ctx) {
       if (!g(r)) return;
       const rows = db.prepare('SELECT u.adim, u.ulke, u.video, t.org FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org=?').all(org), cnt = [0, 0, 0, 0, 0, 0];
       rows.forEach(u => cnt[sts(u)]++);
+      if (r === 'orgD') { const pr = {}; db.prepare('SELECT u.adim, u.ulke, u.video, t.org, t.ad turad FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org=?').all(org).forEach(u => { const k = sts(u); if (k < 1 || k > 4) return; (pr[u.turad] = pr[u.turad] || [0, 0, 0, 0, 0])[k]++; }); out.proje = Object.entries(pr).map(([ad, say]) => ({ ad, say })).sort((a, b) => b.say.reduce((x, y) => x + y, 0) - a.say.reduce((x, y) => x + y, 0)); }
       [1, 2, 3, 4].forEach(i => { if (cnt[i]) isler.push({ k: r + i, grup: NAD[r], etiket: ETK[r][i], n: cnt[i], git: r + ':' + i }); });
     });
     out.isler = isler;
@@ -46,7 +47,14 @@ module.exports = function (ctx) {
     if (g('bagisci')) uy.pasif = q("SELECT COUNT(*) n FROM (SELECT bagisci_id, MAX(tarih) son FROM bagislar WHERE durum='Onaylı' GROUP BY bagisci_id) WHERE son<?", gun(-90)).n;
     if (raporlu) uy.iptal = q("SELECT COUNT(*) n FROM bagislar WHERE durum='İptal' AND iptal_tarih>=?", gun(-30)).n;
     out.uyari = uy;
-    out.kisa = [['alin', 'Bağış al'], ['bekleyen', 'Bekleyen onaylar'], ['bagisci', 'Bağışçılar'], ['rapor', 'Bağış raporları']].filter(x => g(x[0])).map(x => ({ r: x[0], ad: x[1] }));
+    out.tercih = ctx.h.getA('ana_' + c.user.id, null);
+    out.kisa = [['alin', 'Bağış Al'], ['bekleyen', 'Onay Bekleyenler'], ['bagisci', 'Bağışçı Rehberi'], ['rapor', 'Bağış Raporları']].filter(x => g(x[0])).map(x => ({ r: x[0], ad: x[1] }));
     return [200, out];
+  });
+  const BOL = ['kisa', 'ozet', 'isler', 'kuyular', 'uyari', 'grafik', 'kategori', 'son', 'sorumlu'];
+  R('PUT', '/api/ana/tercih', 'auth', null, async (c) => {
+    const b = c.body || {}, sira = [...new Set((Array.isArray(b.sira) ? b.sira : []).filter(x => BOL.includes(x)))], gizli = [...new Set((Array.isArray(b.gizli) ? b.gizli : []).filter(x => BOL.includes(x)))];
+    if (b.sifirla) { db.prepare('DELETE FROM ayar WHERE k=?').run('ana_' + c.user.id); return [200, { ok: 1 }]; }
+    ctx.h.setA('ana_' + c.user.id, { sira, gizli }); return [200, { ok: 1 }];
   });
 };

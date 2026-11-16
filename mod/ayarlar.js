@@ -33,6 +33,15 @@ CREATE TABLE IF NOT EXISTS bagis_turleri(
   db.prepare("UPDATE bagis_turleri SET ad='Vacip · tam büyükbaş', seri='Vacip' WHERE ad='Tam büyükbaş (7 isim)' AND NOT EXISTS(SELECT 1 FROM bagis_turleri WHERE ad='Vacip · tam büyükbaş')").run();
   // ---- ülkeler
   R('GET', '/api/ulkeler', 'ulke|orgK|orgS|orgD|turler', 'g', async () => [200, db.prepare('SELECT * FROM ulkeler ORDER BY ad').all().map(u => ({ ...u, kullanim: used('ulke', u.ad) }))]);
+  try { db.exec('ALTER TABLE ulkeler ADD COLUMN bayrak TEXT'); } catch (e) { }
+  R('PUT', '/api/ulkeler/([0-9]+)/bayrak', 'ulke', 'e', async (c) => {
+    const u = db.prepare('SELECT * FROM ulkeler WHERE id=?').get(+c.m[1]); if (!u) throw new Err(404, 'Ülke yok.');
+    const d = c.body.bayrak;
+    if (d === null || d === '') { db.prepare('UPDATE ulkeler SET bayrak=NULL WHERE id=?').run(u.id); A.audit(c.user, 'ulke_bayrak_kaldirildi', u.ad, ip(c.req)); return [200, { ok: 1 }]; }
+    if (typeof d !== 'string' || !/^data:image\/(png|jpeg|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(d)) throw new Err(400, 'Bayrak PNG, JPG, WEBP ya da SVG görseli olmalı.');
+    if (d.length > 200000) throw new Err(400, 'Bayrak görseli çok büyük (en fazla yaklaşık 150 KB).');
+    db.prepare('UPDATE ulkeler SET bayrak=? WHERE id=?').run(d, u.id); A.audit(c.user, 'ulke_bayrak_yuklendi', u.ad, ip(c.req)); return [200, { ok: 1 }];
+  });
   R('POST', '/api/ulkeler', 'ulke', 'e', async (c) => {
     const ad = str(c.body.ad, 60), kita = ['Afrika', 'Asya', 'Avrupa', 'Diğer'].includes(c.body.kita) ? c.body.kita : 'Diğer';
     if (!ad) throw new Err(400, 'Ülke adını yazın.');

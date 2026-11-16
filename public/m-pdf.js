@@ -15,7 +15,7 @@ sudan:H3('#d21034','#fff','#000')+'<polygon points="0,0 30,30 0,60" fill="#00722
 suriye:H3('#007a3d','#fff','#000')+'<g fill="#ce1126">'+star(30,30,5,-90)+star(45,30,5,-90)+star(60,30,5,-90)+'</g>',
 etiyopya:H3('#078930','#fcdd09','#da121a')+'<circle cx="45" cy="30" r="9" fill="#0f47af"/><g fill="#fcdd09">'+star(45,30,6.5,-90)+'</g>',
 gana:H3('#ce1126','#fcd116','#006b3f')+'<g fill="#000">'+star(45,30,8,-90)+'</g>',senegal:V3('#00853f','#fdef42','#e31b23')+'<g fill="#00853f">'+star(45,30,8,-90)+'</g>',nijerya:V3('#008751','#fff','#008751')};
-const flag=(ad,h)=>{const b=FLAGS[fk(ad)];return b?`<svg viewBox="0 0 90 60" style="height:${h}mm;width:${h*1.5}mm;border:.3mm solid #0004;flex:none"><g>${b}</g></svg>`:''};
+let UF={};const flag=(ad,h)=>{const u=UF[fk(ad)];if(u)return `<img src="${u}" alt="" style="height:${h}mm;width:${h*1.5}mm;object-fit:cover;border:.3mm solid #0004;flex:none">`;const b=FLAGS[fk(ad)];return b?`<svg viewBox="0 0 90 60" style="height:${h}mm;width:${h*1.5}mm;border:.3mm solid #0004;flex:none"><g>${b}</g></svg>`:''};
 const pEsc=esc,pToday=()=>new Date().toLocaleDateString('tr-TR');
 const fit=(txt,max,min,st,ex)=>`<div class="fit" data-max="${max}" data-min="${min}" style="${st||''}"><span style="${ex||''}">${pEsc(txt)}</span></div>`;
 const hd=(dn,ulke,sub,h)=>{h=h||11;return `<div class="hd"><div class="hl">${flag('Türkiye',h)}<div><b>${pEsc(dn)}</b><br><small>${pEsc(sub||'')}</small></div></div><div class="hr">${ulke?`<div style="text-align:right"><b style="font-size:${h*.9}mm">${pEsc(ulke)}</b></div>${flag(ulke,h)}`:''}</div></div>`};
@@ -57,7 +57,7 @@ const DNAME={hisse:{tek:'1 grup / sayfa (dikey)',iki:'2 grup / sayfa (dikey)',ya
 const DDESC={hisse:{tek:'İsimler en büyük; saha videosu için en okunaklısı.',iki:'Kâğıt tasarrufu; isimler orta boy.',yatay:'Yatay çekilen videoda tam kadraj.'},kucuk:{tek:'Her hayvan tek tek çekilecekse; yazı dev.',dort:'Okunaklı ve kâğıt dostu (önerilen).',liste:'Kontrol ve arşiv için; videoda küçük kalabilir.'},diger:{'20':'Videoda en okunaklısı; isimler çok büyük.','40':'Okunaklı ve dengeli (önerilen).','60':'Yatay sayfa; orta boy isimler.','80':'Yatay sayfa; isimler küçülür, sahip no yazılmaz.','100':'Yatay sayfa; en kompakt, daha çok kontrol/arşiv içindir.'},tabela:{klasik:'Numara öne çıkar, altında ad ve ülke.',ad:'Kuyunun adı öne çıkar, numara ikinci planda.',bayrak:'Türkiye ve ülke bayrakları büyük.'}};
 
 /* ---- görünüm ---- */
-async function pdfOpen(job){if(!ST.pdfs||!ST.pdfsec){const r=await api('GET','/api/pdf');ST.pdfs=r.ayar;ST.pdfsec=r.secenek}ST.pdfp=job;draw();document.querySelector('.main').scrollTop=0}
+async function pdfOpen(job){try{const ul=await api('GET','/api/ulkeler');UF={};ul.forEach(u=>{if(u.bayrak)UF[fk(u.ad)]=u.bayrak})}catch(e){}if(!ST.pdfs||!ST.pdfsec){const r=await api('GET','/api/pdf');ST.pdfs=r.ayar;ST.pdfsec=r.secenek}ST.pdfp=job;draw();document.querySelector('.main').scrollTop=0}
 const pdfKind=j=>j.t=='ornek'?j.kind:j.t=='tabela'?'tabela':j.t=='diger'?'diger':(j.m=='k'?'kucuk':'hisse');
 function pdfView(){const j=ST.pdfp,S=ST.pdfs,kind=pdfKind(j),dz=(j.design||{})[kind]||S.tasarim[kind],tb=S.tabela;let body='',dn=(j.r&&j.r.dernek)||(j.L&&j.L[0]&&j.L[0].dernek)||'[Dernek adı]';
  if(j.t=='ornek'){dn='[Dernek adı]';const d=ornek(j.kind,S,dz);body=j.kind=='tabela'?DZ.tabela[dz](d,dn,tb):j.kind=='diger'?DZ.diger[dz](d,dn):DZ[j.kind][dz](d,dn)}
