@@ -29,6 +29,7 @@ module.exports = function (ctx) {
     // Bekleyen işler
     const isler = [];
     if (g('bekleyen')) { const n = q("SELECT COUNT(*) n FROM bagislar WHERE durum='Bekleyen'").n; isler.push({ k: 'bekleyen', etiket: 'Onay bekleyen bağış', n, git: 'bekleyen' }); const d = q("SELECT COUNT(*) n FROM bagislar WHERE durum='Bekleyen' AND kaynak<>'Manuel (CRM)'").n; if (d) out.dis = d; }
+    if (g('bhar')) { const n = ctx.bankaBekleyen ? ctx.bankaBekleyen() : 0; if (n) isler.push({ k: 'bhar', etiket: 'Eşleştirme bekleyen banka hareketi', n, git: 'bhar' }); }
     ORG.forEach(([r, org]) => {
       if (!g(r)) return;
       const rows = db.prepare('SELECT u.adim, u.ulke, u.video, t.org FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org=?').all(org), cnt = [0, 0, 0, 0, 0, 0];

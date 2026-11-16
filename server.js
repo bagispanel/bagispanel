@@ -183,7 +183,7 @@ R('GET', '/api/audit', 'denetim', 'g', async () => [200, db.prepare('SELECT * FR
 
 // ---- modüller (her biri kendi tablolarını ve uçlarını tanımlar)
 const ctx = { R, Err, A, db, tx, str, ip, usage: { ulke: [], partner: [], banka: [], tur: [] }, used: (k, v) => ctx.usage[k].reduce((n, f) => n + f(v), 0) };
-['ayarlar', 'bagis', 'org', 'ana', 'iletisim', 'calisma', 'sube', 'gonullu', 'eser', 'sponsor', 'analiz', 'demo'].forEach(m => require('./mod/' + m)(ctx));
+['ayarlar', 'bagis', 'org', 'ana', 'iletisim', 'calisma', 'sube', 'gonullu', 'eser', 'sponsor', 'banka', 'ara', 'analiz', 'demo'].forEach(m => require('./mod/' + m)(ctx));
 
 // ---- sunucu
 const server = http.createServer(async (req, res) => {
@@ -194,7 +194,7 @@ const server = http.createServer(async (req, res) => {
     try {
       const r = routes.find(r => r.m === req.method && r.re.test(url.pathname));
       if (!r) return fail(res, 404, 'Bulunamadı.');
-      if (req.method !== 'GET' && url.pathname !== '/api/wa/webhook' && url.pathname !== '/api/cagri/webhook') { // CSRF (WhatsApp webhook'u imzayla doğrulanır): özel başlık + aynı kaynak
+      if (req.method !== 'GET' && url.pathname !== '/api/wa/webhook' && url.pathname !== '/api/cagri/webhook' && !url.pathname.startsWith('/api/dis/')) { // CSRF (WhatsApp webhook'u imzayla doğrulanır): özel başlık + aynı kaynak
         if (req.headers['x-bp'] !== '1') return fail(res, 403, 'Geçersiz istek.');
         const o = req.headers.origin; if (o && new URL(o).host !== req.headers.host) return fail(res, 403, 'Geçersiz kaynak.');
       }

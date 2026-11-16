@@ -109,3 +109,7 @@ th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--ln);font-s
 .pfv{font-size:24px;font-weight:800;letter-spacing:-.01em;color:var(--pri)}.pfl{font-size:13px;color:var(--mu);margin-top:2px}.pfs{font-size:12px;color:var(--mu)}
 .pftabs{display:flex;gap:4px;border-bottom:2px solid var(--ln);margin-bottom:16px;flex-wrap:wrap}.pftab{background:none;border:0;padding:10px 16px;font:600 15px inherit;font-family:inherit;color:var(--mu);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
 .pftab.on{color:var(--pri);border-bottom-color:var(--pri)}.pfn{background:var(--ln);border-radius:99px;padding:1px 8px;font-size:12px;margin-left:4px}.pfc{margin-bottom:0}
+
+/* Ana sayfa arama */
+.hs{padding:12px 18px;margin-bottom:16px;position:relative}.hs #garares{margin-top:6px;max-height:60vh;overflow:auto}
+.gar{display:flex;justify-content:space-between;gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;border-radius:10px;padding:9px 10px;cursor:pointer;font:inherit;color:var(--ink)}.gar:hover,.gar:focus{background:var(--bg);outline:0}

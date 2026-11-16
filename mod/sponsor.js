@@ -161,46 +161,7 @@ module.exports = function (ctx) {
   });
   // ---- bağışçı profili için sponsorluk özeti
   R('GET', '/api/sp/bagisci/([0-9]+)', 'sptak', 'g', async (c) => [200, db.prepare('SELECT * FROM sp_sponsorluk WHERE bagisci_id=? ORDER BY id DESC').all(+c.m[1]).map(s => ({ ...sRow(s), link: sk(s, c.req).link }))]);
-  // ---- banka hareketi eşleştirme (havale/EFT ile gelen taksitler)
-  db.exec('CREATE TABLE IF NOT EXISTS sp_banka(hash TEXT PRIMARY KEY, bagis_id INTEGER, kayit TEXT NOT NULL DEFAULT (datetime(\'now\',\'localtime\')))');
-  const nmz = (t) => String(t || '').toLocaleLowerCase('tr').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
-  const tutarOku = (v) => { let t = String(v || '').replace(/[^\d.,\-]/g, ''); if (!t) return NaN; const neg = t.startsWith('-'); t = t.replace(/-/g, ''); const lv = t.lastIndexOf(','), ld = t.lastIndexOf('.'); if (lv >= 0 && ld >= 0) t = lv > ld ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, ''); else if (lv >= 0) t = t.replace(',', '.'); else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, ''); const n = parseFloat(t); return neg ? -n : n; };
-  const tarihOku = (v) => { v = String(v || '').trim(); let m = /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})/.exec(v); if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`; m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v); return m ? m[0] : null; };
-  function csvParse(metin) {
-    const satirlar = String(metin || '').replace(/\r/g, '').split('\n').filter(l => l.trim()); if (satirlar.length < 2) throw new Err(400, 'Banka hareketlerini başlık satırıyla birlikte yapıştırın.');
-    const say = (ch) => (satirlar[0].match(new RegExp(ch === '\t' ? '\t' : '\\' + ch, 'g')) || []).length, ayr = [';', '\t', ','].sort((a, b) => say(b) - say(a))[0];
-    const bol = (l) => { const o = []; let cur = '', q = false; for (const ch of l) { if (ch === '"') q = !q; else if (ch === ayr && !q) { o.push(cur); cur = ''; } else cur += ch; } o.push(cur); return o.map(x => x.trim()); };
-    let hi = satirlar.findIndex(l => { const n = nmz(l); return n.includes('tarih') && n.includes('aciklama') && /tutar|alacak|giris/.test(n); }); if (hi < 0) throw new Err(400, 'Başlık satırı bulunamadı: Tarih, Açıklama ve Tutar (veya Alacak) sütunları gerekli.');
-    const H = bol(satirlar[hi]).map(nmz), ix = (re) => H.findIndex(x => re.test(x)), it = ix(/tarih/), ia = ix(/aciklama/), iu = ix(/^(tutar|islem tutari|alacak|giris)/), ig = ix(/gonderen|unvan|isim|ad soyad|karsi/);
-    if (iu < 0) throw new Err(400, 'Tutar / Alacak sütunu bulunamadı.');
-    return satirlar.slice(hi + 1).map(l => { const c = bol(l); return { tarih: tarihOku(c[it]), tutar: tutarOku(c[iu]), aciklama: [c[ig], c[ia]].filter(Boolean).join(' · ') }; }).filter(r => r.tarih && r.tutar > 0);
-  }
-  const hh = (r) => crypto.createHash('sha1').update(`${r.tarih}|${(+r.tutar).toFixed(2)}|${nmz(r.aciklama)}`).digest('hex');
-  R('POST', '/api/sp/banka/onizle', 'sptak', 'e', async (c) => {
-    const rows = csvParse((c.body || {}).metin); if (rows.length > 500) throw new Err(400, 'Tek seferde en çok 500 hareket işlenir.');
-    const S = db.prepare("SELECT * FROM sp_sponsorluk WHERE durum='Aktif'").all().map(sRow);
-    const out = rows.map((r, i) => {
-      const o = { i, ...r, sponsorluk_id: null, guven: null, neden: '' }, nt = nmz(r.aciklama);
-      if (db.prepare('SELECT 1 FROM sp_banka WHERE hash=?').get(hh(r))) return { ...o, durum: 'tekrar', neden: 'Daha önce işlenmiş' };
-      const km = /sp[\s\-_]?0*(\d{1,6})/i.exec(r.aciklama), kod = km && S.find(x => x.id === +km[1]);
-      if (kod) return { ...o, durum: 'eslesti', sponsorluk_id: kod.id, guven: 'yuksek', neden: 'Referans kodu ' + kod.kod };
-      const ad = S.filter(x => { const tk = nmz(x.sponsor).split(' ').filter(t => t.length > 1); return tk.length && tk.every(t => nt.includes(t)); }), tut = ad.filter(x => Math.abs(r.tutar - x.aylik) < 0.5 || (x.aylik > 0 && r.tutar % x.aylik < 0.5 && r.tutar >= x.aylik));
-      if (tut.length === 1) return { ...o, durum: 'eslesti', sponsorluk_id: tut[0].id, guven: 'orta', neden: 'Ad + tutar uyuşuyor' };
-      if (ad.length === 1) return { ...o, durum: 'belirsiz', sponsorluk_id: ad[0].id, guven: 'dusuk', neden: 'Yalnızca ad uyuşuyor, tutar farklı' };
-      if (ad.length > 1) return { ...o, durum: 'belirsiz', neden: 'Aynı ada birden fazla sponsorluk var' };
-      return { ...o, durum: 'yok', neden: 'Sponsorla eşleşmedi' };
-    });
-    return [200, { satirlar: out, ozet: { toplam: out.length, eslesti: out.filter(x => x.durum === 'eslesti').length, belirsiz: out.filter(x => x.durum === 'belirsiz').length, yok: out.filter(x => x.durum === 'yok').length, tekrar: out.filter(x => x.durum === 'tekrar').length } }];
-  });
-  R('POST', '/api/sp/banka/onayla', 'sptak', 'e', async (c) => {
-    const b = c.body || {}, banka = +b.banka_id; if (!db.prepare('SELECT 1 FROM banka_hesaplari WHERE id=?').get(banka)) throw new Err(400, 'Paranın geldiği banka hesabını seçin.');
-    const L = Array.isArray(b.satirlar) ? b.satirlar.slice(0, 500) : []; let islenen = 0, atlanan = 0; const hata = [];
-    for (const r of L) {
-      try { const s = spo(+r.sponsorluk_id), k = hh(r); if (s.durum !== 'Aktif') throw new Err(400, 'Sponsorluk aktif değil.'); if (db.prepare('SELECT 1 FROM sp_banka WHERE hash=?').get(k)) { atlanan++; continue; }
-        const res = odemeAl(s, { tutar: r.tutar, tarih: r.tarih, odeme: 'Havale/EFT', banka_id: banka }, c.user, c.req); db.prepare('INSERT INTO sp_banka(hash,bagis_id) VALUES(?,?)').run(k, res.id); islenen++; } catch (e) { hata.push((r.aciklama || '').slice(0, 40) + ': ' + (e.message || 'hata')); }
-    }
-    A.audit(c.user, 'sponsor_banka_aktarim', `${islenen} ödeme`, ip(c.req)); return [200, { islenen, atlanan, hata }];
-  });
+  ctx.sponsor = { odemeAl, spo, sRow, kodu, hesap };
   // ---- sponsora giden herkese açık kart (kimlik no, TC vb. göstermez)
   const tk = (t) => { const s = db.prepare('SELECT * FROM sp_sponsorluk WHERE token=?').get(t); if (!s) throw new Err(404, 'Bağlantı geçersiz.'); return s; };
   R('GET', '/api/sp/kart/([a-f0-9]{24})', null, null, async (c) => {
