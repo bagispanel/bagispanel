@@ -177,5 +177,14 @@ server.listen(0, async () => {
   await t('yetki: çağrı merkezi organizasyonu görür ama işlem yapamaz', async () => {
     const u = await mkUser('cagri10', 'Çağrı merkezi'); assert.equal((await u.q('POST', '/api/org/islem', { a: 'k', ids: [1] })).s, 403); assert.equal((await u.q('GET', '/api/org/kurban')).s, 200);
   });
+  await t('rapor: kategori/ödeme/tarih/sorumlu süzgeçleri ve dağılım', async () => {
+    const r = (await admin('GET', '/api/bagislar?kat=Kurban&odeme=Nakit&kanal=CRM')).j; assert.ok(r.liste.length > 0 && r.liste.every(x => x.kat === 'Kurban' && x.odeme === 'Nakit' && x.kanal === 'CRM'));
+    assert.ok(r.liste[0].sorumlu); assert.ok(r.kategori.length && r.odeme.length && r.sorumlular.length);
+    assert.equal((await admin('GET', '/api/bagislar?d1=2999-01-01')).j.liste.length, 0);
+    const w = (await admin('GET', '/api/bagislar?kanal=' + encodeURIComponent('Web sitesi / dış kaynak'))).j; assert.ok(w.liste.every(x => x.kanal !== 'CRM'));
+  });
+  await t('organizasyon: gidecek SMS önizlemesi', async () => {
+    const u = (await admin('GET', '/api/org/kurban')).j.liste[0]; const p = (await admin('GET', '/api/org/onizleme?id=' + u.id)).j; assert.ok(p.k.length > 10 && p.g.length > 10);
+  });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });

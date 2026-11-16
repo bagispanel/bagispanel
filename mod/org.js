@@ -68,6 +68,12 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
     db.prepare('UPDATE birimler_org SET konum=?, video=?, ad=? WHERE id=?').run(konum || null, c.body.video === undefined ? u.video : (str(c.body.video, 300) || null), c.body.ad === undefined ? u.ad : (str(c.body.ad, 80) || ''), u.id); return [200, { ok: 1 }];
   });
 
+  R('GET', '/api/org/onizleme', 'orgK|orgS|orgD', 'g', async (c) => { // gidecek SMS metni (ilk kişi için örnek)
+    const id = +new URL(c.req.url, 'http://x').searchParams.get('id'), u = db.prepare('SELECT u.*, t.org FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE u.id=?').get(id); if (!u) throw new Err(404, 'Kayıt yok.');
+    const s = db.prepare('SELECT p.*, g.no bno FROM paylar p JOIN bagislar g ON g.id=p.bagis_id WHERE p.birim_id=? ORDER BY p.id').get(id), t = tur(u.tur_id), n = cnt(u); if (!s) return [200, { k: '', g: '' }];
+    const mk = (k) => { const tp = db.prepare('SELECT m FROM sms_sablon WHERE k=?').get(k); return tp ? tp.m.replace(/\{(\w+)\}/g, (_, x) => { const v = { ...msgVars(u, s, t), dernek: getA('dernek_adi', '[Dernek adı]') }; return v[x] !== undefined ? v[x] : '{' + x + '}'; }) : ''; };
+    return [200, { k: mk(T0[u.org]), g: mk(T1[u.org]), kisi: n, ad: s.ad }];
+  });
   R('POST', '/api/org/pay-gonder', 'orgK|orgS|orgD', 'd', async (c) => { // video bağlantısını yalnızca tek kişiye gönder
     const p = db.prepare('SELECT p.*, u.adim, u.video, u.id uid, t.org FROM paylar p JOIN birimler_org u ON u.id=p.birim_id JOIN bagis_turleri t ON t.id=u.tur_id WHERE p.id=?').get(+c.body.id); if (!p) throw new Err(404, 'Kayıt yok.');
     if (!A.can(c.perms, MENU[p.org], 'd')) throw new Err(403, 'Yetkiniz yok.'); if (!p.video) throw new Err(409, 'Önce video bağlayın.'); if (p.adim < 3) throw new Err(409, 'Birim henüz tamamlanmadı.'); if (p.vs) throw new Err(409, 'Bu kişiye zaten gönderildi.');
