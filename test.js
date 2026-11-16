@@ -382,6 +382,28 @@ server.listen(0, async () => {
     assert.equal((await admin('POST', `/api/sp/sponsorluk/${sp.j.id}/iptal`)).s, 200);
     const u = (await mkUser('sponsorsuz1', 'Çağrı merkezi')).q; for (const e of ['ogrenci', 'sponsorluk', 'rapor']) assert.equal((await u('GET', '/api/sp/' + e)).s, 403);
   });
+  await t('sponsorluk: banka hareketi eşleştirme + bağışçı profili özeti', async () => {
+    const hs = (await admin('GET', '/api/banka')).j.hesaplar[0].id;
+    const mkO = async (ad) => (await admin('POST', '/api/sp/ogrenci', { ad, ulke: 'Çad', yetim: true })).j.id;
+    const mkB = async (tel, ad) => (await admin('POST', '/api/bagiscilar', { kod: '+90', tel, ad })).j.id;
+    const o1 = await mkO('Çocuk Bir'), o2 = await mkO('Çocuk İki'), o3 = await mkO('Çocuk Üç');
+    const b1 = await mkB('0536 100 00 01', 'Mehmet Yılmaz'), b2 = await mkB('0536 100 00 02', 'Fatma Öz'), b3 = await mkB('0536 100 00 03', 'Hasan Çelik');
+    const yeni = async (o, b, aylik) => (await admin('POST', '/api/sp/sponsorluk', { ogrenci_id: o, bagisci_id: b, sure: 12, aylik, para: 'TL' })).j.id;
+    const s1 = await yeni(o1, b1, 400), s2 = await yeni(o2, b2, 600), s3 = await yeni(o3, b3, 300);
+    const kod1 = (await admin('GET', '/api/sp/sponsorluk/' + s1)).j.kod; assert.ok(/^SP\d{4}$/.test(kod1));
+    const bugun = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10).split('-').reverse().join('.');
+    const csv = ['Tarih;Açıklama;Gönderen;Tutar', `${bugun};Burs ${kod1};Mehmet Y.;400,00`, `${bugun};EFT;FATMA ÖZ;600,00`, `${bugun};Havale;HASAN ÇELİK;1.500,00`.replace('1.500,00', '250,00'), `${bugun};Maaş;Bilinmeyen Kişi;5.000,00`, `${bugun};Çıkış;X;-100,00`].join('\n');
+    const on = (await admin('POST', '/api/sp/banka/onizle', { metin: csv })).j; assert.equal(on.satirlar.length, 4);
+    assert.equal(on.satirlar[0].sponsorluk_id, s1); assert.equal(on.satirlar[0].guven, 'yuksek'); assert.equal(on.satirlar[1].sponsorluk_id, s2); assert.equal(on.satirlar[1].guven, 'orta');
+    assert.equal(on.satirlar[2].durum, 'belirsiz'); assert.equal(on.satirlar[3].durum, 'yok');
+    assert.equal((await admin('POST', '/api/sp/banka/onizle', { metin: 'bozuk veri\nsatir' })).s, 400);
+    assert.equal((await admin('POST', '/api/sp/banka/onayla', { satirlar: [] })).s, 400);
+    const sec = on.satirlar.filter(x => x.durum === 'eslesti'), ok = (await admin('POST', '/api/sp/banka/onayla', { banka_id: hs, satirlar: sec })).j; assert.equal(ok.islenen, 2);
+    assert.equal((await admin('GET', '/api/sp/sponsorluk/' + s2)).j.odenen, 600);
+    assert.equal((await admin('POST', '/api/sp/banka/onayla', { banka_id: hs, satirlar: sec })).j.atlanan, 2); // aynı hareket ikinci kez işlenmez
+    assert.equal((await admin('POST', '/api/sp/banka/onizle', { metin: csv })).j.satirlar[0].durum, 'tekrar');
+    const pr = (await admin('GET', '/api/sp/bagisci/' + b1)).j; assert.equal(pr.length, 1); assert.ok(pr[0].link && pr[0].kod === kod1);
+  });
   await t('WhatsApp: şablonlu toplu gönderim, webhook imzası, gelen kutusu, 24 saat kuralı', async () => {
     assert.equal((await admin('PUT', '/api/iletisim/ayar', { wa: { phone_id: 'PID', token: 'TOK', app_secret: 'sir', api_url: `http://127.0.0.1:${mport}/v21`, sablonlar: [{ ad: 'Bagis Duyuru', dil: 'tr', govde: 'Merhaba {{1}}', n: 1 }] } })).s, 200);
     const ay = (await admin('GET', '/api/iletisim/ayar')).j.ayar; assert.equal(ay.wa.sablonlar[0].ad, 'bagis_duyuru'); assert.equal(ay.wa.token, '');

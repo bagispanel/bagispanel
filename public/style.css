@@ -100,3 +100,12 @@ th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--ln);font-s
 .ed{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--ln)}.ed .nm{flex:1}
 .ed button.mini{border:1px solid var(--ln);background:var(--bg);color:var(--ink);border-radius:8px;padding:3px 7px;cursor:pointer}
 .hg>div>.card{height:100%}.hg>div:not(.fw)>.card{margin:0}
+
+/* Bağışçı profili */
+.pfh{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.pfav{width:68px;height:68px;border-radius:50%;background:var(--pri);color:#fff;display:grid;place-items:center;font-size:26px;font-weight:800;flex:none}
+.pfid{flex:1;min-width:220px}.pfch{display:flex;gap:6px 16px;flex-wrap:wrap;margin-top:6px;color:var(--mu);font-size:14px}.pfac{display:flex;gap:8px;flex-wrap:wrap}.pfac .btn{text-decoration:none;display:inline-block}
+.pfal{background:var(--bg);border:1px solid var(--wa);border-radius:12px;padding:10px 14px;margin-bottom:12px}
+.pfkr{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}.pfk{background:var(--sf);border-radius:14px;padding:14px 16px;box-shadow:0 1px 6px rgba(0,0,0,.05)}
+.pfv{font-size:24px;font-weight:800;letter-spacing:-.01em;color:var(--pri)}.pfl{font-size:13px;color:var(--mu);margin-top:2px}.pfs{font-size:12px;color:var(--mu)}
+.pftabs{display:flex;gap:4px;border-bottom:2px solid var(--ln);margin-bottom:16px;flex-wrap:wrap}.pftab{background:none;border:0;padding:10px 16px;font:600 15px inherit;font-family:inherit;color:var(--mu);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px}
+.pftab.on{color:var(--pri);border-bottom-color:var(--pri)}.pfn{background:var(--ln);border-radius:99px;padding:1px 8px;font-size:12px;margin-left:4px}.pfc{margin-bottom:0}

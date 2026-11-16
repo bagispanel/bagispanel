@@ -93,3 +93,8 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 - Düzeltme: gece 00:00–03:00 arasında UTC/yerel tarih farkı bazı günlük sayaçları yanlış güne bakıyordu; tüm "bugün" hesapları yerel saate alındı.
 - Menüden çıkınca açık kalan "yeni/düzenle" formları artık kapanıyor.
 - İleride: sponsor portalı (kendi ödemelerini görme/online ödeme), toplu fotoğraf yıllık güncelleme hatırlatması, sertifikanın PDF şablonu, öğrenci transferi (partner değişimi geçmişi), sponsorluk yenileme hatırlatması.
+
+## Bağışçı profili yenilendi + sponsorluk entegrasyonu
+- Profil: baş harfli kart, Ara/WhatsApp/E-posta düğmeleri, özet kutuları, sekmeler (Genel bakış, Bağışlar, Sponsorluk, İletişim izinleri). Sponsorluk sekmesinden: sponsorluk tanımla, detaya git, kart linkini SMS ile gönder, ödeme hatırlatması gönder; gecikme varsa profilin üstünde uyarı çıkar.
+- Her sponsorluğun referans kodu var (SP0001…); sponsora giden SMS'te "havale açıklamasına kodu yazın" der.
+- BANKA HAREKETİ EŞLEŞTİRME: sunucu tarafı HAZIR ve testli (POST /api/sp/banka/onizle ve /onayla: ekstre metninden kod → ad+tutar sırasıyla eşleştirir, aynı hareketi ikinci kez işlemez). Ekranı bilerek YAPILMADI (kullanıcı "daha sonra" dedi). Gerçek banka ekstresi biçimleriyle denenmeli.
