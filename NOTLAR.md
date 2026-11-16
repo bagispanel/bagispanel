@@ -58,3 +58,10 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 - Sistem Ayarları → Şube ve Temsilcilikler. Dernek/Vakıf seçimi, şube/temsilcilik, yurt içi/yurt dışı, resmî bildirim takibi ve uyarılar.
 - DOĞRULANMASI GEREKEN: dernek şube açılış bildirim süresi (30 gün) Kanun md. 23'ten varsayıldı; il sivil toplumla ilişkiler müdürlüğünden teyit edin. Vakıf için 1 ay (VBYS beyannamesi) kaynaktan alındı.
 - İleride: şubeye bağlı kullanıcı/bağış/makbuz bloğu, şube bazlı rapor, şube genel kurul takvimi uyarısı (merkezden 2 ay önce), vakıf şube beyannamesi PDF.
+
+## Raporlama ve Analiz + Kurum Yönetimi (yapıldı)
+- Yeni menü grubu "Raporlama ve Analiz": Bağış Raporları (Bağış Yönetimi'nden taşındı), Dönemsel Karşılaştırma, Bağış Türü Analizi, Bağışçı Analizi, Saha ve Proje Analizi, İletişim Performansı. Yeni sayfalar yalnızca okur; her biri kendi yetki anahtarına bağlı (rkarsi, rtur, rbagisci, rsaha, riletisim).
+- Yeni menü grubu "Kurum Yönetimi": Şube ve Temsilcilikler, Kullanıcı Yönetimi, Birimler ve Yetkiler (Sistem Ayarları'ndan taşındı).
+- Deneme verisi artık son ~11 aya yayılıyor (analizler dolu görünsün diye).
+- Mevcut kurulumlarda yeni analiz yetkileri yalnızca yönetici birimlerine otomatik verilir; diğer birimlere Birimler ve Yetkiler'den açılmalı.
+- İleride: şube bazlı analiz, hedef/gerçekleşen, PDF/Excel dışa aktarım, haftalık e-posta özeti.

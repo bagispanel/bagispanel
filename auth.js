@@ -53,7 +53,7 @@ function seed() {
   const bi = mk('Bilgi işlem', F);
   mk('Başkan', k => ['kullanici', 'birim'].includes(k) ? null : V());
   mk('Çağrı merkezi', k => k === 'alin' ? [1, 1, 0, 0] : ['bekleyen', 'bagisci', 'orgK', 'orgS', 'orgD', 'turler', 'sms'].includes(k) ? V() : k === 'cagri' ? [1, 1, 0, 0] : null);
-  mk('Muhasebe', k => k === 'bekleyen' ? [1, 0, 1, 0] : k === 'banka' ? [1, 1, 1, 0] : ['rapor', 'bagisci'].includes(k) ? V() : null);
+  mk('Muhasebe', k => k === 'bekleyen' ? [1, 0, 1, 0] : k === 'banka' ? [1, 1, 1, 0] : ['rapor', 'rkarsi', 'rtur', 'rbagisci', 'rsaha', 'bagisci'].includes(k) ? V() : null);
   mk('Yurtdışı birimi', k => ['orgK', 'orgS', 'orgD', 'partner', 'ulke'].includes(k) ? [1, 1, 1, 0] : k === 'pdfay' ? [1, 0, 1, 0] : ['numara', 'sablon', 'sms'].includes(k) ? V() : null);
   const pw = process.env.ADMIN_PASSWORD || crypto.randomBytes(6).toString('base64url') + '7a';
   db.prepare('INSERT INTO users(ad,kadi,pass,birim_id,must_change) VALUES(?,?,?,?,1)').run('Yönetici', 'admin', hash(pw), bi);

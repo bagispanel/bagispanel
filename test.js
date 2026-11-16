@@ -311,6 +311,14 @@ server.listen(0, async () => {
     r = (await admin('GET', '/api/sube')).j; const k = r.liste.find(x => x.id === a.id); assert.equal(k.durum, 'Kapalı'); assert.ok(k.kapanis_tarihi); assert.equal(k.uyari.length, 0);
     const u = (await mkUser('subeci1', 'Muhasebe')).q; assert.equal((await u('GET', '/api/sube')).s, 403);
   });
+  await t('raporlama ve analiz: beş analiz uç noktası, yetki', async () => {
+    const k = (await admin('GET', '/api/analiz/karsilastirma')); assert.equal(k.s, 200); assert.equal(k.j.seri.length, 13); assert.ok('aylik' in k.j.degisim && k.j.haftaninGunu.length === 7);
+    const tr = (await admin('GET', '/api/analiz/tur')).j; assert.ok(Array.isArray(tr.kategori) && tr.aylar.length === 6);
+    const b = (await admin('GET', '/api/analiz/bagisci')).j; assert.ok(b.seri.length === 12 && b.bant.length === 5 && 'g90' in b.pasif);
+    const sa = (await admin('GET', '/api/analiz/saha')); assert.equal(sa.s, 200); assert.ok(Array.isArray(sa.j.org));
+    const il = (await admin('GET', '/api/analiz/iletisim')); assert.equal(il.s, 200); assert.ok('ret' in il.j && 'wa' in il.j);
+    const u = (await mkUser('analizci1', 'Çağrı merkezi')).q; for (const e of ['karsilastirma', 'tur', 'bagisci', 'saha', 'iletisim']) assert.equal((await u('GET', '/api/analiz/' + e)).s, 403);
+  });
   await t('WhatsApp: şablonlu toplu gönderim, webhook imzası, gelen kutusu, 24 saat kuralı', async () => {
     assert.equal((await admin('PUT', '/api/iletisim/ayar', { wa: { phone_id: 'PID', token: 'TOK', app_secret: 'sir', api_url: `http://127.0.0.1:${mport}/v21`, sablonlar: [{ ad: 'Bagis Duyuru', dil: 'tr', govde: 'Merhaba {{1}}', n: 1 }] } })).s, 200);
     const ay = (await admin('GET', '/api/iletisim/ayar')).j.ayar; assert.equal(ay.wa.sablonlar[0].ad, 'bagis_duyuru'); assert.equal(ay.wa.token, '');

@@ -29,6 +29,8 @@ module.exports = function (ctx) {
     }
   });
   db.exec("UPDATE bagislar SET tarih=date('now','-' || (30 + (id*37)%420) || ' day') WHERE bagisci_id%6=0");
+  db.exec("UPDATE bagislar SET tarih=date('now','-' || ((id*29)%330) || ' day') WHERE bagisci_id%6<>0 AND id%7<>0");
+  db.exec('UPDATE paylar SET tarih=(SELECT tarih FROM bagislar WHERE bagislar.id=paylar.bagis_id) WHERE EXISTS(SELECT 1 FROM bagislar WHERE bagislar.id=paylar.bagis_id)');
   console.log(`Deneme verisi yüklendi: ${sayi} bağış.`); return sayi;
   };
   if (process.env.DEMO !== '1') return;
