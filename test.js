@@ -186,5 +186,12 @@ server.listen(0, async () => {
   await t('organizasyon: gidecek SMS önizlemesi', async () => {
     const u = (await admin('GET', '/api/org/kurban')).j.liste[0]; const p = (await admin('GET', '/api/org/onizleme?id=' + u.id)).j; assert.ok(p.k.length > 10 && p.g.length > 10);
   });
+  await t('isimler organizasyona yansır: kutu isimleri, boş kutu varsayılan isim, sahip numarası', async () => {
+    const k = await turId('Akika · hisseli');
+    const r = await bag({ tur_id: k, adet: 5, tel: '541 300 80 00', ad: 'Sahip Kisi', names: [{ n: 'Ali A' }, { n: 'Veli B', ph: '541 300 80 99' }, { n: '' }, { n: 'Cem C' }, { n: '' }] }); assert.equal(r.s, 201);
+    const L = (await admin('GET', '/api/org/kurban?q=Sahip Kisi')).j.liste; const ad = L.flatMap(u => u.paylar).filter(p => p.bagisci === 'Sahip Kisi').map(p => p.ad).sort();
+    assert.deepEqual(ad, ['Ali A', 'Cem C', 'Sahip Kisi', 'Sahip Kisi', 'Veli B']); assert.ok(L.flatMap(u => u.paylar).every(p => /^KS-/.test(p.no)));
+    const k2 = await turId('Akika · küçükbaş'); await bag({ tur_id: k2, tel: '541 300 80 10', ad: 'Koyun Sahibi', hy: 'Koyun' }); assert.equal((await admin('GET', '/api/org/kurban?q=Koyun Sahibi')).j.liste[0].hayvan, 'Koyun');
+  });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });

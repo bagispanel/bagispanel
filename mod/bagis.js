@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS kn_sayac(k TEXT PRIMARY KEY, n INTEGER NOT NULL);`);
   const sum = (u) => (db.prepare('SELECT COALESCE(SUM(tutar),0) s FROM paylar WHERE birim_id=?').get(u.id).s) + (u.devir || 0);
   function doldu(u) { const dt = dtGet(u); dt[1] = iso(); dtSet(u.id, dt); db.prepare('UPDATE birimler_org SET adim=1 WHERE id=?').run(u.id); }
   function yerlestir(d) {
-    const t = tur(d.tur_id), o = d.secenek || {}, ph = d.adina_tel || d.tel, nameS = d.adina_ad || d.ad, fon = t.k && t.k.bicim === 'Fon', pay = t.fiyat || 0;
+    const t = tur(d.tur_id), o = typeof d.secenek === 'string' ? JSON.parse(d.secenek || '{}') : (d.secenek || {}), ph = d.adina_tel || d.tel, nameS = d.adina_ad || d.ad, fon = t.k && t.k.bicim === 'Fon', pay = t.fiyat || 0;
     const bos = (id) => db.prepare('SELECT * FROM birimler_org WHERE tur_id=? AND adim=0').all(id).filter(u => cnt(u) < u.cap);
     if (fon) {
       let u = db.prepare('SELECT * FROM birimler_org WHERE tur_id=? AND adim=0').get(t.id);
@@ -157,6 +157,7 @@ CREATE TABLE IF NOT EXISTS kn_sayac(k TEXT PRIMARY KEY, n INTEGER NOT NULL);`);
     }
   }
   function onayla(d, user) {
+    if (typeof d.secenek === 'string') d.secenek = JSON.parse(d.secenek || '{}');
     const t = tur(d.tur_id), v = { ad: d.ad, tur: t.ad, bno: d.no };
     sms('kabul', v, d.ad, user); if (t.sertifika) sms('sertifika', { ...v, link: 'https://…/sertifika/' + d.no }, d.ad, user);
     if (t.org !== 'Genel') yerlestir(d); kfix();
