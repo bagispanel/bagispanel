@@ -17,9 +17,9 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   function yukle(org, p) {
     const q = nm(p.get('q')), qd = q.replace(/\D/g, '');
     const rows = db.prepare('SELECT u.*, t.ad turad, t.kat, t.org, t.seri, t.kuyu kj FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org=? ORDER BY u.id DESC').all(org);
-    const pays = db.prepare('SELECT p.*, g.no bno, b.ad bad, b.tel btel FROM paylar p JOIN bagislar g ON g.id=p.bagis_id JOIN bagiscilar b ON b.id=g.bagisci_id WHERE p.birim_id IN (SELECT u.id FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org=?)').all(org);
+    const pays = db.prepare('SELECT p.*, g.no bno, g.bagisci_id, b.ad bad, b.tel btel FROM paylar p JOIN bagislar g ON g.id=p.bagis_id JOIN bagiscilar b ON b.id=g.bagisci_id WHERE p.birim_id IN (SELECT u.id FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org=?)').all(org);
     const by = {}; pays.forEach(x => (by[x.birim_id] = by[x.birim_id] || []).push(x));
-    let L = rows.map(u => { const k = u.kj ? JSON.parse(u.kj) : null; return { id: u.id, tur_id: u.tur_id, tur: u.turad, kat: u.kat, kod: u.kod, ad: u.ad, cap: u.cap, adim: u.adim, sts: sts(u), ulke: u.ulke, partner: u.partner, hayvan: u.hayvan, hedef: u.hedef, devir: u.devir, tas: u.tas, solo: !!u.solo, kn: u.kn, kno: knoOf(u), ks: u.ks, konum: u.konum, video: u.video, pl: u.pl, dt: dtGet(u), ni: org === 'Kurban' ? u.seri : (k ? k.tip : u.turad), bicim: k ? k.bicim : '', paylar: (by[u.id] || []).map(x => ({ id: x.id, no: x.no, ad: x.ad, tel: x.tel, tarih: x.tarih, tutar: x.tutar, vs: x.vs, bno: x.bno, bagisci: x.bad })), toplam: (by[u.id] || []).reduce((a, x) => a + (x.tutar || 0), 0) + (u.devir || 0) }; });
+    let L = rows.map(u => { const k = u.kj ? JSON.parse(u.kj) : null; return { id: u.id, tur_id: u.tur_id, tur: u.turad, kat: u.kat, kod: u.kod, ad: u.ad, cap: u.cap, adim: u.adim, sts: sts(u), ulke: u.ulke, partner: u.partner, hayvan: u.hayvan, hedef: u.hedef, devir: u.devir, tas: u.tas, solo: !!u.solo, kn: u.kn, kno: knoOf(u), ks: u.ks, konum: u.konum, video: u.video, pl: u.pl, dt: dtGet(u), ni: org === 'Kurban' ? u.seri : (k ? k.tip : u.turad), bicim: k ? k.bicim : '', paylar: (by[u.id] || []).map(x => ({ bagisci_id: x.bagisci_id, id: x.id, no: x.no, ad: x.ad, tel: x.tel, tarih: x.tarih, tutar: x.tutar, vs: x.vs, bno: x.bno, bagisci: x.bad })), toplam: (by[u.id] || []).reduce((a, x) => a + (x.tutar || 0), 0) + (u.devir || 0) }; });
     const cnts = [0, 0, 0, 0, 0, 0]; L.forEach(u => cnts[u.sts]++);
     const f = (k, v) => v && v !== 'Tümü';
     if (f(0, p.get('hy')) && p.get('hy') === 'Büyükbaş') L = L.filter(u => u.cap > 1); if (p.get('hy') === 'Küçükbaş') L = L.filter(u => u.cap === 1 && (!f(0, p.get('hs')) || u.hayvan === p.get('hs')));
@@ -30,8 +30,10 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
     if (q) L = L.filter(u => nm(u.ad).includes(q) || nm(u.kod).includes(q) || (u.kn && qd && String(u.kn) === qd) || u.paylar.some(s => nm(s.ad).includes(q) || nm(s.no).includes(q) || nm(s.bagisci).includes(q) || nm(s.bno).includes(q) || (qd.length >= 3 && (s.tel || '').replace(/\D/g, '').includes(qd))));
     if (p.get('tur')) L = L.filter(u => u.tur_id === +p.get('tur'));
     const tab = p.get('tab'); if (tab !== null && tab !== '' && +tab >= 0) L = L.filter(u => u.sts === +tab);
+    const dg = {}; L.forEach(u => { if (!u.ulke) return; const k = u.ulke + ' · ' + (u.partner || 'kurum atanmamış'); const x = dg[k] = dg[k] || { k, b: 0, kb: 0, t: 0 }; x.t += u.toplam; if (org === 'Kurban') { if (u.cap > 1) x.b++; else x.kb++; } else x.b++; });
+    L.forEach(u => { u.son = u.paylar.reduce((m, s) => s.tarih > m ? s.tarih : m, ''); });
     const pg = Math.max(0, +p.get('pg') || 0), toplam = L.length, ids = L.map(u => u.id);
-    return { liste: L.slice(pg * 25, pg * 25 + 25), toplam, ids: ids.slice(0, 5000), sayac: cnts, ozet: { birim: rows.length, dolu: L.length ? rows.filter(u => cnt(u) >= u.cap || u.adim >= 1).length : 0, hisse: pays.length } };
+    return { dagilim: Object.values(dg), liste: L.slice(pg * 25, pg * 25 + 25), toplam, ids: ids.slice(0, 5000), sayac: cnts, ozet: { birim: rows.length, dolu: L.length ? rows.filter(u => cnt(u) >= u.cap || u.adim >= 1).length : 0, hisse: pays.length } };
   }
   Object.entries(ORGS).forEach(([k, org]) => R('GET', '/api/org/' + k, MENU[org], 'g', async (c) => [200, yukle(org, new URL(c.req.url, 'http://x').searchParams)]));
 
@@ -63,9 +65,15 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   R('PUT', '/api/org/birim/:id', 'orgK|orgS|orgD', 'd', async (c) => {
     const u = db.prepare('SELECT u.*, t.org FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE u.id=?').get(+c.m[1]); if (!u) throw new Err(404, 'Kayıt yok.'); if (!A.can(c.perms, MENU[u.org], 'd')) throw new Err(403, 'Yetkiniz yok.');
     const konum = str(c.body.konum, 300); if (konum && !/^https?:\/\//i.test(konum) && !/^-?\d{1,3}(\.\d+)?\s*[, ]\s*-?\d{1,3}(\.\d+)?$/.test(konum)) throw new Err(400, 'Konum bir harita bağlantısı ya da “enlem, boylam” olmalı.');
-    db.prepare('UPDATE birimler_org SET konum=?, video=? WHERE id=?').run(konum || null, c.body.video === undefined ? u.video : (str(c.body.video, 300) || null), u.id); return [200, { ok: 1 }];
+    db.prepare('UPDATE birimler_org SET konum=?, video=?, ad=? WHERE id=?').run(konum || null, c.body.video === undefined ? u.video : (str(c.body.video, 300) || null), c.body.ad === undefined ? u.ad : (str(c.body.ad, 80) || ''), u.id); return [200, { ok: 1 }];
   });
 
+  R('POST', '/api/org/pay-gonder', 'orgK|orgS|orgD', 'd', async (c) => { // video bağlantısını yalnızca tek kişiye gönder
+    const p = db.prepare('SELECT p.*, u.adim, u.video, u.id uid, t.org FROM paylar p JOIN birimler_org u ON u.id=p.birim_id JOIN bagis_turleri t ON t.id=u.tur_id WHERE p.id=?').get(+c.body.id); if (!p) throw new Err(404, 'Kayıt yok.');
+    if (!A.can(c.perms, MENU[p.org], 'd')) throw new Err(403, 'Yetkiniz yok.'); if (!p.video) throw new Err(409, 'Önce video bağlayın.'); if (p.adim < 3) throw new Err(409, 'Birim henüz tamamlanmadı.'); if (p.vs) throw new Err(409, 'Bu kişiye zaten gönderildi.');
+    const uu = db.prepare('SELECT * FROM birimler_org WHERE id=?').get(p.uid), t = tur(uu.tur_id), s = db.prepare('SELECT p.*, g.no bno FROM paylar p JOIN bagislar g ON g.id=p.bagis_id WHERE p.id=?').get(p.id);
+    ctx.sms(T1[p.org], msgVars(uu, s, t), s.ad, c.user.kadi); db.prepare('UPDATE paylar SET vs=? WHERE id=?').run(iso(), p.id); return [200, { ok: 1 }];
+  });
   // ---- numaralandırma
   R('GET', '/api/numara', 'numara', 'g', async () => {
     const mx = (k) => db.prepare('SELECT COALESCE(MAX(kn),0) m FROM birimler_org WHERE ks=?').get(k).m;

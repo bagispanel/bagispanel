@@ -27,9 +27,10 @@ CREATE TABLE IF NOT EXISTS bagis_turleri(
     const g = db.prepare("INSERT INTO bagis_turleri(kat,ad) VALUES('Genel bağış',?)"); ['Fitre', 'Zekât', 'Sadaka'].forEach(x => g.run(x));
     const k = db.prepare("INSERT INTO bagis_turleri(kat,ad,org,cap,fiyat,birim,tam,seri) VALUES('Kurban',?,'Kurban',?,?,?,?,?)");
     [['Vacip', 'Vacip'], ['Adak', 'Adak'], ['Akika', 'Akika']].forEach(([tur]) => { k.run(`${tur} · hisseli büyükbaş`, 7, 4000, 'Grup', 0, tur); k.run(`${tur} · küçükbaş`, 1, 7000, 'Kurban', 0, tur); });
-    k.run('Tam büyükbaş (7 isim)', 7, 4000, 'Grup', 1, 'Tam büyükbaş');
+    ['Vacip', 'Adak', 'Akika'].forEach(tur => k.run(`${tur} · tam büyükbaş`, 7, 4000, 'Grup', 1, tur));
   }
 
+  db.prepare("UPDATE bagis_turleri SET ad='Vacip · tam büyükbaş', seri='Vacip' WHERE ad='Tam büyükbaş (7 isim)' AND NOT EXISTS(SELECT 1 FROM bagis_turleri WHERE ad='Vacip · tam büyükbaş')").run();
   // ---- ülkeler
   R('GET', '/api/ulkeler', 'ulke|orgK|orgS|orgD|turler', 'g', async () => [200, db.prepare('SELECT * FROM ulkeler ORDER BY ad').all().map(u => ({ ...u, kullanim: used('ulke', u.ad) }))]);
   R('POST', '/api/ulkeler', 'ulke', 'e', async (c) => {
@@ -133,10 +134,10 @@ CREATE TABLE IF NOT EXISTS bagis_turleri(
     } else if (sec === 'kurban') {
       const hv = b.hayvan, kt = str(b.tur, 40), p = num(b.fiyat) || 0, tam = hv === 'tam', kucuk = hv === 'kucuk';
       if (!['hisse', 'kucuk', 'tam'].includes(hv)) throw new Err(400, 'Hayvan seçin.');
-      if (!tam && !kt) throw new Err(400, 'Kurban türünü yazın (Vacip, Adak, Akika…).');
+      if (!kt) throw new Err(400, 'Kurban türünü yazın (Vacip, Adak, Akika…).');
       if (!p) throw new Err(400, 'Bedeli girin.');
-      const s = tam ? 'Tam büyükbaş (7 isim)' : `${kt} · ${kucuk ? 'küçükbaş' : 'hisseli büyükbaş'}`;
-      o = { kat: 'Kurban', ad: s, org: 'Kurban', cap: kucuk ? 1 : 7, fiyat: p, birim: kucuk ? 'Kurban' : 'Grup', tam: tam ? 1 : 0, seri: tam ? 'Tam büyükbaş' : kt };
+      const s = `${kt} · ${tam ? 'tam büyükbaş' : kucuk ? 'küçükbaş' : 'hisseli büyükbaş'}`;
+      o = { kat: 'Kurban', ad: s, org: 'Kurban', cap: kucuk ? 1 : 7, fiyat: p, birim: kucuk ? 'Kurban' : 'Grup', tam: tam ? 1 : 0, seri: kt };
     } else {
       const kat = str(b.kat, 60), ad = str(b.ad, 80), vb = !!b.videolu;
       if (!db.prepare('SELECT 1 FROM kategoriler WHERE ad=?').get(kat)) throw new Err(400, 'Ana kategori bulunamadı.');

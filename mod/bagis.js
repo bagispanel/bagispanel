@@ -74,9 +74,18 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
   // ---- bağışçılar
   R('GET', '/api/bagiscilar', 'bagisci|alin', 'g', async (c) => {
     const q = nm(new URL(c.req.url, 'http://x').searchParams.get('q')), qd = q.replace(/\D/g, '');
-    const L = db.prepare(`SELECT b.*, COUNT(g.id) adet, COALESCE(SUM(CASE WHEN g.durum='Onaylı' THEN g.tl END),0) toplam FROM bagiscilar b LEFT JOIN bagislar g ON g.bagisci_id=b.id GROUP BY b.id ORDER BY b.id DESC`).all()
+    const L = db.prepare(`SELECT b.*, COUNT(g.id) adet, MAX(CASE WHEN g.durum='Onaylı' THEN g.tarih END) son, COALESCE(SUM(CASE WHEN g.durum='Onaylı' THEN g.tl END),0) toplam FROM bagiscilar b LEFT JOIN bagislar g ON g.bagisci_id=b.id GROUP BY b.id ORDER BY b.id DESC`).all()
       .filter(x => !q || nm(x.ad).includes(q) || (qd.length >= 3 && x.tel.replace(/\D/g, '').includes(qd)));
     return [200, L.slice(0, 500)];
+  });
+  R('GET', '/api/bagiscilar/:id', 'bagisci', 'g', async (c) => {
+    const b = db.prepare('SELECT * FROM bagiscilar WHERE id=?').get(+c.m[1]); if (!b) throw new Err(404, 'Bağışçı yok.');
+    const L = db.prepare(SEL + ' WHERE g.bagisci_id=? ORDER BY g.tl DESC, g.id DESC').all(b.id).map(bagisSatir), ok = L.filter(x => x.durum === 'Onaylı');
+    const sayi = (org) => db.prepare(`SELECT COUNT(DISTINCT p.birim_id) u, COUNT(*) h, COUNT(DISTINCT CASE WHEN u.adim>=3 THEN p.birim_id END) t FROM paylar p JOIN birimler_org u ON u.id=p.birim_id JOIN bagis_turleri t ON t.id=u.tur_id JOIN bagislar g ON g.id=p.bagis_id WHERE g.bagisci_id=? AND g.durum='Onaylı' AND t.org=?`).get(b.id, org);
+    const son = ok.reduce((m, x) => x.tarih > m ? x.tarih : m, ''), ilk = ok.reduce((m, x) => !m || x.tarih < m ? x.tarih : m, '');
+    const gun = son ? Math.floor((Date.now() - new Date(son).getTime()) / 864e5) : null;
+    const kat = {}; ok.forEach(x => kat[x.kat] = (kat[x.kat] || 0) + x.tl);
+    return [200, { bagisci: b, bagislar: L, enyuksek: ok.slice().sort((x, y) => y.tl - x.tl)[0] || null, toplam: ok.reduce((a, x) => a + x.tl, 0), adet: ok.length, bekleyen: L.filter(x => x.durum === 'Bekleyen').length, iptal: L.filter(x => x.durum === 'İptal').length, ilk, son, gun, kategori: kat, kurban: sayi('Kurban'), kuyu: sayi('Su kuyusu'), video: sayi('Diğer') }];
   });
   R('GET', '/api/bagiscilar/ara', 'alin', 'g', async (c) => { // telefondan kayıtlı bağışçıyı bul
     const t = new URL(c.req.url, 'http://x').searchParams; let tel; try { tel = normPh(t.get('kod'), t.get('tel')); } catch (e) { return [200, null]; }
@@ -155,7 +164,8 @@ CREATE TABLE IF NOT EXISTS kn_sayac(k TEXT PRIMARY KEY, n INTEGER NOT NULL);`);
   ctx.onayla = onayla;
 
   // ---- bağış alma
-  const bagisSatir = (r) => ({ id: r.id, no: r.no, tel: r.tel, ad: r.ad, tur_id: r.tur_id, tur: r.turad, kat: r.kat, org: r.org, adet: r.adet, para: r.para, tutar: r.tutar, tl: r.tl, kendi: !!r.kendi, adina_ad: r.adina_ad, adina_tel: r.adina_tel, notu: r.notu, odeme: r.odeme, banka: bankaAd(r.banka_id), durum: r.durum, tarih: r.tarih, kaynak: r.kaynak, xid: r.xid, iptal_sebep: r.iptal_sebep, iptal_tarih: r.iptal_tarih, adlar: (JSON.parse(r.secenek || '{}').names || []).map(x => x.n) });
+  const bankaIban = (id) => { const b = id && db.prepare('SELECT * FROM banka_hesaplari WHERE id=?').get(id); return b ? b.iban : ''; };
+  const bagisSatir = (r) => ({ id: r.id, bagisci_id: r.bagisci_id, iban: bankaIban(r.banka_id), no: r.no, tel: r.tel, ad: r.ad, tur_id: r.tur_id, tur: r.turad, kat: r.kat, org: r.org, adet: r.adet, para: r.para, tutar: r.tutar, tl: r.tl, kendi: !!r.kendi, adina_ad: r.adina_ad, adina_tel: r.adina_tel, notu: r.notu, odeme: r.odeme, banka: bankaAd(r.banka_id), durum: r.durum, tarih: r.tarih, kaynak: r.kaynak, xid: r.xid, iptal_sebep: r.iptal_sebep, iptal_tarih: r.iptal_tarih, adlar: (JSON.parse(r.secenek || '{}').names || []).map(x => x.n) });
   const SEL = `SELECT g.*, b.ad ad, b.tel tel, t.ad turad, t.kat kat, t.org org FROM bagislar g JOIN bagiscilar b ON b.id=g.bagisci_id JOIN bagis_turleri t ON t.id=g.tur_id`;
   function bagisOlustur(b, user, kaynak, xid, req) {
     const tel = normPh(b.kod, b.tel), ad = str(b.ad, 80); if (!ad) throw new Err(400, 'Ad soyad zorunlu.');
@@ -166,10 +176,13 @@ CREATE TABLE IF NOT EXISTS kn_sayac(k TEXT PRIMARY KEY, n INTEGER NOT NULL);`);
     const fon = t.k && t.k.bicim === 'Fon', org = t.org !== 'Genel';
     const kendi = !b.baskasi; // “başkası adına” işaretlenmediyse bağış sahibi bağışçının kendisidir
     const o = { hy: ['Koç', 'Koyun'].includes(b.hy) ? b.hy : 'Koç', solo: !!b.solo && t.k && ['Hisseli', 'Katılım'].includes(t.k.bicim), grp: +b.grp || 0 };
-    let names = []; const useNames = t.tam || !!b.each;
+    const raw = Array.isArray(b.names) ? b.names : String(b.liste || '').split('\n').map(x => x.trim()).filter(Boolean).map(l => { const m = l.split(/[,;\t]/); return { n: m[0], ph: m[1] }; });
+    const useNames = t.tam || raw.some(x => x && str(x.n, 80));
     if (useNames) {
-      names = String(b.liste || '').split('\n').map(x => x.trim()).filter(Boolean).map(l => { const m = l.split(/[,;\t]/); let ph = ''; if (m[1] && m[1].trim()) { try { ph = normPh('+90', m[1]); } catch (e) { throw new Err(400, 'Bir satırdaki telefon hatalı: ' + m[0].trim()); } } return { n: str(m[0], 80), ph }; });
-      if (names.length !== (t.tam ? 7 : q)) throw new Err(400, t.tam ? 'Tam büyükbaş için 7 isim girin (her satıra bir isim).' : `${q} adet için ${q} isim girin (şu an ${names.length}).`);
+      const dflt = kendi ? ad : (str(b.adina_ad, 80) || ad), need = t.tam ? 7 : q;
+      if (t.tam && raw.filter(x => x && str(x.n, 80)).length !== 7) throw new Err(400, 'Tam büyükbaş için 7 ismin hepsini yazın.');
+      if (raw.length > need) throw new Err(400, `En fazla ${need} isim girilebilir.`);
+      const names = []; for (let i = 0; i < need; i++) { const x = raw[i] || {}; let ph = ''; if (x.ph && String(x.ph).trim()) { try { ph = normPh('+90', x.ph); } catch (e) { throw new Err(400, `${i + 1}. kişinin telefonu hatalı.`); } } names.push({ n: str(x.n, 80) || dflt, ph }); }
       o.names = names;
     }
     let adinaAd = null, adinaTel = null;
@@ -195,6 +208,7 @@ CREATE TABLE IF NOT EXISTS kn_sayac(k TEXT PRIMARY KEY, n INTEGER NOT NULL);`);
     const K = db.prepare("SELECT t.kat k, SUM(g.tl) s FROM bagislar g JOIN bagis_turleri t ON t.id=g.tur_id WHERE g.durum='Onaylı' GROUP BY t.kat").all();
     return [200, { liste: L, toplam: S, kategori: K }];
   });
+  R('GET', '/api/bagislar/:id', 'rapor|bekleyen|alin', 'g', async (c) => { const r = db.prepare(SEL + ' WHERE g.id=?').get(+c.m[1]); if (!r) throw new Err(404, 'Bağış yok.'); return [200, { ...bagisSatir(r), dernek: dernek() }]; });
   R('POST', '/api/bagislar/onayla', 'bekleyen', 'd', async (c) => {
     const ids = (Array.isArray(c.body.ids) ? c.body.ids : []).map(Number).filter(Boolean); if (!ids.length) throw new Err(400, 'Onaylanacak bağışı seçin.');
     return tx(() => { let n = 0; for (const id of ids) { const d = db.prepare(SEL + " WHERE g.id=? AND g.durum='Bekleyen'").get(id); if (!d) continue; db.prepare("UPDATE bagislar SET durum='Onaylı' WHERE id=?").run(id); d.durum = 'Onaylı'; onayla(d, c.user.kadi); n++; } A.audit(c.user, 'bagis_onay', n + ' bağış', ip(c.req)); return [200, { n }]; });
