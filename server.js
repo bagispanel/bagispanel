@@ -129,7 +129,7 @@ R('DELETE', '/api/users/:id', 'kullanici', 's', async (c) => {
 R('GET', '/api/users/:id/yetki', 'kullanici', 'g', async (c) => {
   const id = +c.m[1]; if (!db.prepare('SELECT 1 FROM users WHERE id=?').get(id)) throw new Err(404, 'Kullanıcı yok.');
   const o = {}; db.prepare('SELECT * FROM user_yetki WHERE user_id=?').all(id).forEach(r => o[r.menu] = { g: r.g, e: r.e, d: r.d, s: r.s });
-  return [200, { ozel: o, etkin: A.effective(id) }];
+  const bm = {}; db.prepare('SELECT yb.* FROM birim_yetki yb JOIN users u ON u.birim_id=yb.birim_id WHERE u.id=?').all(id).forEach(r => bm[r.menu] = { g: r.g, e: r.e, d: r.d, s: r.s }); return [200, { ozel: o, etkin: A.effective(id), birim: bm }];
 });
 R('PUT', '/api/users/:id/yetki', 'kullanici', 'd', async (c) => {
   const id = +c.m[1], t = db.prepare('SELECT * FROM users WHERE id=?').get(id); if (!t) throw new Err(404, 'Kullanıcı yok.');
@@ -152,7 +152,7 @@ R('POST', '/api/birimler', 'birim', 'e', async (c) => {
   return tx(() => {
     const id = +db.prepare('INSERT INTO birimler(ad) VALUES(?)').run(ad).lastInsertRowid;
     const kop = +c.body.kopya_id, ins = db.prepare('INSERT INTO birim_yetki(birim_id,menu,g,e,d,s) VALUES(?,?,?,?,?,?)');
-    const src = {}; if (kop) db.prepare('SELECT * FROM birim_yetki WHERE birim_id=?').all(kop).forEach(r => src[r.menu] = r);
+    const src = {}; if (kop === -1) A.KEYS.forEach(k => src[k] = { g: 1, e: 1, d: 1, s: 1 }); else if (kop > 0) db.prepare('SELECT * FROM birim_yetki WHERE birim_id=?').all(kop).forEach(r => src[r.menu] = r);
     const p = normPerm(src); grantCheck(c.user, normPerm({}), p);
     A.KEYS.forEach(k => ins.run(id, k, p[k].g, p[k].e, p[k].d, p[k].s));
     A.audit(c.user, 'birim_eklendi', ad, ip(c.req)); return [201, { id }];
@@ -183,7 +183,7 @@ R('GET', '/api/audit', 'denetim', 'g', async () => [200, db.prepare('SELECT * FR
 
 // ---- modüller (her biri kendi tablolarını ve uçlarını tanımlar)
 const ctx = { R, Err, A, db, tx, str, ip, usage: { ulke: [], partner: [], banka: [], tur: [] }, used: (k, v) => ctx.usage[k].reduce((n, f) => n + f(v), 0) };
-['ayarlar', 'bagis', 'org', 'ana', 'iletisim', 'demo'].forEach(m => require('./mod/' + m)(ctx));
+['ayarlar', 'bagis', 'org', 'ana', 'iletisim', 'calisma', 'demo'].forEach(m => require('./mod/' + m)(ctx));
 
 // ---- sunucu
 const server = http.createServer(async (req, res) => {

@@ -47,3 +47,9 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 - Aramayı başlatma: şimdilik `tel:` bağlantısı (cihazdaki telefon/softphone). Santral webhook'u: İletişim Ayarları → Çağrı merkezi (POST JSON + anahtar). Gerçek santralle (3CX/Asterisk/Netgsm santral) DENENMEDİ.
 - Bağışçı profilinde "SMS istemiyor" ve "Aranmak istemiyor" düğmeleri; toplu gönderimde istemeyenler numarasız ayrı listede görünür.
 - İleride: tarayıcıdan tek tıkla arama (santral click-to-call API'si), gelen arama açılır penceresi, ses kaydı oynatma, ağırlıklı aranacak sıra.
+
+## Profilim (yapıldı)
+- Yan menüde herkese açık "Profilim" grubu: Profil Bilgilerim, Şifre ve Güvenlik, Mesaj Merkezi (iç mesajlaşma), Görev Takibi. Yetki gerektirmez; herkes yalnızca kendi mesaj/görevini görür.
+- Görev atanınca kişiye Mesaj Merkezi'nden bildirim gider; tamamlanınca atayana bildirim gider. Menüde rozet sayıları var.
+- Yetki ekranları: yeni birim varsayılan olarak tüm yetkiler açık; kişi yetkileri artık dolu/boş kutu (birimden farklı olanlar turuncu çerçeveli).
+- İleride: mesajlara dosya eki, görev yorumları, e-posta/WhatsApp ile görev bildirimi.

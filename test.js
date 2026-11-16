@@ -273,6 +273,28 @@ server.listen(0, async () => {
     const k = (await admin('GET', '/api/cagri/kayit')).j; assert.ok(k.find(x => x.kaynak === 'santral' && x.sonuc === 'Cevapsız' && x.bagisci_id === b2.id));
     assert.equal((await admin('GET', '/api/cagri/ozet')).j.cevapsiz >= 1, true);
   });
+  await t('Profilim: iç mesajlaşma ve görev takibi', async () => {
+    const u1 = (await mkUser('mesajci1', 'Muhasebe')).q, u2 = (await mkUser('mesajci2', 'Muhasebe')).q;
+    const k = (await u1('GET', '/api/profil/kisiler')).j; const hedef = k.find(x => x.ad === 'mesajci2'); assert.ok(hedef);
+    assert.equal((await u1('POST', '/api/mesaj', { alici_id: hedef.id, konu: '', govde: 'x' })).s, 400);
+    const m = (await u1('POST', '/api/mesaj', { alici_id: hedef.id, konu: 'Merhaba', govde: 'Toplantı saat 3' })).j;
+    assert.equal((await u2('GET', '/api/profil/ozet')).j.mesaj, 1);
+    assert.equal((await u2('GET', '/api/mesaj?kutu=gelen')).j.length, 1);
+    assert.equal((await admin('GET', '/api/mesaj/' + m.id)).s, 404); // üçüncü kişi okuyamaz
+    const d = (await u2('GET', '/api/mesaj/' + m.id)).j; assert.equal(d.dizi.length, 1); assert.equal((await u2('GET', '/api/profil/ozet')).j.mesaj, 0);
+    assert.equal((await u2('POST', '/api/mesaj', { ust_id: m.id, govde: 'Tamam' })).s, 200); assert.equal((await u1('GET', '/api/mesaj/' + m.id)).j.dizi.length, 2);
+    const g = (await u1('POST', '/api/gorev', { baslik: 'Raporu hazırla', atanan_id: hedef.id, son_tarih: '2020-01-01', oncelik: 'Yüksek' })).j;
+    const o = (await u2('GET', '/api/profil/ozet')).j; assert.equal(o.gorev, 1); assert.equal(o.geciken, 1); assert.ok(o.mesaj >= 1); // atama bildirimi
+    assert.equal((await u2('GET', '/api/gorev?kutu=bana')).j.length, 1);
+    assert.equal((await admin('PUT', '/api/gorev/' + g.id, { durum: 'Tamamlandı' })).s, 404);
+    assert.equal((await u2('PUT', '/api/gorev/' + g.id, { durum: 'Tamamlandı' })).s, 200); assert.equal((await u2('GET', '/api/profil/ozet')).j.gorev, 0);
+    assert.equal((await u2('DELETE', '/api/gorev/' + g.id)).s, 404); assert.equal((await u1('DELETE', '/api/gorev/' + g.id)).s, 200);
+  });
+  await t('yetki: yeni birim varsayılan tam açık, kişi yetkisinde birim değerleri döner', async () => {
+    const r = await admin('POST', '/api/birimler', { ad: 'Tam Yetkili Birim', kopya_id: -1 }); assert.equal(r.s, 201);
+    const y = (await admin('GET', '/api/birimler/' + r.j.id + '/yetki')).j; assert.ok(Object.values(y).every(p => p.g && p.e && p.d && p.s));
+    const uid = (await admin('GET', '/api/users')).j.find(x => x.kadi === 'mesajci1').id; const yy = (await admin('GET', `/api/users/${uid}/yetki`)).j; assert.ok(yy.birim && yy.birim.rapor);
+  });
   await t('WhatsApp: şablonlu toplu gönderim, webhook imzası, gelen kutusu, 24 saat kuralı', async () => {
     assert.equal((await admin('PUT', '/api/iletisim/ayar', { wa: { phone_id: 'PID', token: 'TOK', app_secret: 'sir', api_url: `http://127.0.0.1:${mport}/v21`, sablonlar: [{ ad: 'Bagis Duyuru', dil: 'tr', govde: 'Merhaba {{1}}', n: 1 }] } })).s, 200);
     const ay = (await admin('GET', '/api/iletisim/ayar')).j.ayar; assert.equal(ay.wa.sablonlar[0].ad, 'bagis_duyuru'); assert.equal(ay.wa.token, '');
