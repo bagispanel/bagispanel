@@ -295,6 +295,22 @@ server.listen(0, async () => {
     const y = (await admin('GET', '/api/birimler/' + r.j.id + '/yetki')).j; assert.ok(Object.values(y).every(p => p.g && p.e && p.d && p.s));
     const uid = (await admin('GET', '/api/users')).j.find(x => x.kadi === 'mesajci1').id; const yy = (await admin('GET', `/api/users/${uid}/yetki`)).j; assert.ok(yy.birim && yy.birim.rapor);
   });
+  await t('şube ve temsilcilikler: kayıt, doğrulama, bildirim uyarıları, vakıf/dernek', async () => {
+    assert.equal((await admin('PUT', '/api/sube/ayar', { tur: 'xx' })).s, 400);
+    assert.equal((await admin('POST', '/api/sube', { tur: 'Şube', ad: 'Ankara Şubesi' })).s, 400); // il zorunlu
+    assert.equal((await admin('POST', '/api/sube', { tur: 'Kule', ad: 'x', il: 'Ankara' })).s, 400);
+    assert.equal((await admin('POST', '/api/sube', { tur: 'Şube', ad: 'Ankara Şubesi', il: 'Ankara', acilis_tarihi: '2020-01-10', sorumlu: 'Ali Veli' })).s, 201);
+    assert.equal((await admin('POST', '/api/sube', { tur: 'Şube', ad: 'ankara şubesi', il: 'Ankara' })).s, 409);
+    assert.equal((await admin('POST', '/api/sube', { tur: 'Temsilcilik', ad: 'Berlin Temsilciliği', yurt_disi: true, ulke_id: 1, sorumlu: 'Ayşe', acilis_tarihi: '2024-05-01', bildirim_tarihi: '2024-05-10' })).s, 201);
+    assert.equal((await admin('POST', '/api/sube', { tur: 'Temsilcilik', ad: 'Hatalı', yurt_disi: true, ulke_id: 99999 })).s, 400);
+    assert.equal((await admin('POST', '/api/sube', { tur: 'Şube', ad: 'Bozuk Tarih', il: 'İzmir', acilis_tarihi: '31.12.2020' })).s, 400);
+    let r = (await admin('GET', '/api/sube')).j; assert.equal(r.kurum, 'dernek'); const a = r.liste.find(x => x.ad === 'Ankara Şubesi'); assert.ok(a.uyari.some(u => u.t === 'er' && /bildirim/i.test(u.m)));
+    assert.equal(r.liste.find(x => x.ad === 'Berlin Temsilciliği').uyari.length, 0);
+    assert.equal((await admin('PUT', '/api/sube/ayar', { tur: 'vakif' })).s, 200); assert.equal((await admin('GET', '/api/sube')).j.kurum, 'vakif');
+    assert.equal((await admin('PUT', '/api/sube/' + a.id, { ...a, bildirim_tarihi: '2020-01-20', durum: 'Kapalı' })).s, 200);
+    r = (await admin('GET', '/api/sube')).j; const k = r.liste.find(x => x.id === a.id); assert.equal(k.durum, 'Kapalı'); assert.ok(k.kapanis_tarihi); assert.equal(k.uyari.length, 0);
+    const u = (await mkUser('subeci1', 'Muhasebe')).q; assert.equal((await u('GET', '/api/sube')).s, 403);
+  });
   await t('WhatsApp: şablonlu toplu gönderim, webhook imzası, gelen kutusu, 24 saat kuralı', async () => {
     assert.equal((await admin('PUT', '/api/iletisim/ayar', { wa: { phone_id: 'PID', token: 'TOK', app_secret: 'sir', api_url: `http://127.0.0.1:${mport}/v21`, sablonlar: [{ ad: 'Bagis Duyuru', dil: 'tr', govde: 'Merhaba {{1}}', n: 1 }] } })).s, 200);
     const ay = (await admin('GET', '/api/iletisim/ayar')).j.ayar; assert.equal(ay.wa.sablonlar[0].ad, 'bagis_duyuru'); assert.equal(ay.wa.token, '');

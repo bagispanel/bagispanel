@@ -53,3 +53,8 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 - Görev atanınca kişiye Mesaj Merkezi'nden bildirim gider; tamamlanınca atayana bildirim gider. Menüde rozet sayıları var.
 - Yetki ekranları: yeni birim varsayılan olarak tüm yetkiler açık; kişi yetkileri artık dolu/boş kutu (birimden farklı olanlar turuncu çerçeveli).
 - İleride: mesajlara dosya eki, görev yorumları, e-posta/WhatsApp ile görev bildirimi.
+
+## Şube ve Temsilcilikler (yapıldı)
+- Sistem Ayarları → Şube ve Temsilcilikler. Dernek/Vakıf seçimi, şube/temsilcilik, yurt içi/yurt dışı, resmî bildirim takibi ve uyarılar.
+- DOĞRULANMASI GEREKEN: dernek şube açılış bildirim süresi (30 gün) Kanun md. 23'ten varsayıldı; il sivil toplumla ilişkiler müdürlüğünden teyit edin. Vakıf için 1 ay (VBYS beyannamesi) kaynaktan alındı.
+- İleride: şubeye bağlı kullanıcı/bağış/makbuz bloğu, şube bazlı rapor, şube genel kurul takvimi uyarısı (merkezden 2 ay önce), vakıf şube beyannamesi PDF.
