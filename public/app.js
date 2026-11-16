@@ -27,7 +27,7 @@ function birimP(){const B=ST.birimler||[],bp=ST.bp;return ttl('Birimler ve yetki
 function denetimP(){const L=ST.audit||[];return ttl('Denetim kaydı','Girişler, kullanıcı ve yetki değişiklikleri burada izlenir. Son 300 kayıt.')+`<div class="card tw"><table><tr><th>Zaman (UTC)</th><th>Kullanıcı</th><th>İşlem</th><th>Ayrıntı</th></tr>`+L.map(x=>`<tr><td>${esc(x.at)}</td><td>${esc(x.kadi||'-')}</td><td>${esc(x.islem)}</td><td>${esc(x.detay||'')}</td></tr>`).join('')+`</table></div>`}
 /* ---- veri yükleme ---- */
 async function load(){try{if(PG[route]&&PG[route].load)await PG[route].load();if(route=='kullanici'){ST.users=await api('GET','/api/users');ST.birimler=await api('GET','/api/birimler')}if(route=='birim')ST.birimler=await api('GET','/api/birimler');if(route=='denetim')ST.audit=await api('GET','/api/audit')}catch(e){toast(e.message,1)}draw()}
-function after(){}
+const AFT=[];function after(){AFT.forEach(f=>f())}
 const go=r=>{route=r;ST.ud=null;ST.uy=null;ST.bp=null;draw();if(['kullanici','birim','denetim'].includes(r)||(PG[r]&&PG[r].load))load()};
 document.addEventListener('click',async ev=>{const t=ev.target.closest('[data-a]');if(!t)return;const a=t.dataset.a,v=t.dataset.v;try{
  if(ACTS[a]){await ACTS[a](v,t,ev);return}

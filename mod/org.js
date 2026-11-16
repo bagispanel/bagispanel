@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
     if (p.get('pt') === 'Atanmamış') L = L.filter(u => !u.partner); else if (f(0, p.get('pt'))) L = L.filter(u => u.partner === p.get('pt'));
     const d1 = p.get('d1'), d2 = p.get('d2'); if (d1 || d2) L = L.filter(u => u.paylar.some(s => (!d1 || s.tarih >= d1) && (!d2 || s.tarih <= d2)));
     if (q) L = L.filter(u => nm(u.ad).includes(q) || nm(u.kod).includes(q) || (u.kn && qd && String(u.kn) === qd) || u.paylar.some(s => nm(s.ad).includes(q) || nm(s.no).includes(q) || nm(s.bagisci).includes(q) || nm(s.bno).includes(q) || (qd.length >= 3 && (s.tel || '').replace(/\D/g, '').includes(qd))));
+    if (p.get('tur')) L = L.filter(u => u.tur_id === +p.get('tur'));
     const tab = p.get('tab'); if (tab !== null && tab !== '' && +tab >= 0) L = L.filter(u => u.sts === +tab);
     const pg = Math.max(0, +p.get('pg') || 0), toplam = L.length, ids = L.map(u => u.id);
     return { liste: L.slice(pg * 25, pg * 25 + 25), toplam, ids: ids.slice(0, 5000), sayac: cnts, ozet: { birim: rows.length, dolu: L.length ? rows.filter(u => cnt(u) >= u.cap || u.adim >= 1).length : 0, hisse: pays.length } };
