@@ -181,6 +181,10 @@ R('PUT', '/api/birimler/:id/yetki', 'birim', 'd', async (c) => {
 });
 R('GET', '/api/audit', 'denetim', 'g', async () => [200, db.prepare('SELECT * FROM audit ORDER BY id DESC LIMIT 300').all()]);
 
+// ---- modüller (her biri kendi tablolarını ve uçlarını tanımlar)
+const ctx = { R, Err, A, db, tx, str, ip, usage: { ulke: [], partner: [], banka: [], tur: [] }, used: (k, v) => ctx.usage[k].reduce((n, f) => n + f(v), 0) };
+['ayarlar'].forEach(m => require('./mod/' + m)(ctx));
+
 // ---- sunucu
 const server = http.createServer(async (req, res) => {
   res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('X-Frame-Options', 'DENY'); res.setHeader('Referrer-Policy', 'same-origin');

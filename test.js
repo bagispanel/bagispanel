@@ -81,5 +81,29 @@ server.listen(0, async () => {
     assert.equal((await admin('PUT', `/api/users/${pid}`, { telefon: '+49 170 1234567', eposta: '', tc: '', foto_sil: 1 })).s, 200);
     const d = (await admin('GET', `/api/users/${pid}`)).j; assert.equal(d.telefon, '+491701234567'); assert.equal(d.foto, 0); assert.equal(d.tc, null);
   });
+  await t('ayarlar: ülke ekle/çift/sil', async () => {
+    assert.equal((await admin('POST', '/api/ulkeler', { ad: 'Testistan', kita: 'Asya' })).s, 201);
+    assert.equal((await admin('POST', '/api/ulkeler', { ad: 'testistan', kita: 'Asya' })).s, 409);
+    const u = (await admin('GET', '/api/ulkeler')).j; assert.ok(u.length > 3);
+    assert.equal((await admin('DELETE', '/api/ulkeler/' + u.find(x => x.ad === 'Testistan').id)).s, 200);
+  });
+  await t('ayarlar: banka IBAN doğrulaması', async () => {
+    assert.equal((await admin('POST', '/api/banka', { banka: 'Ziraat', hesap: 'A', iban: 'TR000000000000000000000000', para: 'TL' })).s, 400);
+    assert.equal((await admin('POST', '/api/banka', { banka: 'Ziraat', hesap: 'A', iban: 'TR330006100519786457841326', para: 'TL' })).s, 201);
+    assert.ok((await admin('GET', '/api/banka')).j.hesaplar.length >= 1);
+  });
+  await t('ayarlar: partner doğrulama ve ekleme', async () => {
+    assert.equal((await admin('POST', '/api/partnerler', { tur: 'Şirket', ad: 'X' })).s, 400);
+    const r = await admin('POST', '/api/partnerler', { tur: 'Dernek', ad: 'Test Dernek', vn: '1234567890', yad: 'Ali', yt: '05413000000' }); assert.equal(r.s, 201);
+    assert.ok((await admin('GET', '/api/partnerler')).j.some(p => p.ad === 'Test Dernek'));
+  });
+  await t('ayarlar: kategori ve tür', async () => {
+    assert.equal((await admin('POST', '/api/kategoriler', { ad: 'Test Kategori' })).s, 201);
+    assert.equal((await admin('POST', '/api/turler', { sec: 'genel', kat: 'Test Kategori', ad: 'Kuranı Kerim', videolu: true, tutar: 100 })).s, 201);
+    assert.equal((await admin('POST', '/api/turler', { sec: 'kuyu', ad: 'Testistan - Çeşme', bicim: 'Hisseli', fiyat: 7000, pay: 1000 })).s, 201);
+    assert.equal((await admin('POST', '/api/turler', { sec: 'kurban', hayvan: 'hisse', tur: 'Test Kurbanı', fiyat: 4500 })).s, 201);
+    const T = (await admin('GET', '/api/turler')).j; assert.ok(T.turler.length >= 3 && T.kategoriler.includes('Test Kategori'));
+  });
+  await t('ayarlar: yetkisiz kullanıcı ekleyemez', async () => { const u = await mkUser('cagri9', 'Çağrı merkezi'); assert.equal((await u.q('POST', '/api/ulkeler', { ad: 'Z', kita: 'Asya' })).s, 403); });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });
