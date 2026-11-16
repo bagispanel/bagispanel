@@ -8,7 +8,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.
 const send = (res, code, obj, h = {}) => { const b = JSON.stringify(obj); res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...h }); res.end(b); };
 const fail = (res, code, msg) => send(res, code, { hata: msg });
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map(c => c.trim().split('=')).filter(x => x[0]).map(([k, ...v]) => [k, decodeURIComponent(v.join('='))]));
-const readBody = (req) => new Promise((ok, no) => { let b = ''; req.on('data', c => { b += c; if (b.length > 1e6) { no(new Error('big')); req.destroy(); } }); req.on('end', () => { try { ok(b ? JSON.parse(b) : {}); } catch (e) { no(new Error('json')); } }); });
+const readBody = (req) => new Promise((ok, no) => { let b = ''; req.on('data', c => { b += c; if (b.length > 2.5e6) { no(new Error('big')); req.destroy(); } }); req.on('end', () => { try { ok(b ? JSON.parse(b) : {}); } catch (e) { no(new Error('json')); } }); });
 const ip = (req) => req.socket.remoteAddress || '';
 const secure = (req) => process.env.SECURE === '1' || req.headers['x-forwarded-proto'] === 'https';
 const setCookie = (req, t, maxAge) => `bp=${t}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${secure(req) ? '; Secure' : ''}`;
@@ -27,6 +27,25 @@ const grantCheck = (actor, before, after) => { // yeni verilen her yetkiyi veren
 const needAdmin = (msg) => { if (A.adminCount() < 1) throw new Err(409, msg || 'Sistemde yönetim yetkisi olan en az bir aktif kullanıcı kalmalı.'); };
 const normPerm = (o) => { const out = {}; A.KEYS.forEach(k => { const m = (o && o[k]) || {}; out[k] = {}; A.ACT.forEach(a => out[k][a] = m[a] ? 1 : 0); if (!out[k].g) out[k].e = out[k].d = out[k].s = 0; }); return out; };
 
+
+// ---- profil alanları: doğrulama
+const UP = path.join(process.env.DATA_DIR || path.join(__dirname, 'data'), 'uploads');
+fs.mkdirSync(path.join(UP, 'users'), { recursive: true });
+function vTc(v) { v = String(v || '').replace(/\s/g, ''); if (!v) return null; if (!/^[1-9]\d{10}$/.test(v)) throw new Err(400, 'TC kimlik no 11 haneli olmalı ve 0 ile başlamamalı.'); const d = v.split('').map(Number); const a = ((d[0] + d[2] + d[4] + d[6] + d[8]) * 7 - (d[1] + d[3] + d[5] + d[7])) % 10; if ((a + 10) % 10 !== d[9] || d.slice(0, 10).reduce((x, y) => x + y, 0) % 10 !== d[10]) throw new Err(400, 'TC kimlik no geçersiz (sağlama tutmuyor).'); return v; }
+function vTel(v) { v = String(v || '').trim(); if (!v) return null; let d = v.replace(/\D/g, ''); if (v[0] === '+') { if (d.length < 8 || d.length > 15) throw new Err(400, 'Uluslararası telefon 8-15 hane olmalı.'); return '+' + d; } if (d.startsWith('90') && d.length > 10) d = d.slice(2); if (d[0] === '0') d = d.slice(1); if (d.length !== 10 || d[0] !== '5') throw new Err(400, 'Telefon: 5XX XXX XX XX biçiminde 10 hane (yurt dışı için + ve ülke koduyla).'); return '+90' + d; }
+function vMail(v) { v = String(v || '').trim().toLowerCase(); if (!v) return null; if (v.length > 120 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) throw new Err(400, 'E-posta adresi geçersiz.'); return v; }
+function vDogum(v) { v = String(v || '').trim(); if (!v) return null; if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(Date.parse(v))) throw new Err(400, 'Doğum tarihi geçersiz.'); const y = +v.slice(0, 4), now = new Date().getFullYear(); if (y < 1900 || y > now - 15) throw new Err(400, 'Doğum tarihi makul bir aralıkta olmalı.'); return v; }
+function saveFoto(id, data) { // data:image/jpeg;base64,... → dosya
+  const m = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(data || '')); if (!m) throw new Err(400, 'Fotoğraf JPEG, PNG veya WEBP olmalı.');
+  const b = Buffer.from(m[2], 'base64'); if (b.length > 1.5e6) throw new Err(400, 'Fotoğraf en fazla 1,5 MB olmalı.');
+  const ok = (m[1] === 'jpeg' && b[0] === 0xff && b[1] === 0xd8) || (m[1] === 'png' && b.slice(1, 4).toString() === 'PNG') || (m[1] === 'webp' && b.slice(0, 4).toString() === 'RIFF'); if (!ok) throw new Err(400, 'Fotoğraf dosyası bozuk ya da türü uyuşmuyor.');
+  const name = `${id}-${require('crypto').randomBytes(6).toString('hex')}.${m[1] === 'jpeg' ? 'jpg' : m[1]}`; fs.writeFileSync(path.join(UP, 'users', name), b); return name;
+}
+const rmFoto = (n) => { if (n) try { fs.unlinkSync(path.join(UP, 'users', path.basename(n))); } catch (e) {} };
+const maskTc = (t) => t ? t.slice(0, 3) + '*****' + t.slice(-2) : '';
+const profil = (b) => ({ telefon: vTel(b.telefon), eposta: vMail(b.eposta), tc: vTc(b.tc), dogum_tarihi: vDogum(b.dogum_tarihi), dogum_yeri: str(b.dogum_yeri, 60) || null });
+const dupTc = (tc, skip) => { if (tc && db.prepare('SELECT 1 FROM users WHERE tc=? AND id<>?').get(tc, skip || 0)) throw new Err(409, 'Bu TC kimlik no başka bir kullanıcıda kayıtlı.'); };
+
 // ---- kimlik
 R('POST', '/api/login', null, null, async (c) => {
   const kadi = str(c.body.kadi, 40).toLowerCase(), key = kadi + '|' + ip(c.req);
@@ -42,7 +61,7 @@ R('POST', '/api/login', null, null, async (c) => {
 });
 R('POST', '/api/logout', 'auth', null, async (c) => { A.endSession(c.token); A.audit(c.user, 'cikis', null, ip(c.req)); return [200, { ok: 1 }, { 'Set-Cookie': setCookie(c.req, '', 0) }]; });
 R('GET', '/api/saglik', null, null, async () => [200, { ok: 1, surum: process.env.GIT_SHA || 'yerel', ortam: process.env.ORTAM || 'yerel' }]);
-R('GET', '/api/me', 'auth', null, async (c) => [200, { surum: process.env.GIT_SHA || 'yerel', ortam: process.env.ORTAM || 'yerel', user: { id: c.user.id, ad: c.user.ad, kadi: c.user.kadi, birim: c.user.birim_ad, must_change: !!c.user.must_change }, perms: c.perms, menu: A.MENU }]);
+R('GET', '/api/me', 'auth', null, async (c) => [200, { surum: process.env.GIT_SHA || 'yerel', ortam: process.env.ORTAM || 'yerel', user: { id: c.user.id, ad: c.user.ad, kadi: c.user.kadi, birim: c.user.birim_ad, must_change: !!c.user.must_change, telefon: c.user.telefon, eposta: c.user.eposta, foto: !!c.user.foto }, perms: c.perms, menu: A.MENU }]);
 R('POST', '/api/sifre', 'auth', null, async (c) => {
   const { eski, yeni } = c.body;
   if (!A.verify(String(eski || ''), c.user.pass)) throw new Err(400, 'Mevcut şifre hatalı.');
@@ -54,7 +73,18 @@ R('POST', '/api/sifre', 'auth', null, async (c) => {
 });
 
 // ---- kullanıcılar
-R('GET', '/api/users', 'kullanici', 'g', async () => [200, db.prepare('SELECT u.id,u.ad,u.kadi,u.birim_id,b.ad birim,u.aktif,u.son_giris,u.must_change FROM users u JOIN birimler b ON b.id=u.birim_id ORDER BY u.id').all()]);
+R('GET', '/api/users', 'kullanici', 'g', async () => [200, db.prepare('SELECT u.id,u.ad,u.kadi,u.birim_id,b.ad birim,u.aktif,u.son_giris,u.must_change,u.telefon,u.eposta,(u.foto IS NOT NULL) foto FROM users u JOIN birimler b ON b.id=u.birim_id ORDER BY u.id').all()]);
+R('GET', '/api/users/:id', 'kullanici', 'g', async (c) => { // ayrıntı: TC yalnızca düzeltme yetkisi olana tam görünür (KVKK)
+  const u = db.prepare('SELECT id,ad,kadi,birim_id,aktif,telefon,eposta,tc,dogum_tarihi,dogum_yeri,(foto IS NOT NULL) foto FROM users WHERE id=?').get(+c.m[1]); if (!u) throw new Err(404, 'Kullanıcı yok.');
+  u.tc = A.can(c.perms, 'kullanici', 'd') ? u.tc : maskTc(u.tc); return [200, u]; });
+R('GET', '/api/users/:id/foto', 'auth', null, async (c) => {
+  const id = +c.m[1]; if (id !== c.user.id && !A.can(c.perms, 'kullanici', 'g')) throw new Err(403, 'Bu işlem için yetkiniz yok.');
+  const u = db.prepare('SELECT foto FROM users WHERE id=?').get(id); if (!u || !u.foto) throw new Err(404, 'Fotoğraf yok.');
+  return [200, { raw: path.join(UP, 'users', path.basename(u.foto)) }]; });
+R('PUT', '/api/profil', 'auth', null, async (c) => { // kişi kendi iletişim bilgisi ve fotoğrafını günceller
+  const tel = vTel(c.body.telefon), mail = vMail(c.body.eposta); let foto = c.user.foto;
+  if (c.body.foto) { rmFoto(foto); foto = saveFoto(c.user.id, c.body.foto); } else if (c.body.foto_sil) { rmFoto(foto); foto = null; }
+  db.prepare('UPDATE users SET telefon=?,eposta=?,foto=? WHERE id=?').run(tel, mail, foto, c.user.id); A.audit(c.user, 'profil_guncellendi', null, ip(c.req)); return [200, { ok: 1 }]; });
 R('POST', '/api/users', 'kullanici', 'e', async (c) => {
   const ad = str(c.body.ad), kadi = str(c.body.kadi, 30).toLowerCase(), b = +c.body.birim_id;
   if (!ad) throw new Err(400, 'Ad soyadı yazın.');
@@ -62,8 +92,10 @@ R('POST', '/api/users', 'kullanici', 'e', async (c) => {
   const pe = A.pwErr(c.body.sifre); if (pe) throw new Err(400, pe);
   if (!db.prepare('SELECT 1 FROM birimler WHERE id=?').get(b)) throw new Err(400, 'Birim seçin.');
   if (db.prepare('SELECT 1 FROM users WHERE kadi=?').get(kadi)) throw new Err(409, 'Bu kullanıcı adı kullanılıyor.');
+  const pf = profil(c.body); dupTc(pf.tc);
   return tx(() => {
-    const id = db.prepare('INSERT INTO users(ad,kadi,pass,birim_id,must_change) VALUES(?,?,?,?,1)').run(ad, kadi, A.hash(c.body.sifre), b).lastInsertRowid;
+    const id = db.prepare('INSERT INTO users(ad,kadi,pass,birim_id,must_change,telefon,eposta,tc,dogum_tarihi,dogum_yeri) VALUES(?,?,?,?,1,?,?,?,?,?)').run(ad, kadi, A.hash(c.body.sifre), b, pf.telefon, pf.eposta, pf.tc, pf.dogum_tarihi, pf.dogum_yeri).lastInsertRowid;
+    if (c.body.foto) db.prepare('UPDATE users SET foto=? WHERE id=?').run(saveFoto(+id, c.body.foto), +id);
     const t = A.effective(+id), zero = normPerm({}); grantCheck(c.user, zero, t);
     A.audit(c.user, 'kullanici_eklendi', kadi, ip(c.req)); return [201, { id: +id }];
   });
@@ -75,7 +107,9 @@ R('PUT', '/api/users/:id', 'kullanici', 'd', async (c) => {
   if (!db.prepare('SELECT 1 FROM birimler WHERE id=?').get(b)) throw new Err(400, 'Birim seçin.');
   return tx(() => {
     const before = A.effective(id);
-    db.prepare('UPDATE users SET ad=?,birim_id=?,aktif=? WHERE id=?').run(ad, b, aktif, id);
+    const pf = c.body.telefon !== undefined || c.body.eposta !== undefined || c.body.tc !== undefined ? profil(c.body) : { telefon: t.telefon, eposta: t.eposta, tc: t.tc, dogum_tarihi: t.dogum_tarihi, dogum_yeri: t.dogum_yeri }; dupTc(pf.tc, id);
+    let foto = t.foto; if (c.body.foto) { rmFoto(foto); foto = saveFoto(id, c.body.foto); } else if (c.body.foto_sil) { rmFoto(foto); foto = null; }
+    db.prepare('UPDATE users SET ad=?,birim_id=?,aktif=?,telefon=?,eposta=?,tc=?,dogum_tarihi=?,dogum_yeri=?,foto=? WHERE id=?').run(ad, b, aktif, pf.telefon, pf.eposta, pf.tc, pf.dogum_tarihi, pf.dogum_yeri, foto, id);
     grantCheck(c.user, before, A.effective(id)); needAdmin();
     if (!aktif) A.endUserSessions(id);
     A.audit(c.user, 'kullanici_guncellendi', `${t.kadi} birim=${b} aktif=${aktif}`, ip(c.req)); return [200, { ok: 1 }];
@@ -168,8 +202,8 @@ const server = http.createServer(async (req, res) => {
         if (c.user.must_change && !okPath) return fail(res, 403, 'Önce şifrenizi değiştirin.');
         if (r.menu !== 'auth' && !r.menu.split('|').some(m => A.can(c.perms, m, r.act))) return fail(res, 403, 'Bu işlem için yetkiniz yok.');
       }
-      const out = await r.h(c); return send(res, out[0], out[1], out[2]);
-    } catch (e) { if (e instanceof Err) return fail(res, e.c, e.message); if (e.message === 'json') return fail(res, 400, 'Geçersiz veri.'); console.error(e); return fail(res, 500, 'Sunucu hatası.'); }
+      const out = await r.h(c); if (out[1] && out[1].raw) { const f = out[1].raw, ext = path.extname(f).slice(1); if (!fs.existsSync(f)) return fail(res, 404, 'Dosya yok.'); res.writeHead(200, { 'Content-Type': ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg', 'Cache-Control': 'private, max-age=60' }); return fs.createReadStream(f).pipe(res); } return send(res, out[0], out[1], out[2]);
+    } catch (e) { if (e instanceof Err) return fail(res, e.c, e.message); if (e.message === 'json') return fail(res, 400, 'Geçersiz veri.'); if (e.message === 'big') return fail(res, 413, 'Veri çok büyük.'); console.error(e); return fail(res, 500, 'Sunucu hatası.'); }
   }
   let f = path.normalize(path.join(PUB, url.pathname === '/' ? 'index.html' : url.pathname));
   if (!f.startsWith(PUB) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) f = path.join(PUB, 'index.html');

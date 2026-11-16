@@ -4,7 +4,7 @@ services:
     name: bagispanel-test
     runtime: docker
     plan: free
-    branch: test
+    branch: main
     autoDeploy: true
     healthCheckPath: /api/saglik
     envVars:

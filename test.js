@@ -57,5 +57,29 @@ server.listen(0, async () => {
   await t('5 hatalı denemeden sonra kilit', async () => { const q = mk(); for (let i = 0; i < 5; i++) await q('POST', '/api/login', { kadi: 'muhasebe1', sifre: 'yanlis' + i }); assert.equal((await q('POST', '/api/login', { kadi: 'muhasebe1', sifre: 'Sifre2027x' })).s, 429); });
   await t('denetim kaydı tutulur', async () => { const a = (await admin('GET', '/api/audit')).j; assert.ok(a.some(x => x.islem === 'kullanici_yetkisi') && a.some(x => x.islem === 'giris_hatali')); });
   await t('statik dosya yol aşımı engellenir', async () => { const r = await fetch(base + '/..%2f..%2fetc/passwd'); const x = await r.text(); assert.ok(!x.includes('root:')); });
+  const JPG = 'data:image/jpeg;base64,' + Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(200, 1)]).toString('base64');
+  await t('profil: geçerli TC, telefon, e-posta, doğum, fotoğraf ile kullanıcı açılır', async () => {
+    const r = await admin('POST', '/api/users', { ad: 'Profil Test', kadi: 'profil1', sifre: 'Gecici123', birim_id: id('Muhasebe'), telefon: '0541 300 00 00', eposta: 'Ali@Ornek.org', tc: '10000000146', dogum_tarihi: '1990-05-17', dogum_yeri: 'Ankara', foto: JPG }); assert.equal(r.s, 201);
+    const d = (await admin('GET', `/api/users/${r.j.id}`)).j; assert.equal(d.telefon, '+905413000000'); assert.equal(d.eposta, 'ali@ornek.org'); assert.equal(d.tc, '10000000146'); assert.equal(d.foto, 1);
+    const f = await fetch(base + `/api/users/${r.j.id}/foto`, { headers: { cookie: 'x' } }); assert.equal(f.status, 401);
+  });
+  await t('profil: hatalı TC / telefon / e-posta / doğum tarihi reddedilir', async () => {
+    const base0 = { ad: 'X', sifre: 'Gecici123', birim_id: id('Muhasebe') };
+    assert.equal((await admin('POST', '/api/users', { ...base0, kadi: 'bad1', tc: '12345678901' })).s, 400);
+    assert.equal((await admin('POST', '/api/users', { ...base0, kadi: 'bad2', telefon: '123' })).s, 400);
+    assert.equal((await admin('POST', '/api/users', { ...base0, kadi: 'bad3', eposta: 'abc' })).s, 400);
+    assert.equal((await admin('POST', '/api/users', { ...base0, kadi: 'bad4', dogum_tarihi: '2030-01-01' })).s, 400);
+    assert.equal((await admin('POST', '/api/users', { ...base0, kadi: 'bad5', foto: 'data:image/jpeg;base64,AAAA' })).s, 400);
+  });
+  await t('aynı TC iki kullanıcıda olamaz', async () => assert.equal((await admin('POST', '/api/users', { ad: 'Y', kadi: 'ikinci', sifre: 'Gecici123', birim_id: id('Muhasebe'), tc: '10000000146' })).s, 409));
+  await t('TC, düzeltme yetkisi olmayana maskeli görünür', async () => {
+    const mu = await mkUser('goruntuleyen', 'Başkan'); await admin('PUT', `/api/users/${mu.id}/yetki`, { ozel: { kullanici: { g: 1 } } });
+    const all = (await admin('GET', '/api/users')).j, pid = all.find(u => u.kadi === 'profil1').id; const d = (await mu.q('GET', `/api/users/${pid}`)).j; assert.equal(d.tc, '100*****46');
+  });
+  await t('kullanıcı güncellenir, fotoğraf kaldırılır', async () => {
+    const pid = (await admin('GET', '/api/users')).j.find(u => u.kadi === 'profil1').id;
+    assert.equal((await admin('PUT', `/api/users/${pid}`, { telefon: '+49 170 1234567', eposta: '', tc: '', foto_sil: 1 })).s, 200);
+    const d = (await admin('GET', `/api/users/${pid}`)).j; assert.equal(d.telefon, '+491701234567'); assert.equal(d.foto, 0); assert.equal(d.tc, null);
+  });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });

@@ -29,4 +29,9 @@ CREATE TABLE IF NOT EXISTS audit(
   id INTEGER PRIMARY KEY, at TEXT NOT NULL DEFAULT (datetime('now')), user_id INTEGER, kadi TEXT,
   islem TEXT NOT NULL, detay TEXT, ip TEXT);
 `);
+// Sonradan eklenen sütunlar (var olan veritabanları bozulmadan yükseltilir)
+const cols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+[['telefon', 'TEXT'], ['eposta', 'TEXT'], ['tc', 'TEXT'], ['dogum_tarihi', 'TEXT'], ['dogum_yeri', 'TEXT'], ['foto', 'TEXT']]
+  .forEach(([c, ty]) => { if (!cols.includes(c)) db.exec(`ALTER TABLE users ADD COLUMN ${c} ${ty}`); });
+db.exec("CREATE UNIQUE INDEX IF NOT EXISTS users_tc ON users(tc) WHERE tc IS NOT NULL");
 module.exports = db;
