@@ -85,7 +85,18 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
     const son = ok.reduce((m, x) => x.tarih > m ? x.tarih : m, ''), ilk = ok.reduce((m, x) => !m || x.tarih < m ? x.tarih : m, '');
     const gun = son ? Math.floor((Date.now() - new Date(son).getTime()) / 864e5) : null;
     const kat = {}; ok.forEach(x => kat[x.kat] = (kat[x.kat] || 0) + x.tl);
-    return [200, { bagisci: b, bagislar: L, enyuksek: ok.slice().sort((x, y) => y.tl - x.tl)[0] || null, toplam: ok.reduce((a, x) => a + x.tl, 0), adet: ok.length, bekleyen: L.filter(x => x.durum === 'Bekleyen').length, iptal: L.filter(x => x.durum === 'İptal').length, ilk, son, gun, kategori: kat, kurban: sayi('Kurban'), kuyu: sayi('Su kuyusu'), video: sayi('Diğer') }];
+    // bağış başına ayrıntı: kurban/kuyu/videolu bağışta pay-birim-aşama-video; kalıcı eserde bağlı proje
+    const ASAMA = { Kurban: ['Hisse bekliyor', 'Ülke atanacak', 'Kesim bekliyor', 'Video bağlanacak', 'Video kontrolü', 'Tamamlandı'], 'Su kuyusu': ['Toplanıyor', 'Ülke atanacak', 'Açılış bekliyor', 'Video bağlanacak', 'Video kontrolü', 'Tamamlandı'], 'Diğer': ['Hazırlanıyor', 'Ülke atanacak', 'Dağıtım bekliyor', 'Video bağlanacak', 'Video kontrolü', 'Tamamlandı'] };
+    const stsU = (u) => { if (u.adim === 1 && u.ulke && u.org === 'Su kuyusu') return 2; return u.adim < 3 ? u.adim : u.adim === 3 ? (u.video ? 4 : 3) : 5; };
+    const detay = {}, ids = L.map(x => x.id);
+    if (ids.length) db.prepare(`SELECT p.bagis_id, p.no pno, p.ad pad, p.video pv, p.vs, u.kod, u.ad uad, u.ulke, u.partner, u.adim, u.video, t.org FROM paylar p JOIN birimler_org u ON u.id=p.birim_id JOIN bagis_turleri t ON t.id=u.tur_id WHERE p.bagis_id IN (${ids.map(() => '?').join(',')}) ORDER BY p.id`).all(...ids)
+      .forEach(r => { const v = r.pv || r.video || ''; (detay[r.bagis_id] = detay[r.bagis_id] || []).push({ pno: r.pno, kod: r.kod, birim: r.uad || '', adina: r.pad, ulke: r.ulke || '', partner: r.partner || '', asama: (ASAMA[r.org] || ASAMA['Diğer'])[stsU(r)], video: !!v, link: /^https?:\/\//.test(v) ? v : '', video_ad: /^https?:\/\//.test(v) ? '' : v, gonderildi: !!r.vs }); });
+    const eserAd = {}; try { db.prepare('SELECT id,ad,tur_ids FROM eser').all().forEach(e => JSON.parse(e.tur_ids || '[]').forEach(i => (eserAd[i] = eserAd[i] || []).push({ id: e.id, ad: e.ad }))); } catch (e) { }
+    ok.concat(L.filter(x => x.durum !== 'Onaylı')).forEach(x => { if (eserAd[x.tur_id]) (detay[x.id] = detay[x.id] || []).eser = eserAd[x.tur_id]; });
+    const detayO = {}; Object.entries(detay).forEach(([k, v]) => { detayO[k] = { paylar: v.slice(), eser: v.eser || null }; });
+    const td = {}; ok.forEach(x => { const k = x.kat + '\u0001' + x.tur, r = td[k] = td[k] || { kat: x.kat, tur: x.tur, org: x.org, adet: 0, tl: 0, say: 0, son: '' }; r.adet += x.adet; r.tl += x.tl; r.say++; if (x.tarih > r.son) r.son = x.tarih; });
+    const turDagilim = Object.values(td).sort((a, b) => b.tl - a.tl);
+    return [200, { detay: detayO, turDagilim, bagisci: b, bagislar: L, enyuksek: ok.slice().sort((x, y) => y.tl - x.tl)[0] || null, toplam: ok.reduce((a, x) => a + x.tl, 0), adet: ok.length, bekleyen: L.filter(x => x.durum === 'Bekleyen').length, iptal: L.filter(x => x.durum === 'İptal').length, ilk, son, gun, kategori: kat, kurban: sayi('Kurban'), kuyu: sayi('Su kuyusu'), video: sayi('Diğer') }];
   });
   R('POST', '/api/bagiscilar', 'bagisci', 'e', async (c) => { // bağış yapmadan da rehbere kişi eklenebilir
     const b = c.body || {}, tel = normPh(b.kod, b.tel), ad = str(b.ad, 80); if (!ad) throw new Err(400, 'Ad soyad zorunlu.');

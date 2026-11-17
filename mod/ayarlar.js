@@ -134,6 +134,7 @@ CREATE TABLE IF NOT EXISTS bagis_turleri(
   });
   R('DELETE', '/api/kategoriler', 'turler', 's', async (c) => {
     const ad = str(c.body.ad || new URL(c.req.url, 'http://x').searchParams.get('ad'), 60);
+    if (nm(ad) === nm('Kalıcı Eser')) throw new Err(409, 'Kalıcı Eser sistem kategorisidir, silinemez.');
     if (db.prepare('SELECT 1 FROM bagis_turleri WHERE kat=?').get(ad)) throw new Err(409, 'Bu ana kategoride alt kategori var.');
     db.prepare('DELETE FROM kategoriler WHERE ad=?').run(ad); return [200, { ok: 1 }];
   });

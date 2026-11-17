@@ -1,7 +1,7 @@
 // Ana sayfa özeti: yetkiye göre yalnızca izinli bölümleri döndürür.
 module.exports = function (ctx) {
   const { R, db, A } = ctx;
-  const iso = (d) => d.toISOString().slice(0, 10), gun = (n) => { const d = new Date(); d.setUTCDate(d.getUTCDate() + n); return iso(d); };
+  const iso = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10), gun = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return iso(d); };
   const sts = (u) => { if (u.adim === 1 && u.ulke && u.org === 'Su kuyusu') return 2; return u.adim < 3 ? u.adim : u.adim === 3 ? (u.video ? 4 : 3) : 5; };
   const ORG = [['orgK', 'Kurban'], ['orgS', 'Su kuyusu'], ['orgD', 'Diğer']];
   const ETK = { orgK: ['Hisse bekliyor', 'Ülke atanacak', 'Kesim bekliyor', 'Video bağlanacak', 'Video kontrolü'], orgS: ['Toplanıyor', 'Ülke atanacak', 'Açılış bekliyor', 'Video bağlanacak', 'Video kontrolü'], orgD: ['Hazırlanıyor', 'Ülke atanacak', 'Dağıtım bekliyor', 'Video bağlanacak', 'Video kontrolü'] };

@@ -1,7 +1,7 @@
 // Profilim: Profil Bilgilerim, Mesaj Merkezi (iç mesajlaşma), Görev Takibi.
 const PRK=['pbilgi','mesaj','gorev'];
 const CS=()=>ST.cs||(ST.cs={mk:'gelen',ml:[],md:null,yeni:false,ki:[],gk:'bana',gl:[],gyeni:false});
-async function pzYenile(){try{ST.pz=await api('GET','/api/profil/ozet')}catch(e){ST.pz=null}}
+async function pzYenile(){try{ST.pz=await api('GET','/api/profil/ozet')}catch(e){ST.pz=null}if(typeof bnCek=='function'){document.hidden||await bnCek()}}
 const tarih=s=>s?String(s).slice(0,10).split('-').reverse().join('.'):'';
 // ---- Profil Bilgilerim ----
 PG.pbilgi={async load(){const j=await api('GET','/api/me');ME=j.user;ST.foto=null},view(){const u=ME,dk=document.documentElement.getAttribute('data-theme')=='dark';

@@ -120,7 +120,7 @@ CREATE INDEX IF NOT EXISTS ix_wa_tel ON wa_mesaj(tel);
 
   // ---------- alıcı seçimi ----------
   function alicilar(kanal, f) {
-    f = f || {}; const bugun = new Date(), gun = (n) => { const d = new Date(bugun); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
+    f = f || {}; const bugun = new Date(), gun = (n) => { const d = new Date(bugun); d.setDate(d.getDate() - n); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
     const w = [], p = [];
     const rows = db.prepare(`SELECT b.id, b.ad, b.tel, b.eposta, b.izin, MAX(g.tarih) son, COALESCE(SUM(g.tl),0) toplam, COUNT(g.id) adet FROM bagiscilar b LEFT JOIN bagislar g ON g.bagisci_id=b.id AND g.durum='Onaylı' GROUP BY b.id`).all();
     const katlar = f.kat ? new Set(db.prepare("SELECT DISTINCT g.bagisci_id id FROM bagislar g JOIN bagis_turleri t ON t.id=g.tur_id WHERE g.durum='Onaylı' AND t.kat=?").all(str(f.kat, 60)).map(x => x.id)) : null;
@@ -150,7 +150,7 @@ CREATE INDEX IF NOT EXISTS ix_wa_tel ON wa_mesaj(tel);
     const q = (sql, ...a) => db.prepare(sql).get(...a) || {}, bugun = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
     const gelen = q("SELECT COUNT(*) n, SUM(okundu=0) ok0 FROM wa_mesaj WHERE yon='gelen'"), kon = db.prepare("SELECT tel, MAX(id) i, MAX(CASE WHEN yon='gelen' THEN zaman END) sg FROM wa_mesaj GROUP BY tel").all();
     let bekl = 0, acik = 0; kon.forEach(k => { const m = db.prepare('SELECT yon FROM wa_mesaj WHERE id=?').get(k.i); if (m.yon === 'gelen') bekl++; if (k.sg && (Date.now() - new Date(k.sg.replace(' ', 'T')).getTime()) < 86400000) acik++; });
-    const gun7 = []; for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const k = d.toISOString().slice(0, 10); gun7.push({ gun: k, gelen: q("SELECT COUNT(*) n FROM wa_mesaj WHERE yon='gelen' AND date(zaman)=?", k).n, giden: q("SELECT COUNT(*) n FROM toplu_alici a JOIN toplu_gonderim g ON g.id=a.gid WHERE g.kanal='wa' AND a.durum<>'Bekliyor' AND date(a.zaman)=?", k).n + q("SELECT COUNT(*) n FROM wa_mesaj WHERE yon='giden' AND date(zaman)=?", k).n }); }
+    const gun7 = []; for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const k = new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); gun7.push({ gun: k, gelen: q("SELECT COUNT(*) n FROM wa_mesaj WHERE yon='gelen' AND date(zaman)=?", k).n, giden: q("SELECT COUNT(*) n FROM toplu_alici a JOIN toplu_gonderim g ON g.id=a.gid WHERE g.kanal='wa' AND a.durum<>'Bekliyor' AND date(a.zaman)=?", k).n + q("SELECT COUNT(*) n FROM wa_mesaj WHERE yon='giden' AND date(zaman)=?", k).n }); }
     const d = db.prepare("SELECT a.durum, COUNT(*) n FROM toplu_alici a JOIN toplu_gonderim g ON g.id=a.gid WHERE g.kanal='wa' GROUP BY a.durum").all(), D = Object.fromEntries(d.map(x => [x.durum, x.n]));
     const son = db.prepare("SELECT id, ad, zaman, durum FROM toplu_gonderim WHERE kanal='wa' ORDER BY id DESC LIMIT 5").all();
     return [200, { okunmamis: gelen.ok0 || 0, gelenToplam: gelen.n || 0, bekleyen: bekl, acik, konusma: kon.length, bugunGelen: q("SELECT COUNT(*) n FROM wa_mesaj WHERE yon='gelen' AND date(zaman)=?", bugun).n, bugunGiden: gun7[6].giden, teslim: (D['Teslim edildi'] || 0) + (D['Okundu'] || 0), okundu: D['Okundu'] || 0, gonderildi: (D['Gönderildi'] || 0) + (D['Teslim edildi'] || 0) + (D['Okundu'] || 0), hata: D['Hata'] || 0, gun7, son }];
@@ -203,6 +203,44 @@ CREATE INDEX IF NOT EXISTS ix_wa_tel ON wa_mesaj(tel);
   }
   ctx.iletisimTick = tick; setInterval(tick, 1500).unref();
 
+  // ---------- yanıtsız WhatsApp / cevapsız arama birikince yönetici-sorumluya SMS veya e-posta uyarısı ----------
+  const UDEF = { acik: false, esik: 10, saat: 4, cagri_esik: 5, kanal: 'sms', alicilar: [], tekrar_saat: 12, son: '' };
+  const uCfg = () => ({ ...UDEF, ...getA('wauyari', {}) });
+  const yerelIso = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 19).replace('T', ' ');
+  function uDurum() {
+    const w = db.prepare("SELECT COUNT(*) n, MIN(zaman) en_eski FROM wa_mesaj WHERE yon='gelen' AND okundu=0").get(), bugun = yerelIso(new Date()).slice(0, 10);
+    const c = db.prepare("SELECT COUNT(*) n FROM cagri WHERE yon='gelen' AND sonuc='Cevapsız' AND date(zaman)=?").get(bugun).n;
+    const saat = w.en_eski ? Math.max(0, Math.floor((Date.now() - new Date(w.en_eski.replace(' ', 'T')).getTime()) / 36e5)) : 0;
+    return { wa: w.n, wa_saat: saat, cagri: c };
+  }
+  async function uyariGonder(zorla) {
+    const u = uCfg(), d = uDurum(); if (!zorla) {
+      if (!u.acik || !u.alicilar.length) return { gonderildi: 0 };
+      const ws = d.wa > 0 && (d.wa >= u.esik || d.wa_saat >= u.saat), cs = u.cagri_esik > 0 && d.cagri >= u.cagri_esik; if (!ws && !cs) return { gonderildi: 0 };
+      if (u.son && Date.now() - new Date(u.son.replace(' ', 'T')).getTime() < u.tekrar_saat * 36e5) return { gonderildi: 0 };
+    }
+    const parca = []; if (d.wa > 0) parca.push(`${d.wa} WhatsApp mesajı yanıt bekliyor (en eskisi ${d.wa_saat} saattir)`); if (d.cagri > 0) parca.push(`bugün ${d.cagri} cevapsız arama var`);
+    if (!parca.length) return { gonderildi: 0, bos: true };
+    const metin = 'bağışpanel uyarı: ' + parca.join('; ') + '. Lütfen panelden kontrol edin.', kanallar = u.kanal === 'ikisi' ? ['sms', 'mail'] : [u.kanal];
+    const us = u.alicilar.map(id => db.prepare('SELECT ad,telefon,eposta FROM users WHERE id=? AND aktif=1').get(id)).filter(Boolean); let n = 0;
+    for (const k of kanallar) for (const x of us) {
+      const hedef = k === 'sms' ? x.telefon : x.eposta; if (!hedef) { logla(k, x.ad, metin, 'uyari', null, 'Hata', k === 'sms' ? 'Telefon yok' : 'E-posta yok'); continue; }
+      const r = await gonder(k, hedef, { mesaj: metin, konu: 'bağışpanel: yanıt bekleyen mesajlar' }); n += r.ok ? 1 : 0;
+      logla(k, hedef, metin, 'uyari', null, r.ok ? (r.deneme ? 'Deneme (gönderilmedi)' : 'Gönderildi') : 'Hata', r.hata);
+    }
+    if (!zorla) setA('wauyari', { ...u, son: yerelIso(new Date()) }); return { gonderildi: n, metin };
+  }
+  setInterval(() => { uyariGonder(false).catch(e => console.error('uyarı', e.message)); }, 5 * 60 * 1000).unref();
+  R('GET', '/api/iletisim/uyari', 'iayar', 'g', async () => [200, { ayar: uCfg(), durum: uDurum(), kullanicilar: db.prepare("SELECT u.id,u.ad,u.telefon,u.eposta,b.ad birim FROM users u JOIN birimler b ON b.id=u.birim_id WHERE u.aktif=1 ORDER BY u.ad").all(), mod: cfg().mod }]);
+  R('PUT', '/api/iletisim/uyari', 'iayar', 'e', async (c) => {
+    const b = c.body || {}, n = (v, lo, hi, ad) => { const x = Math.round(+v); if (!isFinite(x) || x < lo || x > hi) throw new Err(400, `${ad} ${lo}–${hi} arasında olmalı.`); return x; };
+    const kanal = ['sms', 'mail', 'ikisi'].includes(b.kanal) ? b.kanal : 'sms', al = [...new Set((Array.isArray(b.alicilar) ? b.alicilar : []).map(Number).filter(Number.isInteger))].filter(id => db.prepare('SELECT 1 FROM users WHERE id=?').get(id));
+    if (b.acik && !al.length) throw new Err(400, 'Uyarıyı açmak için en az bir alıcı seçin.');
+    setA('wauyari', { ...uCfg(), acik: !!b.acik, esik: n(b.esik, 1, 1000, 'Mesaj eşiği'), saat: n(b.saat, 1, 168, 'Bekleme süresi (saat)'), cagri_esik: n(b.cagri_esik, 0, 1000, 'Cevapsız arama eşiği'), tekrar_saat: n(b.tekrar_saat, 1, 168, 'Tekrar aralığı (saat)'), kanal, alicilar: al });
+    A.audit(c.user, 'wa_uyari_ayar', b.acik ? 'açık' : 'kapalı', ip(c.req)); return [200, { ok: 1 }];
+  });
+  R('POST', '/api/iletisim/uyari/dene', 'iayar', 'e', async (c) => { if (!uCfg().alicilar.length) throw new Err(400, 'Önce alıcı seçip kaydedin.'); const r = await uyariGonder(true); if (r.bos) throw new Err(409, 'Şu an yanıt bekleyen mesaj ya da cevapsız arama yok; gönderilecek bir şey yok.'); return [200, r]; });
+
   // ---------- otomatik mesajlar (kabul, sertifika…) artık sağlayıcıdan geçer ----------
   ctx.sms = ((eski) => (k, v, kime, user, tel) => { const r = eski(k, v, kime, user, tel); if (!r) return; const mod = cfg().mod; if (mod !== 'canli' || !tel || digits(tel).length < 10) { db.prepare('UPDATE sms_log SET durum=? WHERE id=?').run(mod !== 'canli' ? 'Deneme (gönderilmedi)' : 'Telefon yok', r.id); return; } gonder('sms', tel, { mesaj: r.mesaj }).then(x => db.prepare('UPDATE sms_log SET durum=?, hata=? WHERE id=?').run(x.ok ? 'Gönderildi' : 'Hata', x.hata || null, r.id)); })(ctx.sms);
 
@@ -249,7 +287,7 @@ CREATE INDEX IF NOT EXISTS ix_wa_tel ON wa_mesaj(tel);
     return [200, { sonuclar: CSON, saglayici: cAyar().saglayici, bugunGiden: g("SELECT COUNT(*) n FROM cagri WHERE yon='giden' AND date(zaman)=?", bugun), bugunGelen: g("SELECT COUNT(*) n FROM cagri WHERE yon='gelen' AND date(zaman)=?", bugun), bugunUlasilan: g("SELECT COUNT(*) n FROM cagri WHERE date(zaman)=? AND sonuc IN ('Görüştük','Bağış sözü verdi')", bugun), sozler: g("SELECT COUNT(*) n FROM cagri WHERE date(zaman)=? AND sonuc='Bağış sözü verdi'", bugun), cevapsiz: g("SELECT COUNT(*) n FROM cagri WHERE yon='gelen' AND sonuc='Cevapsız' AND date(zaman)=?", bugun), aranmaz: B.filter(x => { try { return JSON.parse(x.izin).ara === 'ret'; } catch (e) { return false; } }).length, toplam: g('SELECT COUNT(*) n FROM cagri') }];
   });
   R('GET', '/api/cagri/aranacak', 'cagri', 'g', async (c) => {
-    const p = new URL(c.req.url, 'http://x').searchParams, q = str(p.get('q'), 60).toLowerCase(), pasif = p.get('gun') === '0' ? 0 : Math.max(1, Math.min(3650, +p.get('gun') || 90)), esik = pasif ? new Date(Date.now() - pasif * 86400000).toISOString().slice(0, 10) : '0000', son3 = new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10) + ' 00:00:00';
+    const p = new URL(c.req.url, 'http://x').searchParams, q = str(p.get('q'), 60).toLowerCase(), pasif = p.get('gun') === '0' ? 0 : Math.max(1, Math.min(3650, +p.get('gun') || 90)), esik = pasif ? new Date(Date.now() - pasif * 86400000 - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10) : '0000', son3 = new Date(Date.now() - 3 * 86400000 - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10) + ' 00:00:00';
     const rows = db.prepare(`SELECT b.id, b.ad, b.tel, b.izin, MAX(g.tarih) son, COALESCE(SUM(g.tl),0) toplam, COUNT(g.id) adet, (SELECT sonuc FROM cagri x WHERE x.bagisci_id=b.id ORDER BY x.id DESC LIMIT 1) csonuc, (SELECT zaman FROM cagri x WHERE x.bagisci_id=b.id ORDER BY x.id DESC LIMIT 1) czaman FROM bagiscilar b LEFT JOIN bagislar g ON g.bagisci_id=b.id AND g.durum='Onaylı' GROUP BY b.id`).all();
     let hariç = 0; const L = [];
     rows.forEach(b => { if (digits(b.tel).length < 7) return; const iz = b.izin ? JSON.parse(b.izin) : {}; if (iz.ara === 'ret') { hariç++; return; } if (pasif && b.son && b.son >= esik) return; if (b.czaman && b.czaman >= son3) return; if (b.csonuc === 'Yanlış numara') return; if (q && !(String(b.ad).toLowerCase().includes(q) || String(b.tel).includes(q))) return; L.push({ id: b.id, ad: b.ad, tel: b.tel, son: b.son, toplam: b.toplam, adet: b.adet, csonuc: b.csonuc, czaman: b.czaman }); });

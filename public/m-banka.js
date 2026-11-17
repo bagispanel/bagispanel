@@ -1,5 +1,5 @@
 // Banka Hareketleri: hesaba gelen paraların eşleştirme kuyruğu. Hiçbir hareket kendiliğinden bağış olmaz; kontrol edilip "tamamla" ile işlenir.
-const BK=()=>ST.bk||(ST.bk={d:{liste:[],ozet:{bekliyor:{n:0,t:0},tamam:{n:0,t:0},yoksay:{n:0,t:0}},hesaplar:[],turler:[],sponsorluklar:[]},durum:'Bekliyor',imp:false,dr:{},ara:{},sel:{},msg:'',ysk:null});
+const BK=()=>ST.bkh||(ST.bkh={d:{liste:[],ozet:{bekliyor:{n:0,t:0},tamam:{n:0,t:0},yoksay:{n:0,t:0}},hesaplar:[],turler:[],sponsorluklar:[]},durum:'Bekliyor',imp:false,dr:{},ara:{},sel:{},msg:'',ysk:null});
 async function bkYukle(){const b=BK(),r=await api('GET','/api/banka/hareketler?durum='+encodeURIComponent(b.durum));b.d=r;r.liste.forEach(h=>{if(!b.dr[h.id]&&h.oneri){const o=h.oneri;b.dr[h.id]={mode:o.tip=='sponsorluk'?'sp':'bagis',bg:o.bagisci_id?{id:o.bagisci_id,ad:o.bagisci_ad,tel:o.bagisci_tel}:null,tur:o.tur_id||'',sp:o.sponsorluk_id||'',yeni:false,yad:'',ytel:''}}})}
 PG.bhar={async load(){await bkYukle()},view(){return bkView()}};
 const bkD=s=>String(s||'').split('-').reverse().join('.'),bkM=(v,p)=>TR(Math.round(v*100)/100)+' '+({TL:'₺',USD:'$',EUR:'€'}[p]||p||'₺');

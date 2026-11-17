@@ -9,6 +9,7 @@ module.exports = function (ctx) {
     kayit TEXT NOT NULL DEFAULT (datetime('now','localtime')));
   CREATE TABLE IF NOT EXISTS eser_dosya(id INTEGER PRIMARY KEY, eser_id INTEGER NOT NULL, ad TEXT NOT NULL, tip TEXT NOT NULL, dosya TEXT NOT NULL, boyut INTEGER NOT NULL, kayit TEXT NOT NULL DEFAULT (datetime('now','localtime')));
   CREATE TABLE IF NOT EXISTS eser_not(id INTEGER PRIMARY KEY, eser_id INTEGER NOT NULL, metin TEXT NOT NULL, ilerleme INTEGER, kullanici TEXT, kayit TEXT NOT NULL DEFAULT (datetime('now','localtime')));`);
+  db.prepare("INSERT OR IGNORE INTO kategoriler(ad) VALUES('Kalıcı Eser')").run(); // sabit ana kategori: projeler bunun altında alt kategori olarak açılır
   const CONST = { tur: ['Cami', 'Sağlık ocağı', 'Okul', 'Kuran kursu', 'Yetimhane', 'Kütüphane', 'Su ve altyapı', 'Diğer'], durum: ['Planlama', 'Fon toplama', 'İnşaat', 'Tamamlandı', 'Askıda'], para: ['TL', 'USD', 'EUR'], dosya: ['Çizim / plan', 'Proje belgesi', 'İzin / resmî evrak', 'Fotoğraf', 'Rapor', 'Diğer'] };
   usage.partner.push((ad) => db.prepare('SELECT COUNT(*) n FROM eser WHERE partner=?').get(ad).n);
   usage.ulke.push((ad) => db.prepare('SELECT COUNT(*) n FROM eser WHERE ulke=?').get(ad).n);
@@ -19,9 +20,9 @@ module.exports = function (ctx) {
     const o = {}; o.ad = str(b.ad, 120); if (!o.ad) throw new Err(400, 'Proje adı zorunlu.');
     o.tur = String(b.tur || ''); if (!CONST.tur.includes(o.tur)) throw new Err(400, 'Proje türü geçersiz.');
     o.durum = String(b.durum || 'Planlama'); if (!CONST.durum.includes(o.durum)) throw new Err(400, 'Durum geçersiz.');
-    o.ulke = str(b.ulke, 60) || null; if (o.ulke && !db.prepare('SELECT 1 FROM ulkeler WHERE ad=?').get(o.ulke)) throw new Err(400, 'Ülke listede yok (Sistem Ayarları → Ülkeler).');
+    o.ulke = str(b.ulke, 60) || null; if (!o.ulke) throw new Err(400, 'Ülke zorunlu.'); if (o.ulke && !db.prepare('SELECT 1 FROM ulkeler WHERE ad=?').get(o.ulke)) throw new Err(400, 'Ülke listede yok (Sistem Ayarları → Ülkeler).');
     o.bolge = str(b.bolge, 120) || null; o.konum = str(b.konum, 600) || null; o.alan = num(b.alan, 'Alan (m²)', 1e7) || null; o.kapasite = str(b.kapasite, 80) || null;
-    o.hedef = num(b.hedef, 'Hedef tutar'); o.para = String(b.para || 'TL'); if (!CONST.para.includes(o.para)) throw new Err(400, 'Para birimi geçersiz.');
+    o.hedef = num(b.hedef, 'Hedef tutar'); if (!(o.hedef > 0)) throw new Err(400, 'Hedef tutar zorunlu (0’dan büyük).'); o.para = String(b.para || 'TL'); if (!CONST.para.includes(o.para)) throw new Err(400, 'Para birimi geçersiz.');
     o.kur = o.para === 'TL' ? 1 : num(b.kur, 'Kur', 1e6); if (o.para !== 'TL' && !(o.kur > 0)) throw new Err(400, o.para + ' için kur (1 ' + o.para + ' = kaç TL) girin.');
     o.elle = num(b.elle, 'Ayrıca toplanan');
     const ids = (Array.isArray(b.tur_ids) ? b.tur_ids : []).map(Number).filter(Number.isInteger); ids.forEach(i => { if (!db.prepare('SELECT 1 FROM bagis_turleri WHERE id=?').get(i)) throw new Err(400, 'Bağlı bağış türü bulunamadı.'); }); o.tur_ids = JSON.stringify([...new Set(ids)]);
@@ -31,6 +32,11 @@ module.exports = function (ctx) {
     o.partner = str(b.partner, 120) || null; if (o.partner && !db.prepare('SELECT 1 FROM partnerler WHERE ad=?').get(o.partner)) throw new Err(400, 'Partner kurum bulunamadı (Kurum Yönetimi → Partner Kurumlar).');
     o.gonullu_id = +b.gonullu_id || null; if (o.gonullu_id && !db.prepare('SELECT 1 FROM gonulluler WHERE id=?').get(o.gonullu_id)) throw new Err(400, 'Gönüllü bulunamadı.');
     o.web = b.web ? 1 : 0; o.aciklama = str(b.aciklama, 2000) || null; return o;
+  }
+  function turAc(o, b) { // "Bağış Al'da alt kategori aç": Kalıcı Eser › proje adı
+    if (!b.tur_ac) return; const ad = o.ad.slice(0, 80); let t = db.prepare("SELECT id FROM bagis_turleri WHERE kat='Kalıcı Eser' AND ad=?").get(ad);
+    if (!t) t = { id: +db.prepare("INSERT INTO bagis_turleri(kat,ad) VALUES('Kalıcı Eser',?)").run(ad).lastInsertRowid };
+    const ids = JSON.parse(o.tur_ids); if (!ids.includes(t.id)) ids.push(t.id); o.tur_ids = JSON.stringify(ids);
   }
   const K = ['ad', 'tur', 'ulke', 'bolge', 'konum', 'alan', 'kapasite', 'hedef', 'para', 'kur', 'elle', 'tur_ids', 'ilerleme', 'durum', 'baslangic', 'bitis', 'sorumlu_ad', 'sorumlu_tel', 'sorumlu_mail', 'partner', 'gonullu_id', 'web', 'aciklama'];
   const satir = (e) => {
@@ -46,8 +52,8 @@ module.exports = function (ctx) {
       gonulluler: db.prepare("SELECT id,ad FROM gonulluler WHERE durum<>'Pasif' ORDER BY ad").all(), turler: db.prepare('SELECT id,kat,ad FROM bagis_turleri ORDER BY kat,ad').all() }];
   });
   R('GET', '/api/eser/([0-9]+)', 'eser', 'g', async (c) => { const e = ses(+c.m[1]); return [200, { ...satir(e), dosyalar: db.prepare('SELECT id,ad,tip,boyut,kayit,dosya FROM eser_dosya WHERE eser_id=? ORDER BY id DESC').all(e.id).map(d => ({ ...d, ext: path.extname(d.dosya).slice(1), dosya: undefined })), notlar: db.prepare('SELECT * FROM eser_not WHERE eser_id=? ORDER BY id DESC').all(e.id) }]; });
-  R('POST', '/api/eser', 'eser', 'e', async (c) => { const o = oku(c.body || {}); const id = +db.prepare(`INSERT INTO eser(${K.join(',')}) VALUES(${K.map(() => '?').join(',')})`).run(...K.map(k => o[k])).lastInsertRowid; A.audit(c.user, 'eser_eklendi', o.ad, ip(c.req)); return [201, { id }]; });
-  R('PUT', '/api/eser/([0-9]+)', 'eser', 'd', async (c) => { const id = ses(+c.m[1]).id, o = oku(c.body || {}); db.prepare(`UPDATE eser SET ${K.map(k => k + '=?').join(',')} WHERE id=?`).run(...K.map(k => o[k]), id); A.audit(c.user, 'eser_guncellendi', o.ad, ip(c.req)); return [200, { ok: 1 }]; });
+  R('POST', '/api/eser', 'eser', 'e', async (c) => { const o = oku(c.body || {}); turAc(o, c.body || {}); const id = +db.prepare(`INSERT INTO eser(${K.join(',')}) VALUES(${K.map(() => '?').join(',')})`).run(...K.map(k => o[k])).lastInsertRowid; A.audit(c.user, 'eser_eklendi', o.ad, ip(c.req)); return [201, { id }]; });
+  R('PUT', '/api/eser/([0-9]+)', 'eser', 'd', async (c) => { const id = ses(+c.m[1]).id, o = oku(c.body || {}); turAc(o, c.body || {}); db.prepare(`UPDATE eser SET ${K.map(k => k + '=?').join(',')} WHERE id=?`).run(...K.map(k => o[k]), id); A.audit(c.user, 'eser_guncellendi', o.ad, ip(c.req)); return [200, { ok: 1 }]; });
   R('DELETE', '/api/eser/([0-9]+)', 'eser', 's', async (c) => { const e = ses(+c.m[1]); db.prepare('SELECT dosya FROM eser_dosya WHERE eser_id=?').all(e.id).forEach(d => { try { fs.unlinkSync(path.join(UP, path.basename(d.dosya))); } catch (x) {} }); db.prepare('DELETE FROM eser_dosya WHERE eser_id=?').run(e.id); db.prepare('DELETE FROM eser_not WHERE eser_id=?').run(e.id); db.prepare('DELETE FROM eser WHERE id=?').run(e.id); A.audit(c.user, 'eser_silindi', e.ad, ip(c.req)); return [200, { ok: 1 }]; });
   // Belge / çizim yükleme (data URL, en çok 1,5 MB: pdf, png, jpeg, webp)
   const MAGIC = { pdf: (b) => b.slice(0, 5).toString() === '%PDF-', png: (b) => b[0] === 0x89 && b[1] === 0x50, jpeg: (b) => b[0] === 0xff && b[1] === 0xd8, webp: (b) => b.slice(0, 4).toString() === 'RIFF' && b.slice(8, 12).toString() === 'WEBP' };

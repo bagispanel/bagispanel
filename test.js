@@ -352,9 +352,10 @@ server.listen(0, async () => {
     assert.equal((await admin('DELETE', '/api/eser/' + c.j.id)).s, 200); assert.equal((await admin('GET', '/api/eser')).j.liste.length, 0);
   });
   await t('sponsorluk: öğrenci kartı, sponsor atama, taksit/gecikme, hatırlatma, kart linki, sertifika', async () => {
-    const ob = { ad: 'Ahmed Musa', ulke: 'Çad', bolge: 'Ndjamena', dogum: '2012-03-04', yetim: true, hafiz: true, yetim_durum: 'Babasız (yetim)', okul_tur: 'Medrese', okul_ad: 'Nur Medresesi', cuz: 5, yer: 'Dernek' };
+    const ob = { ad: 'Ahmed Musa', cinsiyet: 'Erkek', ulke: 'Çad', bolge: 'Ndjamena', dogum: '2012-03-04', yetim: true, hafiz: true, yetim_durum: 'Babasız (yetim)', okul_tur: 'Medrese', okul_ad: 'Nur Medresesi', cuz: 5, yer: 'Dernek' };
     assert.equal((await admin('POST', '/api/sp/ogrenci', { ...ob, yetim: false, hafiz: false })).s, 400);
     assert.equal((await admin('POST', '/api/sp/ogrenci', { ...ob, ulke: 'Yokistan' })).s, 400);
+    for (const eks of [{ cinsiyet: '' }, { ulke: '' }, { dogum: '', yas_elle: '' }, { yetim_durum: '' }, { okul_tur: '' }, { okul_tur: 'Medrese', okul_ad: '' }]) assert.equal((await admin('POST', '/api/sp/ogrenci', { ...ob, ...eks })).s, 400, JSON.stringify(eks));
     const o = await admin('POST', '/api/sp/ogrenci', ob); assert.equal(o.s, 201, JSON.stringify(o.j));
     const png = 'data:image/png;base64,' + Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47]), Buffer.from('xxxx')]).toString('base64');
     assert.equal((await admin('POST', `/api/sp/ogrenci/${o.j.id}/medya`, { ad: 'f.png', veri: png })).s, 201);
@@ -386,7 +387,7 @@ server.listen(0, async () => {
     const hs = (await admin('GET', '/api/banka')).j.hesaplar[0], hid = hs.id;
     const mkB = async (tel, ad) => (await admin('POST', '/api/bagiscilar', { kod: '+90', tel, ad })).j.id;
     const bA = await mkB('0537 100 00 01', 'Mehmet Yılmaz'), bB = await mkB('0537 100 00 02', 'Fatma Öz');
-    const o1 = (await admin('POST', '/api/sp/ogrenci', { ad: 'Çocuk Bir', ulke: 'Çad', yetim: true })).j.id;
+    const o1 = (await admin('POST', '/api/sp/ogrenci', { ad: 'Çocuk Bir', cinsiyet: 'Kız', yas_elle: 9, ulke: 'Çad', yetim: true, yetim_durum: 'Anasız', okul_tur: 'Henüz okula gitmiyor' })).j.id;
     const spn = (await admin('POST', '/api/sp/sponsorluk', { ogrenci_id: o1, bagisci_id: bA, sure: 12, aylik: 400, para: 'TL' })).j.id, kod = (await admin('GET', '/api/sp/sponsorluk/' + spn)).j.kod;
     const bg = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10).split('-').reverse().join('.');
     const csv = ['Tarih;Açıklama;Gönderen;Tutar', `${bg};Burs ${kod};Mehmet Y.;400,00`, `${bg};Fitre;FATMA ÖZ;150,00`, `${bg};Havale 0537 100 00 01;ZZ;75,50`, `${bg};kira;Bilinmeyen A.Ş.;5.000,00`, `${bg};Çıkış;X;-100,00`].join('\n');
@@ -479,6 +480,33 @@ server.listen(0, async () => {
   await t('analiz saha: videolu bağış bölümü', async () => {
     const d = (await admin('GET', '/api/analiz/saha')).j; assert.ok(d.video); assert.equal(d.video.asama.length, 6); assert.ok(Array.isArray(d.video.projeler)); assert.equal(d.video.aylik.length, 6);
     assert.equal(d.video.birim, d.video.asama.reduce((a, b) => a + b, 0));
+  });
+  await t('kalıcı eser: sabit ana kategori, proje altında alt kategori açılır, zorunlu alanlar', async () => {
+    const T0 = (await admin('GET', '/api/turler')).j; assert.ok(T0.kategoriler.includes('Kalıcı Eser'));
+    assert.equal((await admin('DELETE', '/api/kategoriler?ad=' + encodeURIComponent('Kalıcı Eser'))).s, 409);
+    const b = { ad: 'Nijer Niamey Camii', tur: 'Cami', durum: 'Planlama', ulke: 'Nijer', para: 'USD', kur: 35, hedef: 50000 };
+    assert.equal((await admin('POST', '/api/eser', { ...b, hedef: 0 })).s, 400); assert.equal((await admin('POST', '/api/eser', { ...b, ulke: '' })).s, 400);
+    const r = await admin('POST', '/api/eser', { ...b, tur_ac: true }); assert.equal(r.s, 201, JSON.stringify(r.j));
+    const T1 = (await admin('GET', '/api/turler')).j, tr = T1.turler.find(x => x.kat === 'Kalıcı Eser' && x.ad === 'Nijer Niamey Camii'); assert.ok(tr);
+    assert.deepEqual((await admin('GET', '/api/eser/' + r.j.id)).j.tur_ids, [tr.id]);
+    const r2 = await admin('POST', '/api/eser', { ...b, tur_ac: true }); assert.equal(r2.s, 201); assert.deepEqual((await admin('GET', '/api/eser/' + r2.j.id)).j.tur_ids, [tr.id]); // aynı ad: alt kategori tekrar açılmaz
+  });
+  await t('bildirim: sayaçlar yetkiye göre süzülür', async () => {
+    const a = (await admin('GET', '/api/bildirim')).j; assert.ok('twa' in a.sayac && 'cagri' in a.sayac && 'mesaj' in a.sayac && 'gorev' in a.sayac);
+    const u = await mkUser('bildkul', 'Çağrı merkezi'); await admin('PUT', `/api/users/${u.id}/yetki`, { ozel: { twa: { g: 0, e: 0, d: 0, s: 0 }, cagri: { g: 0, e: 0, d: 0, s: 0 } } });
+    const b = (await u.q('GET', '/api/bildirim')).j; assert.ok(!('twa' in b.sayac)); assert.ok(!('cagri' in b.sayac)); assert.ok(!b.son.wa && !b.son.cagri); assert.ok('mesaj' in b.sayac);
+    assert.equal((await mk()('GET', '/api/bildirim')).s, 401);
+  });
+  await t('yanıt uyarısı: ayar doğrulama ve test gönderimi', async () => {
+    assert.equal((await admin('PUT', '/api/iletisim/uyari', { acik: true, esik: 5, saat: 2, cagri_esik: 3, kanal: 'sms', tekrar_saat: 6, alicilar: [] })).s, 400);
+    assert.equal((await admin('PUT', '/api/iletisim/uyari', { acik: false, esik: 0, saat: 2, cagri_esik: 3, kanal: 'sms', tekrar_saat: 6, alicilar: [] })).s, 400);
+    const me = (await admin('GET', '/api/me')).j.user; assert.equal((await admin('PUT', '/api/iletisim/uyari', { acik: true, esik: 5, saat: 2, cagri_esik: 3, kanal: 'ikisi', tekrar_saat: 6, alicilar: [me.id] })).s, 200);
+    const g = (await admin('GET', '/api/iletisim/uyari')).j; assert.equal(g.ayar.acik, true); assert.deepEqual(g.ayar.alicilar, [me.id]); assert.equal(g.kullanicilar.length >= 1, true);
+    const d = await admin('POST', '/api/iletisim/uyari/dene'); assert.ok(d.s === 200 || d.s === 409, JSON.stringify(d.j));
+  });
+  await t('bağışçı profili: bağış ayrıntısı ve tür dağılımı', async () => {
+    const L = (await admin('GET', '/api/bagiscilar')).j, id = (L.find(x => x.adet > 0) || L[0]).id, p = (await admin('GET', '/api/bagiscilar/' + id)).j;
+    assert.ok(p.detay && typeof p.detay === 'object'); assert.ok(Array.isArray(p.turDagilim)); p.turDagilim.forEach(x => { assert.ok(x.kat && x.tur); });
   });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });

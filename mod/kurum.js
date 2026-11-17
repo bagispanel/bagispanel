@@ -13,6 +13,7 @@ module.exports = function (ctx) {
       if (String(b.logo).length > 450000) throw new Err(400, 'Logo çok büyük (en fazla ~330 KB).');
       logo = String(b.logo);
     }
+    if (!str(b.ad, 160)) throw new Err(400, 'Kurum adı zorunlu.');
     const web = str(b.web, 120), eposta = str(b.eposta, 120);
     if (eposta && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eposta)) throw new Err(400, 'E-posta geçersiz.');
     if (web && !/^(https?:\/\/)?[\w.-]+\.[a-z]{2,}([\/?#].*)?$/i.test(web)) throw new Err(400, 'Web adresi geçersiz.');

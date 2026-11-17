@@ -45,11 +45,13 @@ module.exports = function (ctx) {
   const spo = (id) => { const s = db.prepare('SELECT * FROM sp_sponsorluk WHERE id=?').get(id); if (!s) throw new Err(404, 'Sponsorluk bulunamadı.'); return s; };
   function oku(b) {
     const o = {}; o.ad = str(b.ad, 100); if (!o.ad) throw new Err(400, 'Ad soyad zorunlu.');
-    o.cinsiyet = CONST.cinsiyet.includes(b.cinsiyet) ? b.cinsiyet : null; o.ulke = str(b.ulke, 60) || null; if (o.ulke && !db.prepare('SELECT 1 FROM ulkeler WHERE ad=?').get(o.ulke)) throw new Err(400, 'Ülke listede yok (Sistem Ayarları → Ülkeler).'); o.bolge = str(b.bolge, 120) || null;
-    o.kimlik = str(b.kimlik, 30) || null; o.dogum = dt(b.dogum, 'Doğum tarihi'); if (o.dogum && o.dogum > today()) throw new Err(400, 'Doğum tarihi gelecekte olamaz.'); o.yas_elle = !o.dogum && b.yas_elle !== '' && b.yas_elle != null ? Math.round(num(b.yas_elle, 'Yaş', 80)) : null;
+    o.cinsiyet = CONST.cinsiyet.includes(b.cinsiyet) ? b.cinsiyet : null; if (!o.cinsiyet) throw new Err(400, 'Cinsiyet zorunlu.'); o.ulke = str(b.ulke, 60) || null; if (!o.ulke) throw new Err(400, 'Ülke zorunlu (sponsora gösterilir).'); if (o.ulke && !db.prepare('SELECT 1 FROM ulkeler WHERE ad=?').get(o.ulke)) throw new Err(400, 'Ülke listede yok (Sistem Ayarları → Ülkeler).'); o.bolge = str(b.bolge, 120) || null;
+    o.kimlik = str(b.kimlik, 30) || null; o.dogum = dt(b.dogum, 'Doğum tarihi'); if (o.dogum && o.dogum > today()) throw new Err(400, 'Doğum tarihi gelecekte olamaz.'); o.yas_elle = !o.dogum && b.yas_elle !== '' && b.yas_elle != null ? Math.round(num(b.yas_elle, 'Yaş', 80)) : null; if (!o.dogum && o.yas_elle == null) throw new Err(400, 'Doğum tarihi ya da yaş zorunlu.');
     o.yetim = b.yetim ? 1 : 0; o.hafiz = b.hafiz ? 1 : 0; if (!o.yetim && !o.hafiz) throw new Err(400, 'En az birini seçin: yetim veya hafız.');
-    o.yetim_durum = o.yetim && CONST.yetim_durum.includes(b.yetim_durum) ? b.yetim_durum : null; o.vasi = o.yetim ? str(b.vasi, 100) || null : null;
-    o.okul_tur = CONST.okul_tur.includes(b.okul_tur) ? b.okul_tur : null; o.okul_ad = str(b.okul_ad, 120) || null; o.sinif = str(b.sinif, 40) || null;
+    o.yetim_durum = o.yetim && CONST.yetim_durum.includes(b.yetim_durum) ? b.yetim_durum : null; if (o.yetim && !o.yetim_durum) throw new Err(400, 'Yetimlik durumunu seçin.'); o.vasi = o.yetim ? str(b.vasi, 100) || null : null;
+    o.okul_tur = CONST.okul_tur.includes(b.okul_tur) ? b.okul_tur : null; if (!o.okul_tur) throw new Err(400, 'Eğitim türünü seçin (okul, medrese…).'); o.okul_ad = str(b.okul_ad, 120).replace(/\s+/g, ' ') || null;
+    if (o.okul_tur !== 'Henüz okula gitmiyor' && !o.okul_ad) throw new Err(400, o.okul_tur + ' adı zorunlu.'); if (o.okul_tur === 'Henüz okula gitmiyor') o.okul_ad = null;
+    if (o.okul_ad) { const nk = (v) => String(v).toLocaleLowerCase('tr').replace(/\s+/g, ' ').trim(), m = db.prepare('SELECT DISTINCT okul_ad FROM sp_ogrenci WHERE okul_ad IS NOT NULL').all().find(x => nk(x.okul_ad) === nk(o.okul_ad)); if (m) o.okul_ad = m.okul_ad; } o.sinif = str(b.sinif, 40) || null; // aynı okul/medrese tek yazımla tutulur (raporlama)
     o.cuz = o.hafiz ? Math.round(num(b.cuz, 'Cüz', 30)) : 0; o.ayet = o.hafiz ? str(b.ayet, 120) || null : null; o.hoca = str(b.hoca, 100) || null;
     o.yer = str(b.yer, 120) || 'Dernek'; if (o.yer !== 'Dernek' && !db.prepare('SELECT 1 FROM partnerler WHERE ad=?').get(o.yer)) throw new Err(400, 'Partner kurum bulunamadı (Kurum Yönetimi → Partner Kurumlar).');
     o.notlar = str(b.notlar, 800) || null; return o;
@@ -60,11 +62,11 @@ module.exports = function (ctx) {
     const p = new URL(c.req.url, 'http://x').searchParams, q = (p.get('q') || '').toLocaleLowerCase('tr'), f = (k) => { const v = p.get(k); return v && v !== 'Tümü' ? v : null; };
     let L = db.prepare('SELECT * FROM sp_ogrenci ORDER BY id DESC').all().map(oRow);
     if (q) L = L.filter(x => [x.ad, x.ulke, x.bolge, x.okul_ad].some(v => String(v || '').toLocaleLowerCase('tr').includes(q)));
-    if (f('ulke')) L = L.filter(x => x.ulke === f('ulke')); if (f('yer')) L = L.filter(x => x.yer === f('yer')); if (f('durum')) L = L.filter(x => x.durum === f('durum'));
+    if (f('ulke')) L = L.filter(x => x.ulke === f('ulke')); if (f('okul')) L = L.filter(x => x.okul_ad === f('okul')); if (f('yer')) L = L.filter(x => x.yer === f('yer')); if (f('durum')) L = L.filter(x => x.durum === f('durum'));
     if (f('tur') === 'yetim') L = L.filter(x => x.yetim); if (f('tur') === 'hafiz') L = L.filter(x => x.hafiz); if (f('sponsor') === 'var') L = L.filter(x => x.sponsorlu); if (f('sponsor') === 'yok') L = L.filter(x => !x.sponsorlu && x.durum === 'Aktif');
     const all = db.prepare('SELECT * FROM sp_ogrenci').all().map(oRow);
     return [200, { liste: L, ozet: { toplam: all.length, yetim: all.filter(x => x.yetim).length, hafiz: all.filter(x => x.hafiz).length, bekleyen: all.filter(x => !x.sponsorlu && x.durum === 'Aktif').length, sponsorlu: all.filter(x => x.sponsorlu).length },
-      sabit: CONST, ulkeler: db.prepare('SELECT ad FROM ulkeler ORDER BY ad').all().map(x => x.ad), partnerler: db.prepare('SELECT ad FROM partnerler WHERE aktif=1 ORDER BY ad').all().map(x => x.ad) }];
+      okullar: db.prepare("SELECT okul_tur tur, okul_ad ad, COUNT(*) n FROM sp_ogrenci WHERE okul_ad IS NOT NULL GROUP BY okul_ad ORDER BY n DESC, okul_ad").all(), sabit: CONST, ulkeler: db.prepare('SELECT ad FROM ulkeler ORDER BY ad').all().map(x => x.ad), partnerler: db.prepare('SELECT ad FROM partnerler WHERE aktif=1 ORDER BY ad').all().map(x => x.ad) }];
   });
   R('GET', '/api/sp/ogrenci/([0-9]+)', 'spogr|sptak', 'g', async (c) => { const o = ogr(+c.m[1]); return [200, { ...oRow(o), medya: db.prepare('SELECT id,tip,ad,boyut,profil,kayit,dosya FROM sp_medya WHERE ogrenci_id=? ORDER BY profil DESC,id DESC').all(o.id).map(m => ({ ...m, dosya: undefined })), notlar_liste: db.prepare('SELECT * FROM sp_not WHERE ogrenci_id=? ORDER BY id DESC').all(o.id),
     sponsorluklar: db.prepare('SELECT * FROM sp_sponsorluk WHERE ogrenci_id=? ORDER BY id DESC').all(o.id).map(sRow) }]; });
@@ -153,7 +155,8 @@ module.exports = function (ctx) {
     const tah = (pre) => db.prepare('SELECT para, SUM(tutar) t FROM sp_odeme o JOIN sp_sponsorluk s ON s.id=o.sponsorluk_id WHERE substr(o.tarih,1,?)=? GROUP BY para').all(pre.length, pre);
     const grp = (L, f) => { const m = {}; L.forEach(x => { const k = f(x) || '—'; m[k] = (m[k] || 0) + 1; }); return Object.entries(m).map(([k, n]) => ({ k, n })).sort((a, b) => b.n - a.n); };
     const ozet = (x) => ({ id: x.id, sponsor: x.sponsor, tel: x.tel, ogrenci: x.ogrenci, ulke: x.ulke, yer: x.yer, aylik: x.aylik, para: x.para, tip: x.tip, gecikme_ay: x.gecikme_ay, fark: x.fark, odenen: x.odenen, toplam: x.toplam, son_odeme: x.son_odeme, son_hatirlatma: x.son_hatirlatma, bitis: x.bitis, kalan_gun: x.kalan_gun, yuzde: x.yuzde });
-    return [200, { kpi: { aktif: S.length, ogrenci: O.filter(x => x.durum === 'Aktif').length, bekleyen: O.filter(x => !x.sponsorlu && x.durum === 'Aktif').length, gecikmis: S.filter(x => x.gecikme_ay >= 1).length, tamamlayan: O.filter(x => x.durum === 'Tamamladı').length },
+    const okulRapor = db.prepare("SELECT COALESCE(okul_tur,'-') tur, COALESCE(okul_ad,'(belirtilmemiş)') ad, COUNT(*) n, SUM(yetim) yetim, SUM(hafiz) hafiz FROM sp_ogrenci WHERE durum='Aktif' GROUP BY okul_tur, okul_ad ORDER BY n DESC").all();
+    return [200, { okul: okulRapor, kpi: { aktif: S.length, ogrenci: O.filter(x => x.durum === 'Aktif').length, bekleyen: O.filter(x => !x.sponsorlu && x.durum === 'Aktif').length, gecikmis: S.filter(x => x.gecikme_ay >= 1).length, tamamlayan: O.filter(x => x.durum === 'Tamamladı').length },
       bu_ay: tah(ay), bu_yil: tah(yil), aylik_beklenen: S.reduce((m, x) => { m[x.para] = (m[x.para] || 0) + (x.tip === 'Aylık' ? x.aylik : 0); return m; }, {}),
       odemeyenler: S.filter(x => x.gecikme_ay >= 1).sort((a, b) => b.gecikme_ay - a.gecikme_ay).map(ozet), odeyenler: S.filter(x => x.gecikme_ay < 1).sort((a, b) => String(b.son_odeme || '').localeCompare(String(a.son_odeme || ''))).map(ozet),
       bekleyenler: O.filter(x => !x.sponsorlu && x.durum === 'Aktif').map(x => ({ id: x.id, ad: x.ad, ulke: x.ulke, yer: x.yer, yetim: x.yetim, hafiz: x.hafiz, yas: x.yas })), bitecekler: S.filter(x => x.kalan_gun >= 0 && x.kalan_gun <= 60).sort((a, b) => a.kalan_gun - b.kalan_gun).map(ozet),
