@@ -95,15 +95,24 @@ CREATE TABLE IF NOT EXISTS bagis_turleri(
 
   // ---- banka hesapları
   const ibanOk = (s) => { s = s.replace(/\s/g, '').toUpperCase(); if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(s)) return false; if (s.startsWith('TR') && s.length !== 26) return false; const r = (s.slice(4) + s.slice(0, 4)).replace(/[A-Z]/g, (ch) => ch.charCodeAt(0) - 55); let m = 0; for (const d of r) m = (m * 10 + +d) % 97; return m === 1; };
-  const BANKALAR = ['Ziraat Bankası', 'Halkbank', 'VakıfBank', 'Kuveyt Türk', 'Albaraka Türk', 'Türkiye Finans', 'Ziraat Katılım', 'Vakıf Katılım', 'Emlak Katılım', 'Akbank', 'Garanti BBVA', 'İş Bankası', 'Yapı Kredi', 'QNB', 'DenizBank', 'TEB', 'ING', 'HSBC', 'Şekerbank', 'Fibabanka', 'Odeabank', 'Anadolubank', 'Alternatif Bank', 'Burgan Bank', 'ICBC Turkey', 'Turkland Bank', 'Enpara', 'Diğer'];
-  R('GET', '/api/banka', 'banka|alin', 'g', async () => [200, { bankalar: BANKALAR, hesaplar: db.prepare('SELECT * FROM banka_hesaplari ORDER BY id').all().map(h => ({ ...h, kullanim: used('banka', h.id) })) }]);
+  const BILGI = { 'Ziraat Bankası': ['T.C. Ziraat Bankası A.Ş.', '#E30A17'], 'Halkbank': ['Türkiye Halk Bankası A.Ş.', '#0066B3'], 'VakıfBank': ['Türkiye Vakıflar Bankası T.A.O.', '#F2B705'], 'Kuveyt Türk': ['Kuveyt Türk Katılım Bankası A.Ş.', '#00A651'], 'Albaraka Türk': ['Albaraka Türk Katılım Bankası A.Ş.', '#00843D'], 'Türkiye Finans': ['Türkiye Finans Katılım Bankası A.Ş.', '#5B2A86'], 'Ziraat Katılım': ['Ziraat Katılım Bankası A.Ş.', '#C8102E'], 'Vakıf Katılım': ['Vakıf Katılım Bankası A.Ş.', '#E59B00'], 'Emlak Katılım': ['Türkiye Emlak Katılım Bankası A.Ş.', '#0A7F3F'], 'Akbank': ['Akbank T.A.Ş.', '#E30613'], 'Garanti BBVA': ['Türkiye Garanti Bankası A.Ş.', '#00A859'], 'İş Bankası': ['Türkiye İş Bankası A.Ş.', '#0A3A8C'], 'Yapı Kredi': ['Yapı ve Kredi Bankası A.Ş.', '#004A97'], 'QNB': ['QNB Bank A.Ş.', '#7A1F5C'], 'DenizBank': ['DenizBank A.Ş.', '#0069B4'], 'TEB': ['Türk Ekonomi Bankası A.Ş.', '#00A651'], 'ING': ['ING Bank A.Ş.', '#FF6200'], 'HSBC': ['HSBC Bank A.Ş.', '#DB0011'], 'Şekerbank': ['Şekerbank T.A.Ş.', '#00843D'], 'Fibabanka': ['Fibabanka A.Ş.', '#0B3C5D'], 'Odeabank': ['Odeabank A.Ş.', '#7A1F3D'], 'Anadolubank': ['Anadolubank A.Ş.', '#00539F'], 'Alternatif Bank': ['Alternatifbank A.Ş.', '#E4002B'], 'Burgan Bank': ['Burgan Bank A.Ş.', '#00539F'], 'ICBC Turkey': ['ICBC Turkey Bank A.Ş.', '#C8102E'], 'Turkland Bank': ['Turkland Bank A.Ş.', '#8B1E2D'], 'Enpara': ['Enpara Bank A.Ş.', '#5B2A86'] };
+  const BANKALAR = [...Object.keys(BILGI), 'Diğer'];
+  try { db.exec('ALTER TABLE banka_hesaplari ADD COLUMN sube TEXT'); } catch (e) { }
+  try { db.exec('ALTER TABLE banka_hesaplari ADD COLUMN hesap_no TEXT'); } catch (e) { }
+  R('GET', '/api/banka', 'banka|alin', 'g', async () => [200, { bankalar: BANKALAR, bilgi: BILGI, hesaplar: db.prepare('SELECT * FROM banka_hesaplari ORDER BY id').all().map(h => ({ ...h, kullanim: used('banka', h.id) })) }]);
   R('POST', '/api/banka', 'banka', 'e', async (c) => {
-    const banka = str(c.body.banka, 60), hesap = str(c.body.hesap, 80), iban = String(c.body.iban || '').replace(/\s/g, '').toUpperCase(), para = ['TL', 'USD', 'EUR'].includes(c.body.para) ? c.body.para : 'TL';
+    const banka = str(c.body.banka, 60), hesap = str(c.body.hesap, 80), iban = String(c.body.iban || '').replace(/\s/g, '').toUpperCase(), para = ['TL', 'USD', 'EUR'].includes(c.body.para) ? c.body.para : 'TL', sube = str(c.body.sube, 80) || null, hesapNo = str(c.body.hesap_no, 40) || null;
     if (!banka || !hesap) throw new Err(400, 'Banka ve hesap adını yazın.');
     if (!ibanOk(iban)) throw new Err(400, 'IBAN geçersiz. Örnek: TR33 0006 1005 1978 6457 8413 26');
     if (db.prepare('SELECT 1 FROM banka_hesaplari WHERE iban=?').get(iban)) throw new Err(409, 'Bu IBAN zaten kayıtlı.');
-    const id = +db.prepare('INSERT INTO banka_hesaplari(banka,hesap,iban,para) VALUES(?,?,?,?)').run(banka, hesap, iban.replace(/(.{4})/g, '$1 ').trim(), para).lastInsertRowid;
+    const id = +db.prepare('INSERT INTO banka_hesaplari(banka,hesap,iban,para,sube,hesap_no) VALUES(?,?,?,?,?,?)').run(banka, hesap, iban.replace(/(.{4})/g, '$1 ').trim(), para, sube, hesapNo).lastInsertRowid;
     A.audit(c.user, 'banka_eklendi', `${banka} ${hesap}`, ip(c.req)); return [201, { id }];
+  });
+  R('PUT', '/api/banka/:id', 'banka', 'd', async (c) => {
+    const h = db.prepare('SELECT * FROM banka_hesaplari WHERE id=?').get(+c.m[1]); if (!h) throw new Err(404, 'Hesap yok.');
+    const hesap = str(c.body.hesap, 80); if (!hesap) throw new Err(400, 'Hesap adını yazın.');
+    db.prepare('UPDATE banka_hesaplari SET hesap=?, sube=?, hesap_no=? WHERE id=?').run(hesap, str(c.body.sube, 80) || null, str(c.body.hesap_no, 40) || null, h.id);
+    A.audit(c.user, 'banka_guncellendi', `${h.banka} ${hesap}`, ip(c.req)); return [200, { ok: 1 }];
   });
   R('DELETE', '/api/banka/:id', 'banka', 's', async (c) => {
     const h = db.prepare('SELECT * FROM banka_hesaplari WHERE id=?').get(+c.m[1]); if (!h) throw new Err(404, 'Hesap yok.');

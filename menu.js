@@ -7,6 +7,6 @@ module.exports = [
   ['Web Sitesi', [['entegre','Web Sitesi Bağlantısı (API)'],['spage','Sayfa Yönetimi'],['smenu','Menü Düzeni'],['sform','Bağış Formları'],['sset','Tasarım ve Alan Adı']]],
   ['Bağışçı ve Gönüllü İlişkileri', [['bagisci','Bağışçı Rehberi'],['gonullu','Gönüllü Yönetimi']]],
   ['İletişim', [['tsms','Toplu SMS'],['tmail','Toplu E-posta'],['twa','WhatsApp'],['cagri','Çağrı Merkezi'],['sms','Gönderilen Mesajlar'],['sablon','Mesaj Şablonları'],['iayar','İletişim Ayarları']]],
-  ['Kurum Yönetimi', [['sube','Şube ve Temsilcilikler'],['partner','Partner Kurumlar'],['banka','Banka Hesapları'],['kullanici','Kullanıcı Yönetimi'],['birim','Birimler ve Yetkiler']]],
+  ['Kurum Yönetimi', [['kurumb','Kurum Bilgileri'],['sube','Şube ve Temsilcilikler'],['partner','Partner Kurumlar'],['banka','Banka Hesapları'],['kullanici','Kullanıcı Yönetimi'],['birim','Birimler ve Yetkiler']]],
   ['Sistem Ayarları', [['ulke','Ülkeler'],['pdfay','PDF Şablonları'],['numara','Numaralandırma'],['denetim','Denetim Kayıtları']]]
 ];

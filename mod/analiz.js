@@ -47,7 +47,19 @@ module.exports = function (ctx) {
     const adim = q("SELECT t.org, u.adim, COUNT(*) n FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id GROUP BY t.org, u.adim ORDER BY t.org, u.adim");
     const ulke = q("SELECT COALESCE(NULLIF(u.ulke,''),'Atanmamış') ulk, COUNT(DISTINCT u.id) birim, COUNT(p.id) pay, COALESCE(SUM(p.tutar),0) tutar FROM birimler_org u LEFT JOIN paylar p ON p.birim_id=u.id GROUP BY ulk ORDER BY pay DESC, birim DESC LIMIT 20").map(x => ({ ad: x.ulk, birim: x.birim, pay: x.pay, tutar: x.tutar }));
     const partner = q("SELECT COALESCE(NULLIF(u.partner,''),'Atanmamış') ptn, COUNT(*) birim FROM birimler_org u GROUP BY ptn ORDER BY birim DESC LIMIT 10").map(x => ({ ad: x.ptn, birim: x.birim }));
-    return [200, { org, adim, ulke, partner, bekleyenUlke: q1("SELECT COUNT(*) n FROM birimler_org WHERE (ulke IS NULL OR ulke='')").n, toplamBirim: q1('SELECT COUNT(*) n FROM birimler_org').n, toplamPay: q1('SELECT COUNT(*) n FROM paylar').n }];
+    // Videolu bağış projeleri: ana sayfadaki "bekleyen işler" ile aynı aşama mantığı (birimler_org.adim/ulke/video)
+    const sts = (u) => u.adim < 3 ? u.adim : u.adim === 3 ? (u.video ? 4 : 3) : 5, yerel = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4), bugun = yerel.toISOString().slice(0, 10);
+    const vb = q("SELECT u.id, u.kod, u.ad, u.adim, u.ulke, u.partner, u.video, t.ad turad FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org='Diğer'");
+    const vp = q("SELECT p.birim_id, COUNT(*) pay, COALESCE(SUM(p.tutar),0) tutar, MIN(p.tarih) ilk, SUM(CASE WHEN p.video IS NOT NULL AND p.video<>'' THEN 1 ELSE 0 END) vid FROM paylar p JOIN birimler_org u ON u.id=p.birim_id JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org='Diğer' GROUP BY p.birim_id"), pm = new Map(vp.map(x => [x.birim_id, x]));
+    const asama = [0, 0, 0, 0, 0, 0], proje = {}, vul = {}; let vpay = 0, vtutar = 0;
+    vb.forEach(u => { const k = sts(u), p = pm.get(u.id) || { pay: 0, tutar: 0, vid: 0 }; asama[k]++; vpay += p.pay; vtutar += p.tutar;
+      const r = proje[u.turad] = proje[u.turad] || { ad: u.turad, say: [0, 0, 0, 0, 0, 0], birim: 0, pay: 0, tutar: 0 }; r.say[k]++; r.birim++; r.pay += p.pay; r.tutar += p.tutar;
+      const ul = u.ulke || 'Atanmamış', l = vul[ul] = vul[ul] || { ad: ul, birim: 0, pay: 0, tutar: 0 }; l.birim++; l.pay += p.pay; l.tutar += p.tutar; });
+    const bekleyen = vb.filter(u => { const k = sts(u); return k >= 1 && k <= 4; }).map(u => { const p = pm.get(u.id) || { pay: 0, ilk: null }, k = sts(u); return { kod: u.kod || '#' + u.id, ad: u.ad || u.turad, proje: u.turad, ulke: u.ulke || '', asama: k, pay: p.pay, gun: p.ilk ? Math.max(0, Math.floor((new Date(bugun) - new Date(p.ilk)) / 864e5)) : null }; }).sort((a, b) => (b.gun ?? -1) - (a.gun ?? -1)).slice(0, 10);
+    const ay = []; for (let i = 5; i >= 0; i--) { const d = new Date(yerel.getFullYear(), yerel.getMonth() - i, 1); ay.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')); }
+    const aylikH = q("SELECT substr(p.tarih,1,7) ay, COUNT(*) pay, COALESCE(SUM(p.tutar),0) tutar FROM paylar p JOIN birimler_org u ON u.id=p.birim_id JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org='Diğer' GROUP BY ay"), am = new Map(aylikH.map(x => [x.ay, x]));
+    const video = { birim: vb.length, tamam: asama[5], videoBagli: vb.filter(u => u.video).length, pay: vpay, tutar: vtutar, asama, projeler: Object.values(proje).sort((a, b) => b.birim - a.birim), ulkeler: Object.values(vul).sort((a, b) => b.pay - a.pay || b.birim - a.birim).slice(0, 12), bekleyen, aylik: ay.map(m => ({ ay: m, pay: (am.get(m) || {}).pay || 0, tutar: (am.get(m) || {}).tutar || 0 })) };
+    return [200, { video, org, adim, ulke, partner, bekleyenUlke: q1("SELECT COUNT(*) n FROM birimler_org WHERE (ulke IS NULL OR ulke='')").n, toplamBirim: q1('SELECT COUNT(*) n FROM birimler_org').n, toplamPay: q1('SELECT COUNT(*) n FROM paylar').n }];
   });
 
   R('GET', '/api/analiz/iletisim', 'riletisim', 'g', async () => {

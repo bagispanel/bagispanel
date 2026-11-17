@@ -442,5 +442,43 @@ server.listen(0, async () => {
     assert.equal((await admin('POST', '/api/wa/yanit', { tel: '905551112233', metin: 'Aleykümselam, gönderiyoruz.' })).s, 200); assert.equal(waGelen[waGelen.length - 1].j.type, 'text');
     assert.equal((await admin('GET', '/api/wa/konusma?tel=905551112233')).j.mesajlar.length, 2); assert.equal((await admin('GET', '/api/wa/konusmalar')).j[0].okunmamis, 0);
   });
+  await t('banka hesabı: resmî ünvan, şube/hesap no, düzenleme', async () => {
+    const L = (await admin('GET', '/api/banka')).j; assert.equal(L.bilgi['Ziraat Bankası'][0], 'T.C. Ziraat Bankası A.Ş.'); assert.ok(L.bilgi['Garanti BBVA'][1].startsWith('#'));
+    const r = await admin('POST', '/api/banka', { banka: 'Akbank', hesap: 'Şube Hesabı', sube: 'Fatih Şubesi', hesap_no: '12345678', iban: 'TR280001009999901234567890', para: 'TL' });
+    assert.equal(r.s, 201); { const h = (await admin('GET', '/api/banka')).j.hesaplar.find(x => x.id === r.j.id); assert.equal(h.sube, 'Fatih Şubesi'); assert.equal(h.hesap_no, '12345678'); assert.equal((await admin('PUT', '/api/banka/' + r.j.id, { hesap: 'Yeni ad', sube: 'Kadıköy', hesap_no: '99' })).s, 200); assert.equal((await admin('GET', '/api/banka')).j.hesaplar.find(x => x.id === r.j.id).sube, 'Kadıköy'); assert.equal((await admin('PUT', '/api/banka/' + r.j.id, { hesap: '' })).s, 400); }
+  });
+  await t('kurum bilgileri: giriş ekranı için herkese açık, düzenleme yetkili', async () => {
+    assert.equal((await mk()('GET', '/api/kurum')).s, 200);
+    assert.equal((await mk()('GET', '/api/kurum/bilgi')).s, 401);
+    assert.equal((await admin('PUT', '/api/kurum/bilgi', { ad: 'Deneme Derneği', tel: '0212 000 00 00', eposta: 'bozuk' })).s, 400);
+    assert.equal((await admin('PUT', '/api/kurum/bilgi', { ad: 'Deneme Derneği', kisa: 'Deneme', tel: '0212 000 00 00', eposta: 'info@deneme.org', web: 'www.deneme.org', logo: 'javascript:alert(1)' })).s, 400);
+    assert.equal((await admin('PUT', '/api/kurum/bilgi', { ad: 'Deneme Derneği', kisa: 'Deneme', tel: '0212 000 00 00', eposta: 'info@deneme.org', web: 'www.deneme.org', logo: 'data:image/png;base64,iVBORw0KGgo=' })).s, 200);
+    const k = (await mk()('GET', '/api/kurum')).j; assert.equal(k.ad, 'Deneme Derneği'); assert.ok(k.logo.startsWith('data:image/png'));
+    assert.equal((await admin('PUT', '/api/kurum/bilgi', { ad: 'Deneme Derneği', logo_sil: 1 })).s, 200); assert.equal((await mk()('GET', '/api/kurum')).j.logo, '');
+  });
+  await t('bağışçı Excel: örnek, indir, aktar (önizleme/onay), tekrar, hata, güncelle', async () => {
+    const X = require('./xlsx'), b64 = (a) => X.yaz([{ ad: 'Bağışçılar', satirlar: a, metinSutun: [1] }]).toString('base64');
+    const orn = (await admin('GET', '/api/bagisci-excel/ornek')).j; assert.ok(orn.ad.endsWith('.xlsx')); const o = X.oku(Buffer.from(orn.dosya, 'base64')); assert.equal(o.satirlar[0][0], 'Ad Soyad *'); assert.equal(o.satirlar.length, 4);
+    const dosya = b64([['Ad Soyad *', 'Telefon *', 'E-posta', 'Adres'], ['Excel Bir', '0541 777 00 01', 'bir@x.com', 'Konya'], ['Excel İki', '+90 541 777 00 02', '', ''], ['Excel Üç', '5417770003', '', ''], ['Hans Ex', '+49 151 7770004', '', ''], ['Hatalı Tel', '123', '', ''], ['', '0541 777 00 09', '', ''], ['Bozuk Mail', '0541 777 00 05', 'bozuk', ''], ['Çift', '541 777 00 01', '', ''], ['', '', '', '']]);
+    const on = (await admin('POST', '/api/bagisci-excel/aktar', { dosya, mod: 'onizle' })).j; assert.equal(on.onizleme, true); assert.equal(on.ozet.yeni, 4); assert.equal(on.ozet.hatali, 3); assert.equal(on.ozet.atlanan, 1); assert.equal(on.ozet.bos, 1);
+    assert.equal((await admin('GET', '/api/bagiscilar?q=' + encodeURIComponent('Excel'))).j.length, 0); // önizleme kayıt yapmaz
+    const ak = (await admin('POST', '/api/bagisci-excel/aktar', { dosya, mod: 'aktar' })).j; assert.equal(ak.ozet.eklendi, 4);
+    const L = (await admin('GET', '/api/bagiscilar?q=' + encodeURIComponent('Excel'))).j; assert.equal(L.length, 3); assert.ok(L.some(x => x.tel === '+905417770003'));
+    assert.ok((await admin('GET', '/api/bagiscilar?q=Hans')).j.some(x => x.tel === '+491517770004'));
+    const tekrar = (await admin('POST', '/api/bagisci-excel/aktar', { dosya, mod: 'onizle' })).j; assert.equal(tekrar.ozet.yeni, 0); assert.equal((await admin('POST', '/api/bagisci-excel/aktar', { dosya, mod: 'aktar' })).s, 400);
+    const g = b64([['Ad Soyad', 'Telefon', 'Eposta'], ['Excel Bir Yeni', '541 777 00 01', 'yeni@x.com']]);
+    assert.equal((await admin('POST', '/api/bagisci-excel/aktar', { dosya: g, mod: 'aktar' })).s, 400); // güncelle kapalıyken yapılacak iş yok
+    assert.equal((await admin('POST', '/api/bagisci-excel/aktar', { dosya: g, mod: 'aktar', mevcut: 'guncelle' })).j.ozet.guncellendi, 1);
+    const b1 = (await admin('GET', '/api/bagiscilar?q=' + encodeURIComponent('Excel Bir Yeni'))).j[0]; assert.equal(b1.eposta, 'yeni@x.com'); assert.equal(b1.adres, 'Konya'); // boş gelen alan eskiyi silmez
+    assert.equal((await admin('POST', '/api/bagisci-excel/aktar', { dosya: Buffer.from('yok').toString('base64'), mod: 'onizle' })).s, 400);
+    assert.equal((await admin('POST', '/api/bagisci-excel/aktar', { dosya: b64([['Foo', 'Bar'], ['a', 'b']]), mod: 'onizle' })).s, 400);
+    const ind = (await admin('GET', '/api/bagisci-excel/indir')).j, ix = X.oku(Buffer.from(ind.dosya, 'base64')); assert.equal(ix.satirlar[0][0], 'Ad Soyad'); assert.ok(ix.satirlar.length >= 5); assert.ok(ix.satirlar.some(r => r[1] === '+905417770002'));
+    const yx = await mkUser('xlsxkul', 'Çağrı merkezi'); await admin('PUT', `/api/users/${yx.id}/yetki`, { ozel: { bagisci: { g: 0, e: 0, d: 0, s: 0 } } });
+    assert.equal((await yx.q('GET', '/api/bagisci-excel/indir')).s, 403); assert.equal((await yx.q('POST', '/api/bagisci-excel/aktar', { dosya, mod: 'onizle' })).s, 403);
+  });
+  await t('analiz saha: videolu bağış bölümü', async () => {
+    const d = (await admin('GET', '/api/analiz/saha')).j; assert.ok(d.video); assert.equal(d.video.asama.length, 6); assert.ok(Array.isArray(d.video.projeler)); assert.equal(d.video.aylik.length, 6);
+    assert.equal(d.video.birim, d.video.asama.reduce((a, b) => a + b, 0));
+  });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });
