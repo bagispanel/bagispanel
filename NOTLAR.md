@@ -135,3 +135,14 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 - Bağış Al'da kurban türünde "Kurban vekâleti alındı" kutusu + yöntem. Web sitesi API'si (POST /api/dis/bagis) `vekalet: true` gönderirse yöntem "Online"; bağış onaylanınca hisselere geçer.
 - Organizasyon ekranında vekâlet yok (bilinçli). Takip: Raporlama › Kurban Vekâlet Raporu (menü anahtarı `vekrap`): durum, nereden geldi (Web sitesi/Panel/Banka), yöntem, tarih, arama süzgeçleri; tek ya da toplu "alındı" işareti; Excel (eksik/tüm). Yeni menü yönetim birimine otomatik açılır, diğer birimlere Yetkiler'den verilir.
 - Ana sayfa "Bekleyen işler"de Kurban › "Vekâlet alınmadı" kısayolu. Bağışçı profilinde hisse bazında vekâlet ✓/yok.
+
+## Bekleyen / not alınan işler (18 Kas, kullanıcı: "notlarım kısmını en son soracağım")
+- **Gerçek video yükleme (1):** şimdilik video bağlantı olarak bağlanıyor; panele doğrudan yükleme (boyut sınırı, saklama yeri, sıkıştırma, bağışçıya güvenli bağlantı) yapılacak.
+- **Havale eşleştirmede yapay zekâ (3):** ayarlardan açılan isteğe bağlı özellik; varsayılan kapalı. API anahtarı, dış servise veri gönderimi için KVKK onayı gerekir.
+- **Sertifika PDF şablonu (5):** kalıcı eser ve sponsorluk için bağışçıya verilecek sertifika.
+- **Kartla online bağış / aylık sponsorluk:** web sitesi bölümüne gelince ele alınacak. Plan: kart bilgisi sağlayıcının güvenli sayfasında, sonuç webhook ile CRM'e düşer; tek formda "Tek sefer / Her ay"; sponsorluk kaydında "kartla otomatik" etiketi ve çekim durumu; çağrı merkezi için ödeme bağlantısı sonra. Sağlayıcı seçimi (iyzico, PayTR vb.) ve derneklerin üye iş yeri şartları henüz netleşmedi.
+- Küçük ekler: Kesildi/Açıldı/Dağıtıldı'da isteğe bağlı "SMS gönder" kutusu; tam büyükbaşta tek vekâlet seçeneği; mali modül (gelir-gider, aidat) yalnızca klasik derneklere satılacaksa.
+- Tanıtım sitesi: kullanıcı düzeltmelerini yazacak; ekran görüntüleri yalnızca tanıtılan menü grubu açık olacak şekilde yeniden alınacak.
+
+## WhatsApp sorumlu atama (18 Kas)
+- Gelen kutusunda her konuşmanın sorumlusu var (tablo wa_atama). PUT /api/wa/atama {tel, kullanici_id|null}, GET /api/wa/ekip (aktif kullanıcılar). Atanmamış konuşmaya ilk yanıtı yazan kişi otomatik üstlenir. Süzgeç: Hepsi / Benim / Atanmamış; "Bana ata" düğmesi.
