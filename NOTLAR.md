@@ -184,3 +184,7 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 - Sertifika Ayarları, Mesaj Şablonları, İletişim Ayarları Sistem Ayarları'na taşındı (PDF Şablonları yanında). İletişim'de günlük işler kaldı.
 - Banka Hesapları Kurum Yönetimi'nde kalır: derneğin kendi hesapları, ileride çağrı merkezinden bağışçıya otomatik hesap bilgisi gönderilecek.
 - Rapor birleştirme ve Banka Hareketleri taşıma önerisi kabul edilmedi.
+
+## Raporlama sadeleştirme
+- Raporlama ve Analiz menüsü 3 maddeye indi: Bağış Raporları, Analiz (sekmeler: Dönemsel karşılaştırma, Bağış türü, Bağışçı, Saha ve proje, İletişim), Kurban Vekâlet Raporu.
+- Yetkiler eski anahtarlarla aynı (rkarsi, rtur, rbagisci, rsaha, riletisim); kullanıcı yalnızca yetkili olduğu sekmeleri görür. Sadece bir sekmeye yetkisi olana sekme çubuğu çıkmaz.
