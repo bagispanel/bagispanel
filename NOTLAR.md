@@ -152,3 +152,12 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 - Kullanıcı Yönetimi: düğmeler tek satırda, durum etiketi, "Yeni kullanıcı ekle" açılır bölüm (düzenlerken otomatik açık).
 - Bağış Türleri: ana kategori ekleme tek satırda, açıklama "Videolu bağış nasıl ayarlanır?" altına alındı.
 - Sıradaki sade tur adayları: Birimler ve Yetkiler, Partner Kurumlar, Banka Hesapları, Gönüllü, Sponsorluk ekranları.
+
+## Web sitesi (18 Kas) — ilk sürüm
+- Site panelden yönetilir, aynı sunucudan /site adresinde yayınlanır (mod/site.js, public/site.js, panel: public/m-site.js). Sunucuda üretilen HTML; satır içi betik yok (CSP).
+- Menüler: Tasarım ve Alan Adı (sset), Sayfa Yönetimi (spage), Menü Düzeni (smenu), Bağış Formları (sform). Ayarlar `ayar` tablosunda 'site' anahtarında JSON.
+- 4 tema (Klasik, Sıcak, Modern, Uygulama): aynı içerik, farklı renk/köşe/yerleşim; ana ve vurgu rengi değiştirilebilir. Hero görseli tarayıcıda 1400 px'e küçülür, ayarda saklanır (/site/img/hero).
+- Ana sayfa: üst menü, karşılama + hızlı bağış kutusu, kategori kartları, gerçek sayaçlar (0 olan gizlenir), web'de göster işaretli kalıcı eser projeleri (ilerleme çubuğu), hesap numaraları, alt bilgi, WhatsApp düğmesi (Kurum Bilgileri telefonu), mobilde alt gezinme çubuğu.
+- Bağış: POST /api/site/bagis (herkese açık; X-BP başlığı, IP başına 10 dk'da 8 deneme, bal kutusu alanı, KVKK onayı zorunlu). Bağış "Bekleyen" + Havale/EFT + kaynak "Web sitesi" olarak düşer; ekranda banka hesabı ve bağış no gösterilir. "Her ay" seçilirse nota "Her ay bağış talebi (site)" yazılır (otomatik tahsilat YOK). Kurbanda vekâlet kutusu → 'Online'. Tam büyükbaş ve Videolu bağış türleri sitede yok.
+- Yayında değilken site herkese "Çok yakında" döner; giriş yapmış kullanıcı önizler. Alan adı tanımlıysa o Host kökte siteyi açar (DNS + HTTPS sunucu kurulumunda ayrıca).
+- Yapılacak: kartla ödeme (sağlayıcı seçilince), aylık otomatik tahsilat, kurban hisse/grup seçimi ve kuyu ülke seçimi sitede, sponsor seçimi (öğrenci/yetim kartı) sitede, haber/blog, video bölümü, sayfa görselleri, SEO (başlık/açıklama/og), çerez onayı, 4 temanın ince ayarı, tema önizleme görüntüleri, hızlı bağış sepeti.

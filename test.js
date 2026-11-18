@@ -547,5 +547,35 @@ server.listen(0, async () => {
       }
       const ex = await admin('GET', '/api/vekalet/excel?durum=eksik'); assert.equal(ex.s, 200); assert.ok(ex.j.dosya.length > 100 && /\.xlsx$/.test(ex.j.ad));
   });
+  await t('web sitesi: ayarlar, yayın, sayfalar, menü ve sitedeki bağış formu', async () => {
+    const get = (u, h) => fetch(base + u, { headers: h || {} }), post = (u, b) => fetch(base + u, { method: 'POST', headers: { 'content-type': 'application/json', 'x-bp': '1' }, body: JSON.stringify(b) });
+    const cfg = (await admin('GET', '/api/site')).j; assert.equal(cfg.ayar.acik, 0); assert.equal(Object.keys(cfg.temalar).length, 4); assert.ok(cfg.turler.length > 3 && !cfg.turler.some(x => x.org === 'Diğer'));
+    // yayında değilken herkese kapalı
+    assert.equal((await get('/site')).status, 404); assert.equal((await post('/api/site/bagis', { tur_id: cfg.turler[0].id, ad: 'A', tel: '532 909 82 01', tutar: 100, kvkk: true })).status, 404);
+    // doğrulamalar
+    assert.equal((await admin('PUT', '/api/site/tasarim', { tema: 'yok' })).s, 400); assert.equal((await admin('PUT', '/api/site/tasarim', { renk: { pri: 'kırmızı' } })).s, 400); assert.equal((await admin('PUT', '/api/site/tasarim', { alan_adi: 'a b' })).s, 400);
+    assert.equal((await admin('PUT', '/api/site/sayfalar', { sayfalar: [{ slug: 'Bagis', baslik: 'X', icerik: '' }] })).s, 400, 'ayrılmış adres'); assert.equal((await admin('PUT', '/api/site/sayfalar', { sayfalar: [{ slug: 'a', baslik: 'A' }, { slug: 'a', baslik: 'B' }] })).s, 400, 'yinelenen adres');
+    assert.equal((await admin('PUT', '/api/site/menu', { menu: [{ ad: 'X', h: 'olmayan' }] })).s, 400); assert.equal((await admin('PUT', '/api/site/menu', { menu: [{ ad: 'X', h: 'http://gayriguvenli' }] })).s, 400);
+    // içerik, menü, tema
+    assert.equal((await admin('PUT', '/api/site/sayfalar', { sayfalar: [{ slug: 'hakkimizda', baslik: 'Hakkımızda', gorunur: 1, icerik: 'Merhaba <script>alert(1)</script>\n\n# Alt başlık\nMetin' }, { slug: 'gizli', baslik: 'Gizli', gorunur: 0, icerik: 'x' }] })).s, 200);
+    assert.equal((await admin('PUT', '/api/site/menu', { menu: [{ ad: 'Ana', h: '' }, { ad: 'Biz', h: 'hakkimizda' }, { ad: 'Dış', h: 'https://ornek.org/x' }] })).s, 200);
+    assert.equal((await admin('PUT', '/api/site/form', { baslik: 'Destek ol', tutarlar: ['50', '75', 'abc', '-3'], aylik: true, vekalet: true, turler: [cfg.turler[0].id, 99999] })).s, 200);
+    assert.equal((await admin('PUT', '/api/site/tasarim', { acik: true, tema: 'modern', renk: { pri: '#112233', acc: '' } })).s, 200);
+    // site yayında
+    let h = await (await get('/site')).text(); assert.ok(h.includes('t-modern') && h.includes('--pri:#112233') && h.includes('Destek ol') && h.includes('data-t="50"') && h.includes('Biz') && h.includes('https://ornek.org/x'));
+    assert.equal((h.match(/<option value="\d+" data-fiyat/g) || []).length, 1, 'yalnızca seçilen tür formda');
+    const ph = await (await get('/site/hakkimizda')).text(); assert.ok(ph.includes('Alt başlık') && !ph.includes('<script>alert') && ph.includes('&lt;script&gt;')); assert.equal((await get('/site/gizli')).status, 404); assert.equal((await get('/site/yok')).status, 404);
+    // sitedeki bağış: onay bekleyen olarak düşer
+    const gb = (b) => post('/api/site/bagis', { tur_id: cfg.turler[0].id, ad: 'Site Bağışçı', tel: '532 909 82 02', tutar: 250, kvkk: true, ...b });
+    const ok = await gb({ periyot: 'aylik' }); assert.equal(ok.status, 201, await ok.clone().text()); const oj = await ok.json(); assert.ok(/^BG-/.test(oj.no) && oj.aylik && oj.hesaplar.length >= 1);
+    const bl = (await admin('GET', '/api/bagislar?durum=Bekleyen&kanal=' + encodeURIComponent('Web sitesi / dış kaynak'))).j.liste.find(x => x.no === oj.no); assert.ok(bl && bl.durum === 'Bekleyen' && bl.kanal !== 'CRM');
+    assert.equal((await gb({ kvkk: false })).status, 400); assert.equal((await gb({ tutar: 0 })).status, 400); assert.equal((await gb({ tur_id: 999999 })).status, 400); assert.equal((await gb({ tel: '12' })).status, 400);
+    const bal = await gb({ web2: 'bot' }); assert.equal(bal.status, 200); assert.equal((await bal.json()).no, undefined, 'bal kutusu bağış açmaz');
+    assert.equal((await fetch(base + '/api/site/bagis', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status, 403, 'x-bp başlığı zorunlu');
+    // alan adı: o host kökte siteyi açar
+    assert.equal((await admin('PUT', '/api/site/tasarim', { alan_adi: 'www.ornekdernek.org' })).s, 200);
+    const kok = await new Promise((ok, no) => { const q = require('http').request({ host: '127.0.0.1', port: server.address().port, path: '/', headers: { host: 'www.ornekdernek.org' } }, r => { let d = ''; r.on('data', x => d += x); r.on('end', () => ok(d)); }); q.on('error', no); q.end(); }); assert.ok(kok.includes('t-modern'), 'alan adı kökte siteyi açar');
+    assert.equal((await admin('PUT', '/api/site/tasarim', { acik: false, alan_adi: '' })).s, 200); assert.equal((await get('/site')).status, 404);
+  });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });

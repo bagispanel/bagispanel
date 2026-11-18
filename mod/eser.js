@@ -77,6 +77,7 @@ module.exports = function (ctx) {
   // Web sitesi için (sayaç): x-api-key ile; yalnızca "web'de göster" işaretli projeler, kişisel veri yok
   const dis = (req) => { const k = req.headers['x-api-key']; const r = k && db.prepare('SELECT 1 FROM api_anahtar WHERE hash=? AND aktif=1').get(crypto.createHash('sha256').update(String(k)).digest('hex')); if (!r) throw new Err(401, 'API anahtarı geçersiz.'); };
   const pub = (e) => { const s = satir(e); return { id: s.id, ad: s.ad, tur: s.tur, ulke: s.ulke, bolge: s.bolge, alan_m2: s.alan, kapasite: s.kapasite, durum: s.durum, hedef: s.hedef, para: s.para, toplanan: s.toplanan, kalan: s.kalan, yuzde: s.yuzde, insaat_yuzde: s.ilerleme, baslangic: s.baslangic, bitis: s.bitis, aciklama: s.aciklama, partner: s.partner }; };
+  ctx.eserWeb = () => db.prepare('SELECT * FROM eser WHERE web=1 ORDER BY id DESC').all().map(pub);
   R('GET', '/api/dis/kalici-eser', null, null, async (c) => { dis(c.req); return [200, db.prepare('SELECT * FROM eser WHERE web=1 ORDER BY id DESC').all().map(pub)]; });
   R('GET', '/api/dis/kalici-eser/([0-9]+)', null, null, async (c) => { dis(c.req); const e = db.prepare('SELECT * FROM eser WHERE id=? AND web=1').get(+c.m[1]); if (!e) throw new Err(404, 'Proje yok.'); return [200, pub(e)]; });
 };
