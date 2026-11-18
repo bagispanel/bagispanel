@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS bagis_turleri(
 
   // ---- bağış türleri
   const trs = (n) => Number(n).toLocaleString('tr-TR');
-  const trow = (r) => ({ id: r.id, kat: r.kat, ad: r.ad, org: r.org, cap: r.cap, fiyat: r.fiyat, birim: r.birim, tam: !!r.tam, sertifika: !!r.sertifika, ulke: r.ulke, kuyu: r.kuyu ? JSON.parse(r.kuyu) : null, seri: r.seri, kullanim: used('tur', r.id) });
+  const trow = (r) => ({ id: r.id, kat: r.kat, ad: r.ad, org: r.org, cap: r.cap, fiyat: r.fiyat, birim: r.birim, tam: !!r.tam, sertifika: !!r.sertifika, sert_tasarim: r.sert_tasarim || '', ulke: r.ulke, kuyu: r.kuyu ? JSON.parse(r.kuyu) : null, seri: r.seri, kullanim: used('tur', r.id) });
   R('GET', '/api/turler', 'turler|alin|orgK|orgS|orgD|spage|sform', 'g', async () => {
     const turler = db.prepare('SELECT * FROM bagis_turleri ORDER BY id').all().map(trow), kat = db.prepare('SELECT ad FROM kategoriler ORDER BY id').all().map(x => x.ad);
     return [200, { kategoriler: kat, turler }];
@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS bagis_turleri(
     db.prepare('DELETE FROM kategoriler WHERE ad=?').run(ad); return [200, { ok: 1 }];
   });
   R('POST', '/api/turler', 'turler', 'e', async (c) => {
-    const b = c.body, sec = b.sec, cert = b.sertifika ? 1 : 0; let o;
+    const b = c.body, sec = b.sec, cert = b.sertifika || ['klasik', 'modern', 'zarif'].includes(b.sert_tasarim) ? 1 : 0, std = ['klasik', 'modern', 'zarif'].includes(b.sert_tasarim) ? b.sert_tasarim : ''; let o;
     if (sec === 'kuyu') {
       const nv = str(b.ad, 80), bic = b.bicim, f = num(b.fiyat) || 0, pay = num(b.pay) || 0;
       if (!nv) throw new Err(400, 'Alt kategori adını yazın (örn. Bangladeş - Şadırvan).');
@@ -167,7 +167,7 @@ CREATE TABLE IF NOT EXISTS bagis_turleri(
       o = { kat, ad, org: vb ? 'Diğer' : 'Genel', cap: vb ? 1 : null, fiyat: vb ? p : (b.tutar_modu === 'Sabit tutar' ? p : null), birim: vb ? ad : null, seri: vb ? ad : null, tam: 0 };
     }
     if (db.prepare('SELECT kat,ad FROM bagis_turleri').all().some(x => nm(x.kat) === nm(o.kat) && nm(x.ad) === nm(o.ad))) throw new Err(409, 'Bu tür zaten var.');
-    const id = +db.prepare('INSERT INTO bagis_turleri(kat,ad,org,cap,fiyat,birim,tam,sertifika,ulke,kuyu,seri) VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(o.kat, o.ad, o.org, o.cap ?? null, o.fiyat ?? null, o.birim ?? null, o.tam || 0, cert, o.ulke ?? null, o.kuyu ?? null, o.seri ?? null).lastInsertRowid;
+    const id = +db.prepare('INSERT INTO bagis_turleri(kat,ad,org,cap,fiyat,birim,tam,sertifika,sert_tasarim,ulke,kuyu,seri) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').run(o.kat, o.ad, o.org, o.cap ?? null, o.fiyat ?? null, o.birim ?? null, o.tam || 0, cert, std, o.ulke ?? null, o.kuyu ?? null, o.seri ?? null).lastInsertRowid;
     A.audit(c.user, 'tur_eklendi', `${o.kat} / ${o.ad}`, ip(c.req)); return [201, { id, ad: o.ad, org: o.org, ulke: o.ulke }];
   });
   R('PUT', '/api/kategoriler', 'turler', 'd', async (c) => {

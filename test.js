@@ -610,5 +610,22 @@ server.listen(0, async () => {
     // iptal edilen bağışın sertifikası açılmaz
     assert.equal((await admin('POST', `/api/bagislar/${r.j.id}/iptal`, { sebep: 'Deneme' })).s, 200); assert.equal((await fetch(base + '/sertifika/' + link[1])).status, 404);
   });
+  await t('sertifika ayarları: renk, metin, imza, tür başına tasarım, önizleme yetkisi', async () => {
+    const g = await admin('GET', '/api/sertifika/ayar'); assert.equal(g.s, 200); assert.ok(g.j.tasarimlar.modern && g.j.renkler.bordo);
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    assert.equal((await admin('PUT', '/api/sertifika/ayar', { baslik: 'Hayır Belgesi', metin: 'Teşekkürler.', renk: 'bordo', imza_ad: 'Ali Veli', imza_unvan: 'Başkan', imza_gorsel: png, sponsor_tasarim: 'zarif' })).s, 200);
+    assert.equal((await admin('PUT', '/api/sertifika/ayar', { baslik: 'x', renk: 'yok', sponsor_tasarim: 'zarif' })).s, 400);
+    assert.equal((await admin('PUT', '/api/sertifika/ayar', { baslik: 'x', renk: 'bordo', sponsor_tasarim: 'zarif', imza_gorsel: 'javascript:1' })).s, 400);
+    assert.equal((await admin('POST', '/api/turler', { sec: 'genel', kat: 'Test Kategori', ad: 'Modern Fidan', tutar: 50, sert_tasarim: 'modern' })).s, 201);
+    const tid = await turId('Modern Fidan'); assert.equal((await admin('GET', '/api/turler')).j.turler.find(x => x.id === tid).sert_tasarim, 'modern');
+    const r = await bag({ tur_id: tid, tutar: 50, ad: 'Mehmet Modern', tel: '541 300 00 91' }); assert.equal(r.s, 201);
+    const sm = (await admin('GET', '/api/sms')).j.find(x => x.sablon === 'sertifika' && x.mesaj.includes('Mehmet Modern')); const kod = /\/sertifika\/([A-Za-z0-9_-]+)/.exec(sm.mesaj)[1];
+    const h = await (await fetch(base + '/sertifika/' + kod)).text();
+    assert.ok(h.includes('t-modern') && h.includes('Hayır Belgesi') && h.includes('Ali Veli') && h.includes('Başkan') && h.includes('#7a1f2b') && h.includes(png), 'seçilen tasarım ve ayarlar sayfada');
+    assert.equal((await admin('PUT', `/api/turler/${tid}/sertifika`, { tasarim: 'zarif' })).s, 200); assert.ok((await (await fetch(base + '/sertifika/' + kod)).text()).includes('t-zarif'));
+    assert.equal((await admin('PUT', `/api/turler/${tid}/sertifika`, { tasarim: 'yok' })).s, 400);
+    assert.equal((await admin('PUT', `/api/turler/${tid}/sertifika`, { tasarim: '' })).s, 200); assert.equal((await admin('GET', '/api/turler')).j.turler.find(x => x.id === tid).sertifika, false);
+    assert.equal((await fetch(base + '/sertifika/onizleme?t=modern')).status, 404, 'önizleme girişsiz açılmaz');
+  });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });

@@ -169,3 +169,9 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 - Sponsor: "Sponsorluk belgesi" yalnız elle gönderilir (Sponsorluklar ve Ödemeler satırında WhatsApp/SMS simgeleri, her ay SMS gitmesin diye); "Tamamlama sertifikası" öğrenci tamamlandı işaretlenirken "bildir" seçiliyse gider ve aynı tasarımı kullanır. Sponsor jetonu bağlantıdadır: /sertifika/<jeton>?k=belge|tamam.
 - Bağlantı adresi son istekten öğrenilir (ctx.sonHost); gerçek alan adına geçince değişiklik gerekmez.
 - Yapılacak: sertifikaya dernek mührü/imza görseli, tür başına metin, QR ile doğrulama, kurban/hisse sertifikaları.
+
+## Sertifika Ayarları (Bağış Yönetimi menüsü)
+- 3 hazır tasarım (Klasik, Modern, Zarif), 4 renk, başlık/teşekkür cümlesi, imza (ad, unvan, görsel). Dernek adı ve logosu Kurum Bilgileri'nden.
+- Her bağış türünde "Sertifika" seçimi: Gönderilmesin / Klasik / Modern / Zarif (Bağış Türleri tablosundan sonradan da değişir; yeni tür formunda da var).
+- Sponsorluk belgesi ve tamamlama sertifikası tasarımı ayrı seçilir; metinleri sabit. Tutar hiçbir tasarımda görünmez.
+- Önizleme `/sertifika/onizleme` yalnız giriş yapmış kullanıcıya açık (panelde iframe). Yedek fikir: mühür, QR doğrulama, türe özel metin.
