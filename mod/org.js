@@ -74,6 +74,14 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
     const mk = (k) => { const tp = db.prepare('SELECT m FROM sms_sablon WHERE k=?').get(k); return tp ? tp.m.replace(/\{(\w+)\}/g, (_, x) => { const v = { ...msgVars(u, s, t), dernek: getA('dernek_adi', '[Dernek adı]') }; return v[x] !== undefined ? v[x] : '{' + x + '}'; }) : ''; };
     return [200, { k: mk(T0[u.org]), g: mk(T1[u.org]), kisi: n, ad: s.ad }];
   });
+  R('GET', '/api/org/pay/:id/mesaj', 'orgK|orgS|orgD', 'd', async (c) => { // kişi başı gönderim önizlemesi: bilgi (b) ve video (v) metinleri ve uygunluk
+    const p = db.prepare('SELECT p.*, u.id uid, t.org FROM paylar p JOIN birimler_org u ON u.id=p.birim_id JOIN bagis_turleri t ON t.id=u.tur_id WHERE p.id=?').get(+c.m[1]); if (!p) throw new Err(404, 'Kayıt yok.');
+    if (!A.can(c.perms, MENU[p.org], 'd')) throw new Err(403, 'Yetkiniz yok.');
+    const uu = db.prepare('SELECT * FROM birimler_org WHERE id=?').get(p.uid), t = tur(uu.tur_id), s = db.prepare('SELECT p.*, g.no bno FROM paylar p JOIN bagislar g ON g.id=p.bagis_id WHERE p.id=?').get(p.id);
+    const mk = (k) => { const tp = db.prepare('SELECT m FROM sms_sablon WHERE k=?').get(k); return tp ? tp.m.replace(/\{(\w+)\}/g, (_, x) => { const v = { ...msgVars(uu, s, t), dernek: getA('dernek_adi', '[Dernek adı]') }; return v[x] !== undefined ? v[x] : '{' + x + '}'; }) : ''; };
+    const lbl = { Kurban: 'Kesildi', 'Su kuyusu': 'Açıldı', 'Diğer': 'Dağıtıldı' }[p.org], tel = String(s.tel || '').replace(/\D/g, '').length >= 7;
+    return [200, { ad: s.ad, tel: s.tel || '', telVar: tel, b: { mesaj: mk(T0[p.org]), uygun: tel && uu.adim >= 3, neden: !tel ? 'Telefon kayıtlı değil.' : uu.adim < 3 ? `Önce “${lbl}” olarak işaretleyin.` : '' }, v: { mesaj: mk(T1[p.org]), uygun: tel && uu.adim >= 3 && !!uu.video, neden: !tel ? 'Telefon kayıtlı değil.' : uu.adim < 3 ? `Önce “${lbl}” olarak işaretleyin.` : !uu.video ? 'Önce video bağlayın.' : '', gitti: s.vs || null } }];
+  });
   R('POST', '/api/org/pay/:id/sms', 'orgK|orgS|orgD', 'd', async (c) => { // tek kişiye elle SMS (bilgi ya da video); toplu işlemden bağımsız
     const k = c.body.k === 'v' ? 'v' : 'b';
     const p = db.prepare('SELECT p.*, u.id uid, t.org FROM paylar p JOIN birimler_org u ON u.id=p.birim_id JOIN bagis_turleri t ON t.id=u.tur_id WHERE p.id=?').get(+c.m[1]); if (!p) throw new Err(404, 'Kayıt yok.');

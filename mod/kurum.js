@@ -18,6 +18,7 @@ module.exports = function (ctx) {
     if (eposta && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eposta)) throw new Err(400, 'E-posta geçersiz.');
     if (web && !/^(https?:\/\/)?[\w.-]+\.[a-z]{2,}([\/?#].*)?$/i.test(web)) throw new Err(400, 'Web adresi geçersiz.');
     setA('kurumb', { ...getA('kurumb', {}), ad: str(b.ad, 160), kisa: str(b.kisa, 40), slogan: str(b.slogan, 140), logo, tel: str(b.tel, 40), eposta, adres: str(b.adres, 240), web });
+    setA('dernek_adi', str(b.kisa, 40) || str(b.ad, 160)); // SMS şablonlarındaki {dernek} alanı kurum bilgisinden beslenir
     A.audit(c.user, 'kurum_bilgi', str(b.ad, 160), ip(c.req)); return [200, { ok: 1 }];
   });
 };

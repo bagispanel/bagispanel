@@ -1,5 +1,9 @@
 // Simgeler (çizgi stili, 24px) ve tema tercihi.
 const _P={
+sms:'<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>',
+wa:'<path d="M4 20l1.4-4.2A8 8 0 1 1 8.3 18.7z"/><path d="M9.2 8.8c0 3 2.4 5.4 5.4 5.4l1-1.4-1.9-.9-.8.7a3.6 3.6 0 0 1-1.6-1.6l.7-.8-.9-1.9z"/>',
+receipt:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+x:'<path d="M6 6l12 12M18 6L6 18"/>',
 home:'<path d="M3 11l9-8 9 8v10h-6v-6H9v6H3z"/>',
 heart:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.5-7 10-7 10z"/>',
 plus:'<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',

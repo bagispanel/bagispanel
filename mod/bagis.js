@@ -73,6 +73,11 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
     if (d.durum === 'İptal') throw new Err(409, 'İptal edilmiş bağış için mesaj gönderilmez.'); if (String(d.tel || '').replace(/\D/g, '').length < 7) throw new Err(409, 'Bu kişinin geçerli telefonu yok.');
     ctx.sms('kabul', { ad: d.ad, tur: d.tur, bno: d.no }, d.ad, c.user.kadi, d.tel); return [200, { ok: 1 }];
   });
+  R('GET', '/api/bagislar/:id/mesaj', 'alin|bekleyen|bagisci|rapor', 'g', async (c) => { // kabul mesajı önizlemesi
+    const d = db.prepare('SELECT g.no, g.durum, b.ad, b.tel, t.ad tur FROM bagislar g JOIN bagiscilar b ON b.id=g.bagisci_id JOIN bagis_turleri t ON t.id=g.tur_id WHERE g.id=?').get(+c.m[1]); if (!d) throw new Err(404, 'Bağış yok.');
+    const tp = db.prepare('SELECT m FROM sms_sablon WHERE k=?').get('kabul'), tel = String(d.tel || '').replace(/\D/g, '').length >= 7;
+    return [200, { ad: d.ad, tel: d.tel || '', telVar: tel, b: { mesaj: tp ? fill(tp.m, { dernek: dernek(), ad: d.ad, tur: d.tur, bno: d.no }) : '', uygun: tel && d.durum !== 'İptal', neden: !tel ? 'Telefon kayıtlı değil.' : d.durum === 'İptal' ? 'İptal edilmiş bağış için mesaj gönderilmez.' : '' } }];
+  });
   R('GET', '/api/bagislar/:id/wa', 'alin|bekleyen|bagisci|rapor', 'g', async (c) => {
     const d = db.prepare('SELECT g.no, g.durum, b.ad, b.tel, t.ad tur FROM bagislar g JOIN bagiscilar b ON b.id=g.bagisci_id JOIN bagis_turleri t ON t.id=g.tur_id WHERE g.id=?').get(+c.m[1]); if (!d) throw new Err(404, 'Bağış yok.');
     if (d.durum === 'İptal') throw new Err(409, 'İptal edilmiş bağış için mesaj hazırlanmaz.');

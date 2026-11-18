@@ -454,6 +454,7 @@ server.listen(0, async () => {
     assert.equal((await admin('PUT', '/api/kurum/bilgi', { ad: 'Deneme Derneği', tel: '0212 000 00 00', eposta: 'bozuk' })).s, 400);
     assert.equal((await admin('PUT', '/api/kurum/bilgi', { ad: 'Deneme Derneği', kisa: 'Deneme', tel: '0212 000 00 00', eposta: 'info@deneme.org', web: 'www.deneme.org', logo: 'javascript:alert(1)' })).s, 400);
     assert.equal((await admin('PUT', '/api/kurum/bilgi', { ad: 'Deneme Derneği', kisa: 'Deneme', tel: '0212 000 00 00', eposta: 'info@deneme.org', web: 'www.deneme.org', logo: 'data:image/png;base64,iVBORw0KGgo=' })).s, 200);
+    assert.equal((await admin('GET', '/api/sablonlar')).j.dernek, 'Deneme');
     const k = (await mk()('GET', '/api/kurum')).j; assert.equal(k.ad, 'Deneme Derneği'); assert.ok(k.logo.startsWith('data:image/png'));
     assert.equal((await admin('PUT', '/api/kurum/bilgi', { ad: 'Deneme Derneği', logo_sil: 1 })).s, 200); assert.equal((await mk()('GET', '/api/kurum')).j.logo, '');
   });
@@ -495,6 +496,8 @@ server.listen(0, async () => {
     const wb = (await admin('GET', '/api/bagislar?limit=1')).j; const wl = Array.isArray(wb) ? wb : (wb.liste || wb.bagislar || []);
     if (wl.length) { const w = await admin('GET', `/api/bagislar/${wl[0].id}/wa`); assert.equal(w.s, 200, JSON.stringify(w.j)); assert.ok(/^https:\/\/wa\.me\/\d{7,15}\?text=/.test(w.j.link) && w.j.mesaj.length > 10); assert.equal((await admin('POST', `/api/bagislar/${wl[0].id}/sms`, {})).s, 200); }
     assert.equal((await admin('GET', '/api/bagislar/999999/wa')).s, 404);
+    if (wl.length) { const m = await admin('GET', `/api/bagislar/${wl[0].id}/mesaj`); assert.equal(m.s, 200); assert.ok(m.j.b.mesaj.length > 10 && typeof m.j.b.uygun === 'boolean'); }
+    assert.equal((await admin('GET', '/api/org/pay/999999/mesaj')).s, 404);
     assert.equal((await admin('POST', '/api/org/pay/999999/sms', { k: 'b' })).s, 404); assert.equal((await admin('GET', '/api/org/pay/999999/wa?k=b')).s, 404);
     const b = { ad: 'Nijer Niamey Camii', tur: 'Cami', durum: 'Planlama', ulke: 'Nijer', para: 'USD', kur: 35, hedef: 50000 };
     assert.equal((await admin('POST', '/api/eser', { ...b, hedef: 0 })).s, 400); assert.equal((await admin('POST', '/api/eser', { ...b, ulke: '' })).s, 400);
