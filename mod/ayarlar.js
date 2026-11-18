@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS bagis_turleri(
     db.prepare('DELETE FROM kategoriler WHERE ad=?').run(ad); return [200, { ok: 1 }];
   });
   R('POST', '/api/turler', 'turler', 'e', async (c) => {
-    const b = c.body, sec = b.sec, cert = b.sertifika || ['klasik', 'modern', 'zarif'].includes(b.sert_tasarim) ? 1 : 0, std = ['klasik', 'modern', 'zarif'].includes(b.sert_tasarim) ? b.sert_tasarim : ''; let o;
+    const b = c.body, sec = b.sec, cert = b.sertifika ? 1 : 0, std = cert && ['klasik', 'modern', 'zarif'].includes(b.sert_tasarim) ? b.sert_tasarim : ''; let o;
     if (sec === 'kuyu') {
       const nv = str(b.ad, 80), bic = b.bicim, f = num(b.fiyat) || 0, pay = num(b.pay) || 0;
       if (!nv) throw new Err(400, 'Alt kategori adını yazın (örn. Bangladeş - Şadırvan).');

@@ -616,7 +616,7 @@ server.listen(0, async () => {
     assert.equal((await admin('PUT', '/api/sertifika/ayar', { baslik: 'Hayır Belgesi', metin: 'Teşekkürler.', renk: 'bordo', imza_ad: 'Ali Veli', imza_unvan: 'Başkan', imza_gorsel: png, sponsor_tasarim: 'zarif' })).s, 200);
     assert.equal((await admin('PUT', '/api/sertifika/ayar', { baslik: 'x', renk: 'yok', sponsor_tasarim: 'zarif' })).s, 400);
     assert.equal((await admin('PUT', '/api/sertifika/ayar', { baslik: 'x', renk: 'bordo', sponsor_tasarim: 'zarif', imza_gorsel: 'javascript:1' })).s, 400);
-    assert.equal((await admin('POST', '/api/turler', { sec: 'genel', kat: 'Test Kategori', ad: 'Modern Fidan', tutar: 50, sert_tasarim: 'modern' })).s, 201);
+    assert.equal((await admin('POST', '/api/turler', { sec: 'genel', kat: 'Test Kategori', ad: 'Modern Fidan', tutar: 50, sertifika: true, sert_tasarim: 'modern' })).s, 201);
     const tid = await turId('Modern Fidan'); assert.equal((await admin('GET', '/api/turler')).j.turler.find(x => x.id === tid).sert_tasarim, 'modern');
     const r = await bag({ tur_id: tid, tutar: 50, ad: 'Mehmet Modern', tel: '541 300 00 91' }); assert.equal(r.s, 201);
     const sm = (await admin('GET', '/api/sms')).j.find(x => x.sablon === 'sertifika' && x.mesaj.includes('Mehmet Modern')); const kod = /\/sertifika\/([A-Za-z0-9_-]+)/.exec(sm.mesaj)[1];
