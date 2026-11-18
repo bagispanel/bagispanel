@@ -152,3 +152,10 @@ th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--ln);font-s
 .main a:not(.btn):hover{text-decoration:underline}
 td:has(.ib){white-space:nowrap}
 .main summary{font-weight:700}
+
+/* ikon renkleri: WhatsApp yeşil, SMS mavi, makbuz turuncu */
+.i-wa{color:#1f9d55}.i-sms{color:#2f7bd8}.i-receipt{color:var(--co)}
+:root[data-theme="dark"] .i-wa{color:#4fd48a}:root[data-theme="dark"] .i-sms{color:#6fa8f0}
+.ib.i-wa:hover{background:color-mix(in srgb,#1f9d55 14%,transparent);color:#1f9d55}
+.ib.i-sms:hover{background:color-mix(in srgb,#2f7bd8 14%,transparent);color:#2f7bd8}
+.ib.i-receipt:hover{background:color-mix(in srgb,var(--co) 14%,transparent);color:var(--co)}
