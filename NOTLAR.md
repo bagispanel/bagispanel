@@ -146,3 +146,9 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 
 ## WhatsApp sorumlu atama (18 Kas)
 - Gelen kutusunda her konuşmanın sorumlusu var (tablo wa_atama). PUT /api/wa/atama {tel, kullanici_id|null}, GET /api/wa/ekip (aktif kullanıcılar). Atanmamış konuşmaya ilk yanıtı yazan kişi otomatik üstlenir. Süzgeç: Hepsi / Benim / Atanmamış; "Bana ata" düğmesi.
+
+## Sade ekran turu (18 Kas)
+- Bağış Raporları: ana süzgeçler tek satırda (durum, ana/alt kategori, tarih aralığı); ödeme yöntemi, kanal ve sorumlu "Daha fazla süzgeç" altında (süzgeç seçiliyse otomatik açık). Tarih, bağış no ve tutar tek satırda.
+- Kullanıcı Yönetimi: düğmeler tek satırda, durum etiketi, "Yeni kullanıcı ekle" açılır bölüm (düzenlerken otomatik açık).
+- Bağış Türleri: ana kategori ekleme tek satırda, açıklama "Videolu bağış nasıl ayarlanır?" altına alındı.
+- Sıradaki sade tur adayları: Birimler ve Yetkiler, Partner Kurumlar, Banka Hesapları, Gönüllü, Sponsorluk ekranları.
