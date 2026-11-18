@@ -161,3 +161,4 @@ td:has(.ib){white-space:nowrap}
 .ib.i-receipt:hover{background:color-mix(in srgb,var(--co) 14%,transparent);color:var(--co)}
 
 input[type=file]{padding:6px;background:var(--sf);color:var(--mu);font-size:14px}input[type=file]::file-selector-button{margin-right:10px;border:1px solid var(--pri);background:transparent;color:var(--pri);border-radius:8px;padding:6px 12px;font:inherit;font-weight:600;cursor:pointer}input[type=file]::file-selector-button:hover{background:var(--pri);color:#fff}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
