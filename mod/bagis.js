@@ -42,10 +42,18 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
   }
   ctx.normPh = normPh;
 
+  try { db.exec('ALTER TABLE bagislar ADD COLUMN sert_kod TEXT'); } catch { /* var */ }
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS ux_bag_sert ON bagislar(sert_kod) WHERE sert_kod IS NOT NULL');
+  const sertLink = (id) => { let k = (db.prepare('SELECT sert_kod FROM bagislar WHERE id=?').get(id) || {}).sert_kod; if (!k) { k = require('crypto').randomBytes(9).toString('base64url'); db.prepare('UPDATE bagislar SET sert_kod=? WHERE id=?').run(k, id); } return (ctx.sonHost || '') + '/sertifika/' + k; };
+  ctx.sertLink = sertLink;
+  // bağışa gidecek mesaj: sertifikalı tür onaylıysa kabul + sertifika bağlantısı tek mesaj, değilse yalnız kabul (SMS israfı olmasın)
+  const bagMsj = (d) => d.sertifika && d.durum === 'Onaylı' ? ['sertifika', { ad: d.ad, tur: d.tur, bno: d.no, link: sertLink(d.id) }] : ['kabul', { ad: d.ad, tur: d.tur, bno: d.no }];
+  const BSEL = 'SELECT g.id, g.no, g.durum, b.ad, b.tel, t.ad tur, t.sertifika FROM bagislar g JOIN bagiscilar b ON b.id=g.bagisci_id JOIN bagis_turleri t ON t.id=g.tur_id WHERE g.id=?';
+
   // ---- SMS şablonları
   const TPL0 = {
     kabul: ['Bağış kabul', 'Bağış onaylanınca gider.', 'Sayın {ad}, {tur} bağışınız ({bno}) alınmıştır. Teşekkür ederiz. {dernek}'],
-    sertifika: ['Bağış sertifikası', 'Sertifikası olan bağış türlerinde, onaydan sonra gider.', 'Sayın {ad}, {tur} bağışınız için sertifikanız: {link} {dernek}'],
+    sertifika: ['Bağış sertifikası', 'Sertifikası olan bağış türlerinde, onaydan sonra gider.', 'Sayın {ad}, {tur} bağışınız alınmıştır, teşekkür ederiz. Sertifikanız: {link} {dernek}'],
     kesim: ['Kurban kesim', 'Kurban “kesildi” işaretlenince gider.', 'Sayın {ad}, {sahip_no} numaralı kurbanınız {ulke} ülkesinde {tarih} tarihinde kesilmiştir. {dernek}'],
     video: ['Kurban video', 'Video kontrolden sonra gönderilirken gider.', 'Sayın {ad}, {sahip_no} numaralı kurbanınızın videosu: {link} {dernek}'],
     kuyu: ['Su kuyusu açıldı', 'Su kuyusu “açıldı” işaretlenince gider.', 'Sayın {ad}, {kuyu_no} numaralı su kuyunuz {ulke} ülkesinde {tarih} tarihinde açılmıştır. {dernek}'],
@@ -54,6 +62,8 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
     kuyuv: ['Su kuyusu video', 'Su kuyusu videosu gönderilirken gider.', 'Sayın {ad}, {kuyu_no} numaralı su kuyunuzun videosu: {link} {dernek}']
   };
   Object.entries(TPL0).forEach(([k, v]) => db.prepare('INSERT OR IGNORE INTO sms_sablon(k,ad,n,m) VALUES(?,?,?,?)').run(k, v[0], v[1], v[2]));
+  db.prepare('UPDATE sms_sablon SET m=? WHERE k=? AND m=?').run(TPL0.sertifika[2], 'sertifika', 'Sayın {ad}, {tur} bağışınız için sertifikanız: {link} {dernek}');
+  db.prepare('INSERT OR IGNORE INTO sms_sablon(k,ad,n,m) VALUES(?,?,?,?)').run('spbelge', 'Sponsorluk belgesi', 'Elle gönderilir (Sponsorluklar ve Ödemeler).', 'Sayın {ad}, {ogrenci} adlı öğrencimize verdiğiniz destek için sponsorluk belgeniz: {link} {dernek}');
   const dernek = () => getA('dernek_adi', '[Dernek adı]');
   const fill = (m, v) => m.replace(/\{(\w+)\}/g, (_, k) => v[k] !== undefined ? v[k] : '{' + k + '}');
   const dstr = (s) => s ? String(s).slice(0, 10).split('-').reverse().join('.') : '-';
@@ -69,19 +79,19 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
   }
   ctx.sms = sms; ctx.dstr = dstr; ctx.wa = wa;
   R('POST', '/api/bagislar/:id/sms', 'alin|bekleyen|bagisci|rapor', 'e', async (c) => { // kabul SMS'ini elle (yeniden) gönder
-    const d = db.prepare('SELECT g.no, g.durum, b.ad, b.tel, t.ad tur FROM bagislar g JOIN bagiscilar b ON b.id=g.bagisci_id JOIN bagis_turleri t ON t.id=g.tur_id WHERE g.id=?').get(+c.m[1]); if (!d) throw new Err(404, 'Bağış yok.');
+    const d = db.prepare(BSEL).get(+c.m[1]); if (!d) throw new Err(404, 'Bağış yok.');
     if (d.durum === 'İptal') throw new Err(409, 'İptal edilmiş bağış için mesaj gönderilmez.'); if (String(d.tel || '').replace(/\D/g, '').length < 7) throw new Err(409, 'Bu kişinin geçerli telefonu yok.');
-    ctx.sms('kabul', { ad: d.ad, tur: d.tur, bno: d.no }, d.ad, c.user.kadi, d.tel); return [200, { ok: 1 }];
+    const [k, v] = bagMsj(d); ctx.sms(k, v, d.ad, c.user.kadi, d.tel); return [200, { ok: 1, sertifika: k === 'sertifika' }];
   });
   R('GET', '/api/bagislar/:id/mesaj', 'alin|bekleyen|bagisci|rapor', 'g', async (c) => { // kabul mesajı önizlemesi
-    const d = db.prepare('SELECT g.no, g.durum, b.ad, b.tel, t.ad tur FROM bagislar g JOIN bagiscilar b ON b.id=g.bagisci_id JOIN bagis_turleri t ON t.id=g.tur_id WHERE g.id=?').get(+c.m[1]); if (!d) throw new Err(404, 'Bağış yok.');
-    const tp = db.prepare('SELECT m FROM sms_sablon WHERE k=?').get('kabul'), tel = String(d.tel || '').replace(/\D/g, '').length >= 7;
-    return [200, { ad: d.ad, tel: d.tel || '', telVar: tel, b: { mesaj: tp ? fill(tp.m, { dernek: dernek(), ad: d.ad, tur: d.tur, bno: d.no }) : '', uygun: tel && d.durum !== 'İptal', neden: !tel ? 'Telefon kayıtlı değil.' : d.durum === 'İptal' ? 'İptal edilmiş bağış için mesaj gönderilmez.' : '' } }];
+    const d = db.prepare(BSEL).get(+c.m[1]); if (!d) throw new Err(404, 'Bağış yok.');
+    const [k, v] = bagMsj(d), tp = db.prepare('SELECT m FROM sms_sablon WHERE k=?').get(k), tel = String(d.tel || '').replace(/\D/g, '').length >= 7;
+    return [200, { ad: d.ad, tel: d.tel || '', telVar: tel, sertifika: k === 'sertifika', b: { mesaj: tp ? fill(tp.m, { dernek: dernek(), ...v }) : '', uygun: tel && d.durum !== 'İptal', neden: !tel ? 'Telefon kayıtlı değil.' : d.durum === 'İptal' ? 'İptal edilmiş bağış için mesaj gönderilmez.' : '' } }];
   });
   R('GET', '/api/bagislar/:id/wa', 'alin|bekleyen|bagisci|rapor', 'g', async (c) => {
-    const d = db.prepare('SELECT g.no, g.durum, b.ad, b.tel, t.ad tur FROM bagislar g JOIN bagiscilar b ON b.id=g.bagisci_id JOIN bagis_turleri t ON t.id=g.tur_id WHERE g.id=?').get(+c.m[1]); if (!d) throw new Err(404, 'Bağış yok.');
+    const d = db.prepare(BSEL).get(+c.m[1]); if (!d) throw new Err(404, 'Bağış yok.');
     if (d.durum === 'İptal') throw new Err(409, 'İptal edilmiş bağış için mesaj hazırlanmaz.');
-    return [200, wa('kabul', { ad: d.ad, tur: d.tur, bno: d.no }, d.ad, c.user.kadi, d.tel)];
+    const [k, v] = bagMsj(d); return [200, wa(k, v, d.ad, c.user.kadi, d.tel)];
   });
   R('GET', '/api/sablonlar', 'sablon|sms', 'g', async () => [200, { sablonlar: db.prepare('SELECT * FROM sms_sablon').all(), dernek: dernek() }]);
   R('PUT', '/api/sablonlar/([a-z]+)', 'sablon', 'd', async (c) => {
@@ -204,7 +214,7 @@ CREATE TABLE IF NOT EXISTS kn_sayac(k TEXT PRIMARY KEY, n INTEGER NOT NULL);`);
   function onayla(d, user) {
     if (typeof d.secenek === 'string') d.secenek = JSON.parse(d.secenek || '{}');
     const t = tur(d.tur_id), v = { ad: d.ad, tur: t.ad, bno: d.no };
-    ctx.sms('kabul', v, d.ad, user, d.tel); if (t.sertifika) ctx.sms('sertifika', { ...v, link: 'https://…/sertifika/' + d.no }, d.ad, user, d.tel);
+    if (t.sertifika) ctx.sms('sertifika', { ...v, link: sertLink(d.id) }, d.ad, user, d.tel); else ctx.sms('kabul', v, d.ad, user, d.tel);
     if (t.org !== 'Genel') yerlestir(d); kfix();
   }
   ctx.onayla = onayla;

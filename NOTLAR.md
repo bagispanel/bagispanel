@@ -161,3 +161,11 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 - Bağış: POST /api/site/bagis (herkese açık; X-BP başlığı, IP başına 10 dk'da 8 deneme, bal kutusu alanı, KVKK onayı zorunlu). Bağış "Bekleyen" + Havale/EFT + kaynak "Web sitesi" olarak düşer; ekranda banka hesabı ve bağış no gösterilir. "Her ay" seçilirse nota "Her ay bağış talebi (site)" yazılır (otomatik tahsilat YOK). Kurbanda vekâlet kutusu → 'Online'. Tam büyükbaş ve Videolu bağış türleri sitede yok.
 - Yayında değilken site herkese "Çok yakında" döner; giriş yapmış kullanıcı önizler. Alan adı tanımlıysa o Host kökte siteyi açar (DNS + HTTPS sunucu kurulumunda ayrıca).
 - Yapılacak: kartla ödeme (sağlayıcı seçilince), aylık otomatik tahsilat, kurban hisse/grup seçimi ve kuyu ülke seçimi sitede, sponsor seçimi (öğrenci/yetim kartı) sitede, haber/blog, video bölümü, sayfa görselleri, SEO (başlık/açıklama/og), çerez onayı, 4 temanın ince ayarı, tema önizleme görüntüleri, hızlı bağış sepeti.
+
+## Sertifika (18 Kas)
+- Tek tasarım: /sertifika/<kod> (mod/sertifika.js, public/sertifika.js). Sertifikada bağışçı/sponsor adı, proje adı (tür adı; fiyat ve biçim ekleri ayıklanır) ve tarih var; **tutar hiç yazılmaz**. Yazdır / PDF olarak kaydet düğmesi tarayıcı yazdırmasını kullanır (A4 yatay).
+- Bağış sertifikası: türde "sertifika" tikli ise onayda otomatik gider; **kabul SMS'i ile sertifika bağlantısı tek mesajdır** ('sertifika' şablonu), ayrı kabul SMS'i gitmez (SMS israfı yok). Onaydan önce/iptalde sertifika açılmaz (404). Kalıcı eser türlerinde tik kapalı kalır.
+- Yeniden gönderme: bağış satırındaki SMS/WhatsApp düğmesi, sertifikalı onaylı bağışta sertifika bağlantılı mesajı hazırlar (önizlemeli); sertifikasız ya da bekleyen bağışta kabul mesajıdır.
+- Sponsor: "Sponsorluk belgesi" yalnız elle gönderilir (Sponsorluklar ve Ödemeler satırında WhatsApp/SMS simgeleri, her ay SMS gitmesin diye); "Tamamlama sertifikası" öğrenci tamamlandı işaretlenirken "bildir" seçiliyse gider ve aynı tasarımı kullanır. Sponsor jetonu bağlantıdadır: /sertifika/<jeton>?k=belge|tamam.
+- Bağlantı adresi son istekten öğrenilir (ctx.sonHost); gerçek alan adına geçince değişiklik gerekmez.
+- Yapılacak: sertifikaya dernek mührü/imza görseli, tür başına metin, QR ile doğrulama, kurban/hisse sertifikaları.

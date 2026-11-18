@@ -379,6 +379,12 @@ server.listen(0, async () => {
     assert.equal((await admin('POST', `/api/sp/ogrenci/${o.j.id}/tamamla`, { tur: 'Hafızlığı', bildir: true })).j.bildirilen, 1);
     const g = (await admin('GET', '/api/sp/ogrenci/' + o.j.id)).j; assert.equal(g.durum, 'Tamamladı'); assert.equal(g.cuz, 30);
     assert.ok((await admin('GET', '/api/sms')).j.some(x => x.sablon === 'sptamam'));
+    { const sm = (await admin('GET', '/api/sms')).j.find(x => x.sablon === 'sptamam'); assert.ok(sm.mesaj.includes('/sertifika/' + tok + '?k=tamam'), 'tamamlama bağlantısı sertifika sayfası');
+      const ph = await (await fetch(base + '/sertifika/' + tok + '?k=tamam')).text(); assert.ok(ph.includes('Tamamlama Sertifikası') && ph.includes('Ahmed Musa') && ph.includes('Hafızlık Sponsorluğu'));
+      const bh = await (await fetch(base + '/sertifika/' + tok)).text(); assert.ok(bh.includes('Sponsorluk Belgesi') && bh.includes('Ahmed Musa'));
+      assert.equal((await admin('POST', `/api/sp/sponsorluk/${sp.j.id}/belge`, { k: 'sms' })).s, 200); assert.ok((await admin('GET', '/api/sms')).j.some(x => x.sablon === 'spbelge' && x.mesaj.includes('?k=belge')));
+      const wb = await admin('POST', `/api/sp/sponsorluk/${sp.j.id}/belge`, { k: 'wa' }); assert.equal(wb.s, 200); assert.ok(wb.j.link.startsWith('https://wa.me/'));
+      assert.equal((await admin('POST', '/api/sp/sponsorluk/99999/belge', {})).s, 404); }
     assert.equal((await admin('DELETE', '/api/sp/ogrenci/' + o.j.id)).s, 409);
     assert.equal((await admin('POST', `/api/sp/sponsorluk/${sp.j.id}/iptal`)).s, 200);
     const u = (await mkUser('sponsorsuz1', 'Çağrı merkezi')).q; for (const e of ['ogrenci', 'sponsorluk', 'rapor']) assert.equal((await u('GET', '/api/sp/' + e)).s, 403);
@@ -576,6 +582,33 @@ server.listen(0, async () => {
     assert.equal((await admin('PUT', '/api/site/tasarim', { alan_adi: 'www.ornekdernek.org' })).s, 200);
     const kok = await new Promise((ok, no) => { const q = require('http').request({ host: '127.0.0.1', port: server.address().port, path: '/', headers: { host: 'www.ornekdernek.org' } }, r => { let d = ''; r.on('data', x => d += x); r.on('end', () => ok(d)); }); q.on('error', no); q.end(); }); assert.ok(kok.includes('t-modern'), 'alan adı kökte siteyi açar');
     assert.equal((await admin('PUT', '/api/site/tasarim', { acik: false, alan_adi: '' })).s, 200); assert.equal((await get('/site')).status, 404);
+  });
+  await t('sertifika: sertifikalı türde onayda tek SMS, tutarsız sayfa, yeniden gönderme', async () => {
+    { const tr = await admin('POST', '/api/turler', { sec: 'genel', kat: 'Test Kategori', ad: 'Sertifikalı Fidan', tutar: 100, sertifika: true }); assert.equal(tr.s, 201, JSON.stringify(tr.j)); }
+    const tid = await turId('Sertifikalı Fidan'), smsSay = async (f) => (await admin('GET', '/api/sms')).j.filter(f).length;
+    const k0 = await smsSay(x => x.sablon === 'kabul'), s0 = await smsSay(x => x.sablon === 'sertifika');
+    const r = await bag({ tur_id: tid, tutar: 123456, ad: 'Sertifika Sahibi', tel: '541 300 00 77', durum: 'Bekleyen' }); assert.equal(r.s, 201, JSON.stringify(r.j));
+    assert.equal(await smsSay(x => x.sablon === 'sertifika'), s0, 'onaydan önce sertifika gitmez');
+    assert.equal((await admin('GET', `/api/bagislar/${r.j.id}/mesaj`)).j.sertifika, false);
+    assert.equal((await admin('POST', '/api/bagislar/onayla', { ids: [r.j.id] })).s, 200);
+    assert.equal(await smsSay(x => x.sablon === 'sertifika'), s0 + 1, 'sertifika bağlantılı mesaj gitti'); assert.equal(await smsSay(x => x.sablon === 'kabul'), k0, 'ayrı kabul SMS’i gitmedi (israf yok)');
+    const sm = (await admin('GET', '/api/sms')).j.find(x => x.sablon === 'sertifika' && x.mesaj.includes('Sertifika Sahibi')); assert.ok(/alınmıştır/.test(sm.mesaj)); const link = /https?:\/\/\S+\/sertifika\/([A-Za-z0-9_-]+)/.exec(sm.mesaj); assert.ok(link, sm.mesaj);
+    const pg = await fetch(base + '/sertifika/' + link[1]); assert.equal(pg.status, 200); const h = await pg.text();
+    assert.ok(h.includes('Sertifika Sahibi') && h.includes('Sertifikalı Fidan') && h.includes('Bağış Sertifikası')); assert.ok(!h.includes('123456') && !h.includes('123.456'), 'tutar sertifikada görünmez');
+    assert.equal((await fetch(base + '/sertifika/yanlis-kod-yok')).status, 404); assert.equal((await fetch(base + '/sertifika/' + link[1].slice(0, -1) + 'x')).status, 404);
+    // yeniden gönder (SMS): sertifika bağlantılı mesaj; WhatsApp: aynı metin
+    const m = (await admin('GET', `/api/bagislar/${r.j.id}/mesaj`)).j; assert.equal(m.sertifika, true); assert.ok(m.b.mesaj.includes('/sertifika/'));
+    assert.equal((await admin('POST', `/api/bagislar/${r.j.id}/sms`)).j.sertifika, true); assert.equal(await smsSay(x => x.sablon === 'sertifika'), s0 + 2);
+    const wa = await admin('GET', `/api/bagislar/${r.j.id}/wa`); assert.equal(wa.s, 200); assert.ok(decodeURIComponent(wa.j.link).includes('/sertifika/' + link[1]));
+    // sertifikasız tür: yalnız kabul
+    const k1 = await smsSay(x => x.sablon === 'kabul'); assert.equal((await bag({ tur_id: await turId('Fitre'), tutar: 10, ad: 'Sertifikasız', tel: '541 300 00 78' })).s, 201); assert.equal(await smsSay(x => x.sablon === 'kabul'), k1 + 1);
+    { // tür adında fiyat varsa sertifikada görünmez
+      assert.equal((await admin('POST', '/api/turler', { sec: 'kuyu', ad: 'Sertifikaistan - Kuyu', bicim: 'Tam fiyat', fiyat: 12000, sertifika: true })).s, 201);
+      const kt = await turId('Sertifikaistan'), kr = await bag({ tur_id: kt, adet: 1, tutar: 12000, ad: 'Kuyu Sahibi', tel: '541 300 00 79' }); assert.equal(kr.s, 201, JSON.stringify(kr.j));
+      const ks = (await admin('GET', '/api/sms')).j.find(x => x.sablon === 'sertifika' && x.mesaj.includes('Kuyu Sahibi')); const kh = await (await fetch(/https?:\/\/\S+\/sertifika\/[A-Za-z0-9_-]+/.exec(ks.mesaj)[0].replace(/^https?:\/\/[^/]+/, base))).text();
+      assert.ok(kh.includes('Sertifikaistan - Kuyu') && !/12\.000|₺|Tam fiyat/.test(kh.replace(/<style>[\s\S]*?<\/style>/, '')), 'fiyat ve biçim eki görünmez'); }
+    // iptal edilen bağışın sertifikası açılmaz
+    assert.equal((await admin('POST', `/api/bagislar/${r.j.id}/iptal`, { sebep: 'Deneme' })).s, 200); assert.equal((await fetch(base + '/sertifika/' + link[1])).status, 404);
   });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });

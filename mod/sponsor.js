@@ -92,7 +92,14 @@ module.exports = function (ctx) {
   // ---- sponsorlara mesaj (SMS) yardımcıları
   const aktifler = (oid) => db.prepare("SELECT * FROM sp_sponsorluk WHERE ogrenci_id=? AND durum='Aktif'").all(oid);
   const sk = (s, req) => ({ ...s, link: baseUrl(req) + '/sponsor.html?t=' + s.token });
-  function bildir(key, s, req, user, ek) { const b = db.prepare('SELECT ad,tel FROM bagiscilar WHERE id=?').get(s.bagisci_id), o = ogr(s.ogrenci_id), t = db.prepare('SELECT ad FROM bagis_turleri WHERE id=?').get(s.tur_id); return ctx.sms(key, { ad: b.ad, ogrenci: o.ad, tur: t ? t.ad : 'sponsorluk', link: sk(s, req).link + (ek && ek.sertifika ? '&s=1' : ''), kod: kodu(s.id), ...(ek || {}) }, b.ad, user, b.tel); }
+  function bildir(key, s, req, user, ek) { const b = db.prepare('SELECT ad,tel FROM bagiscilar WHERE id=?').get(s.bagisci_id), o = ogr(s.ogrenci_id), t = db.prepare('SELECT ad FROM bagis_turleri WHERE id=?').get(s.tur_id); return ctx.sms(key, { ad: b.ad, ogrenci: o.ad, tur: t ? t.ad : 'sponsorluk', link: ek && ek.sertifika ? baseUrl(req) + '/sertifika/' + s.token + '?k=tamam' : sk(s, req).link, kod: kodu(s.id), ...(ek || {}) }, b.ad, user, b.tel); }
+  R('POST', '/api/sp/sponsorluk/([0-9]+)/belge', 'sptak', 'e', async (c) => { // sponsorluk belgesini elle gönder (SMS ya da WhatsApp)
+    const s = db.prepare('SELECT * FROM sp_sponsorluk WHERE id=?').get(+c.m[1]); if (!s) throw new Err(404, 'Sponsorluk bulunamadı.');
+    const b = db.prepare('SELECT ad,tel FROM bagiscilar WHERE id=?').get(s.bagisci_id), o = ogr(s.ogrenci_id), v = { ad: b.ad, ogrenci: o.ad, link: baseUrl(c.req) + '/sertifika/' + s.token + '?k=belge' };
+    if (String(b.tel || '').replace(/\D/g, '').length < 7) throw new Err(409, 'Sponsorun geçerli telefonu yok.');
+    if ((c.body || {}).k === 'wa') return [200, ctx.wa('spbelge', v, b.ad, c.user.kadi, b.tel)];
+    ctx.sms('spbelge', v, b.ad, c.user.kadi, b.tel); return [200, { ok: 1 }];
+  });
   R('POST', '/api/sp/ogrenci/([0-9]+)/not', 'spogr', 'd', async (c) => {
     const o = ogr(+c.m[1]), b = c.body || {}, metin = str(b.metin, 500); if (!metin) throw new Err(400, 'Gelişme notunu yazın.');
     if (o.hafiz && b.cuz !== '' && b.cuz != null) db.prepare('UPDATE sp_ogrenci SET cuz=? WHERE id=?').run(Math.round(num(b.cuz, 'Cüz', 30)), o.id); if (o.hafiz && b.ayet) db.prepare('UPDATE sp_ogrenci SET ayet=? WHERE id=?').run(str(b.ayet, 120), o.id);
