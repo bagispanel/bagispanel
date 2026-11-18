@@ -37,6 +37,7 @@ module.exports = function (ctx) {
       if (r === 'orgD') { const pr = {}; db.prepare('SELECT u.adim, u.ulke, u.video, t.org, t.ad turad FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org=?').all(org).forEach(u => { const k = sts(u); if (k < 1 || k > 4) return; (pr[u.turad] = pr[u.turad] || [0, 0, 0, 0, 0])[k]++; }); out.proje = Object.entries(pr).map(([ad, say]) => ({ ad, say })).sort((a, b) => b.say.reduce((x, y) => x + y, 0) - a.say.reduce((x, y) => x + y, 0)); }
       [1, 2, 3, 4].forEach(i => { if (cnt[i]) isler.push({ k: r + i, grup: NAD[r], etiket: ETK[r][i], n: cnt[i], git: r + ':' + i }); });
     });
+    if (g('orgK')) { const vb = q("SELECT COUNT(*) n FROM paylar p JOIN birimler_org u ON u.id=p.birim_id JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org='Kurban' AND p.vekalet IS NULL").n; if (vb) isler.push({ k: 'orgKvk', grup: 'Kurban', etiket: 'Vekâlet alınmadı', n: vb, git: 'orgK:vk' }); }
     out.isler = isler;
     // Hedefe yaklaşan kuyular
     if (g('orgS')) {

@@ -110,8 +110,8 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
     const ASAMA = { Kurban: ['Hisse bekliyor', 'Ülke atanacak', 'Kesim bekliyor', 'Video bağlanacak', 'Video kontrolü', 'Tamamlandı'], 'Su kuyusu': ['Toplanıyor', 'Ülke atanacak', 'Açılış bekliyor', 'Video bağlanacak', 'Video kontrolü', 'Tamamlandı'], 'Diğer': ['Hazırlanıyor', 'Ülke atanacak', 'Dağıtım bekliyor', 'Video bağlanacak', 'Video kontrolü', 'Tamamlandı'] };
     const stsU = (u) => { if (u.adim === 1 && u.ulke && u.org === 'Su kuyusu') return 2; return u.adim < 3 ? u.adim : u.adim === 3 ? (u.video ? 4 : 3) : 5; };
     const detay = {}, ids = L.map(x => x.id);
-    if (ids.length) db.prepare(`SELECT p.bagis_id, p.no pno, p.ad pad, p.video pv, p.vs, u.kod, u.ad uad, u.ulke, u.partner, u.adim, u.video, t.org FROM paylar p JOIN birimler_org u ON u.id=p.birim_id JOIN bagis_turleri t ON t.id=u.tur_id WHERE p.bagis_id IN (${ids.map(() => '?').join(',')}) ORDER BY p.id`).all(...ids)
-      .forEach(r => { const v = r.pv || r.video || ''; (detay[r.bagis_id] = detay[r.bagis_id] || []).push({ pno: r.pno, kod: r.kod, birim: r.uad || '', adina: r.pad, ulke: r.ulke || '', partner: r.partner || '', asama: (ASAMA[r.org] || ASAMA['Diğer'])[stsU(r)], video: !!v, link: /^https?:\/\//.test(v) ? v : '', video_ad: /^https?:\/\//.test(v) ? '' : v, gonderildi: !!r.vs }); });
+    if (ids.length) db.prepare(`SELECT p.bagis_id, p.no pno, p.ad pad, p.video pv, p.vs, p.vekalet, u.kod, u.ad uad, u.ulke, u.partner, u.adim, u.video, t.org FROM paylar p JOIN birimler_org u ON u.id=p.birim_id JOIN bagis_turleri t ON t.id=u.tur_id WHERE p.bagis_id IN (${ids.map(() => '?').join(',')}) ORDER BY p.id`).all(...ids)
+      .forEach(r => { const v = r.pv || r.video || ''; (detay[r.bagis_id] = detay[r.bagis_id] || []).push({ pno: r.pno, vk: !!r.vekalet, kod: r.kod, birim: r.uad || '', adina: r.pad, ulke: r.ulke || '', partner: r.partner || '', asama: (ASAMA[r.org] || ASAMA['Diğer'])[stsU(r)], video: !!v, link: /^https?:\/\//.test(v) ? v : '', video_ad: /^https?:\/\//.test(v) ? '' : v, gonderildi: !!r.vs }); });
     const eserAd = {}; try { db.prepare('SELECT id,ad,tur_ids FROM eser').all().forEach(e => JSON.parse(e.tur_ids || '[]').forEach(i => (eserAd[i] = eserAd[i] || []).push({ id: e.id, ad: e.ad }))); } catch (e) { }
     ok.concat(L.filter(x => x.durum !== 'Onaylı')).forEach(x => { if (eserAd[x.tur_id]) (detay[x.id] = detay[x.id] || []).eser = eserAd[x.tur_id]; });
     const detayO = {}; Object.entries(detay).forEach(([k, v]) => { detayO[k] = { paylar: v.slice(), eser: v.eser || null }; });
@@ -173,7 +173,9 @@ CREATE TABLE IF NOT EXISTS kn_sayac(k TEXT PRIMARY KEY, n INTEGER NOT NULL);`);
     const id = +db.prepare('INSERT INTO birimler_org(tur_id,cap,adim,ulke,hayvan,hedef,devir,solo,ad,dt) VALUES(?,?,?,?,?,?,?,?,?,?)').run(u.tur_id, u.cap, u.adim, u.ulke, u.hayvan, u.hedef, u.devir, u.solo, u.ad, JSON.stringify(dt)).lastInsertRowid;
     const kod = kodAl(u, t); db.prepare('UPDATE birimler_org SET kod=? WHERE id=?').run(kod, id); return db.prepare('SELECT * FROM birimler_org WHERE id=?').get(id);
   }
-  const payEkle = (u, d, n, ph, a, t) => { const no = 'KS-' + YIL() + '-' + String(next('ks')).padStart(4, '0'); db.prepare('INSERT INTO paylar(birim_id,bagis_id,no,ad,tel,tarih,tutar) VALUES(?,?,?,?,?,?,?)').run(u.id, d.id, no, n, ph || '', iso(), a); };
+  for (const q of ['ALTER TABLE paylar ADD COLUMN vekalet TEXT', 'ALTER TABLE paylar ADD COLUMN vekalet_yontem TEXT', 'ALTER TABLE paylar ADD COLUMN vekalet_kim TEXT', 'ALTER TABLE bagislar ADD COLUMN vekalet TEXT']) { try { db.exec(q); } catch (e) { } }
+  const VY = ['Telefon', 'Yazılı', 'WhatsApp', 'Yüz yüze', 'Online']; ctx.VY = VY;
+  const payEkle = (u, d, n, ph, a, t) => { const no = 'KS-' + YIL() + '-' + String(next('ks')).padStart(4, '0'); const pid = +db.prepare('INSERT INTO paylar(birim_id,bagis_id,no,ad,tel,tarih,tutar) VALUES(?,?,?,?,?,?,?)').run(u.id, d.id, no, n, ph || '', iso(), a).lastInsertRowid; const bv = db.prepare('SELECT vekalet, kullanici FROM bagislar WHERE id=?').get(d.id); if (bv && bv.vekalet) db.prepare('UPDATE paylar SET vekalet=?, vekalet_yontem=?, vekalet_kim=? WHERE id=?').run(iso(), bv.vekalet, bv.kullanici || null, pid); };
   const cnt = (u) => db.prepare('SELECT COUNT(*) n FROM paylar WHERE birim_id=?').get(u.id).n;
   const sum = (u) => (db.prepare('SELECT COALESCE(SUM(tutar),0) s FROM paylar WHERE birim_id=?').get(u.id).s) + (u.devir || 0);
   function doldu(u) { const dt = dtGet(u); dt[1] = iso(); dtSet(u.id, dt); db.prepare('UPDATE birimler_org SET adim=1 WHERE id=?').run(u.id); }
@@ -238,6 +240,7 @@ CREATE TABLE IF NOT EXISTS kn_sayac(k TEXT PRIMARY KEY, n INTEGER NOT NULL);`);
       if (!bg) { bg = { id: +db.prepare('INSERT INTO bagiscilar(tel,ad,eposta,adres) VALUES(?,?,?,?)').run(tel, ad, str(b.eposta, 120) || null, str(b.adres, 160) || null).lastInsertRowid }; yeni = true; }
       const id = +db.prepare('INSERT INTO bagislar(bagisci_id,tur_id,adet,para,tutar,tl,kendi,adina_ad,adina_tel,notu,odeme,banka_id,durum,tarih,kaynak,xid,secenek,kullanici) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
         .run(bg.id, t.id, t.tam ? 7 : q, para, tutar, tutar * RATE[para], kendi ? 1 : 0, adinaAd, adinaTel, str(b.notu, 400) || null, odeme, banka || null, durum, iso(), kaynak || 'Manuel (CRM)', xid || null, JSON.stringify(o), user.kadi).lastInsertRowid;
+      if (b.vekalet && t.org === 'Kurban') db.prepare('UPDATE bagislar SET vekalet=? WHERE id=?').run(VY.includes(b.vekalet_yontem) ? b.vekalet_yontem : 'Telefon', id);
       const no = 'BG-' + YIL() + '-' + String(id).padStart(5, '0'); db.prepare('UPDATE bagislar SET no=? WHERE id=?').run(no, id);
       if (durum === 'Onaylı') onayla(db.prepare(SEL + ' WHERE g.id=?').get(id), user.kadi);
       A.audit(user, 'bagis_alindi', no, req ? ip(req) : null); return { id, no, yeni, durum };

@@ -1,7 +1,7 @@
 // Ana sayfa: bugünün özeti, bekleyen işler, kısayollar, grafik, son bağışlar, uyarılar. Bölümleri kullanıcı kendine göre açıp kapatır, sıralar.
 PG.home={async load(){try{ST.ana=await api('GET','/api/ana');ST.anaAnim=true}catch(e){ST.ana=ST.ana||null}}};
 AFT.push(()=>{if(route!='home')return;if(ST.ana===undefined&&!ST.anaReq){ST.anaReq=1;PG.home.load().then(()=>{ST.anaReq=0;if(route=='home')draw()})}if(ST.ana&&ST.anaAnim){ST.anaAnim=false;aCount()}});
-ACTS.agit=v=>{if(v.includes(':')){const [r,t,n]=v.split(':');ST.k=null;kInit(r);ST.k.tab=+t;if(n)ST.k.ni=decodeURIComponent(n);go(r)}else go(v)};
+ACTS.agit=v=>{if(v.includes(':')){const [r,t,n]=v.split(':');ST.k=null;kInit(r);if(t=='vk'){ST.k.tab=-1;ST.k.vk='Eksik';ST.k.fo=true}else ST.k.tab=+t;if(n)ST.k.ni=decodeURIComponent(n);go(r)}else go(v)};
 ACTS.tema=()=>{const d=document.documentElement,n=d.getAttribute('data-theme')=='dark'?'light':'dark';d.setAttribute('data-theme',n);try{localStorage.setItem('bp_tema',n)}catch(e){}draw()};
 const aTL=n=>TR(Math.round(n||0))+' ₺',aDt=s=>String(s||'').split('-').reverse().join('.'),aF=(v,f)=>f=='tl'?aTL(v):TR(v);
 const aN=(v,f)=>`<span data-cnt="${v}" data-f="${f||'n'}">${aF(ST.anaAnim?0:v,f||'n')}</span>`;
