@@ -11,6 +11,7 @@ module.exports = function (ctx) {
   db.prepare("INSERT OR IGNORE INTO kategoriler(ad) VALUES('Eğitim'),('Fidan')").run();
   ek.run('Eğitim', 'Kuranı Kerim', 'Diğer', 1, 100, 'Kuranı Kerim', 0, 1, null, null, 'Kuranı Kerim'); ek.run('Fidan', 'Hatıra fidanı', 'Diğer', 1, 250, 'Hatıra fidanı', 0, 1, null, null, 'Hatıra fidanı'); ek.run('Eğitim', 'Burs', 'Genel', null, null, null, 0, 0, null, null, null);
   if (!db.prepare('SELECT 1 FROM banka_hesaplari').get()) db.prepare("INSERT INTO banka_hesaplari(banka,hesap,iban,para) VALUES('Ziraat Bankası','Dernek Ana Hesap','TR330006100519786457841326','TL')").run();
+  if (!h.getA('kurumb', null)) h.setA('kurumb', { ad: 'İyilik Organizasyonu', kisa: 'İyilik' });
   const bk = db.prepare('SELECT id FROM banka_hesaplari').get().id;
   if (!db.prepare('SELECT 1 FROM partnerler').get()) db.prepare("INSERT INTO partnerler(tur,ad,bilgi,yad,yg,yt) VALUES('Dernek','Demo Yardım Derneği','{\"vn\":\"1234567890\"}','Ali Yetkili','Başkan','+905413009999')").run();
   const AD = ['Ayşe', 'Mehmet', 'Fatma', 'Ali', 'Zeynep', 'Hasan', 'Elif', 'Mustafa', 'Hatice', 'İbrahim', 'Emine', 'Yusuf'], SOY = ['Yılmaz', 'Kaya', 'Demir', 'Çelik', 'Şahin', 'Arslan', 'Aydın', 'Koç', 'Polat', 'Yıldız'];

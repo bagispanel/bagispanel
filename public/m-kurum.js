@@ -4,4 +4,4 @@ PG.kurumb={load:async()=>{ST.kb=await api('GET','/api/kurum/bilgi');ST.kbl=null;
 function kbTut(){const f=document.querySelector('form[data-f=kurumb]');if(f&&ST.kb)['ad','kisa','slogan','tel','eposta','web','adres'].forEach(k=>{if(f.elements[k])ST.kb[k]=f.elements[k].value})}
 CHG.kblogo=async(v,el)=>{const f=el.files[0];if(!f)return;kbTut();if(f.size>6e6)throw new Error('Dosya çok büyük.');ST.kbl=await logoOku(f);ST.kbs=false;draw()};
 ACTS.kblsil=()=>{kbTut();ST.kbl=null;ST.kbs=true;draw()};
-FORMS.kurumb=async d=>{const b={ad:d.ad,kisa:d.kisa,slogan:d.slogan,tel:d.tel,eposta:d.eposta,web:d.web,adres:d.adres};if(ST.kbs)b.logo_sil=1;else if(ST.kbl)b.logo=ST.kbl;await api('PUT','/api/kurum/bilgi',b);toast('Kurum bilgileri kaydedildi.');await load()};
+FORMS.kurumb=async d=>{const b={ad:d.ad,kisa:d.kisa,slogan:d.slogan,tel:d.tel,eposta:d.eposta,web:d.web,adres:d.adres};if(ST.kbs)b.logo_sil=1;else if(ST.kbl)b.logo=ST.kbl;await api('PUT','/api/kurum/bilgi',b);toast('Kurum bilgileri kaydedildi.');KRM=await fetch('/api/kurum').then(r=>r.json()).catch(()=>KRM);await load()};
