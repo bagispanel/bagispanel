@@ -188,3 +188,16 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 ## Raporlama sadeleştirme
 - Raporlama ve Analiz menüsü 3 maddeye indi: Bağış Raporları, Analiz (sekmeler: Dönemsel karşılaştırma, Bağış türü, Bağışçı, Saha ve proje, İletişim), Kurban Vekâlet Raporu.
 - Yetkiler eski anahtarlarla aynı (rkarsi, rtur, rbagisci, rsaha, riletisim); kullanıcı yalnızca yetkili olduğu sekmeleri görür. Sadece bir sekmeye yetkisi olana sekme çubuğu çıkmaz.
+
+## Tanıtım sitesi: öne çıkarılacak özellikler (mutlaka konacak)
+- Tanıtım sitesi hazırlanırken en önemli özellikler mutlaka öne çıkarılacak. Taslak liste (kullanıcı onaylayacak):
+  - Sade ekranlar: dernek çalışanının anlayacağı, az menülü yapı
+  - Bağış alma, onay, makbuz; bağışçı rehberi
+  - Kurban, su kuyusu, videolu bağış ve kalıcı eser organizasyonu; toplu işlem; bağışçıya video ve bilgi mesajı
+  - Sponsorluk (öğrenci/yetim), ödeme takibi
+  - Sertifika: bağış türüne göre tasarım, otomatik SMS/WhatsApp, elle yeniden gönderme
+  - SMS, WhatsApp, e-posta, çağrı merkezi tek yerde
+  - Banka hareketi eşleştirme
+  - Web sitesi yönetimi aynı panelde (4 tema, bağış formu)
+  - Rol ve birim bazlı yetki, denetim kayıtları
+  - Raporlar ve analiz (dönemsel, tür, bağışçı, saha)
