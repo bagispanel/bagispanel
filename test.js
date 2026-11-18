@@ -45,7 +45,7 @@ server.listen(0, async () => {
   });
   await t('son yönetici kaldırılamaz / silinemez / pasife alınamaz', async () => {
     const all = (await admin('GET', '/api/users')).j; const me = all.find(u => u.kadi === 'admin');
-    assert.equal((await admin('DELETE', `/api/users/${me.id}`)).s, 403);
+    assert.equal((await admin('DELETE', `/api/users/${me.id}`)).s, 405);
     assert.equal((await admin('PUT', `/api/users/${me.id}`, { aktif: false })).s, 403);
     const p = (await admin('GET', `/api/birimler/${id('Bilgi işlem')}/yetki`)).j; p.birim.d = 0; const r = await admin('PUT', `/api/birimler/${id('Bilgi işlem')}/yetki`, { perm: p });
     assert.equal(r.s, 409); const p2 = (await admin('GET', `/api/birimler/${id('Bilgi işlem')}/yetki`)).j; assert.equal(p2.birim.d, 1);
@@ -484,6 +484,17 @@ server.listen(0, async () => {
   await t('kalıcı eser: sabit ana kategori, proje altında alt kategori açılır, zorunlu alanlar', async () => {
     const T0 = (await admin('GET', '/api/turler')).j; assert.ok(T0.kategoriler.includes('Kalıcı Eser'));
     assert.equal((await admin('DELETE', '/api/kategoriler?ad=' + encodeURIComponent('Kalıcı Eser'))).s, 409);
+    assert.equal((await admin('PUT', '/api/kategoriler', { eski: 'Kalıcı Eser', yeni: 'X' })).s, 409);
+    assert.equal((await admin('POST', '/api/kategoriler', { ad: 'Eski Ad Kat' })).s, 201);
+    const tk = (await admin('POST', '/api/turler', { sec: 'genel', kat: 'Eski Ad Kat', ad: 'Eski Tür' })).j;
+    assert.equal((await admin('PUT', '/api/kategoriler', { eski: 'Eski Ad Kat', yeni: 'Yeni Ad Kat' })).s, 200);
+    assert.equal((await admin('PUT', '/api/turler/' + tk.id, { ad: 'Yeni Tür' })).s, 200);
+    const Tz = (await admin("GET", "/api/turler")).j; assert.ok(Tz.kategoriler.includes("Yeni Ad Kat") && !Tz.kategoriler.includes("Eski Ad Kat"));
+    assert.ok(Tz.turler.some(x => x.id === tk.id && x.kat === 'Yeni Ad Kat' && x.ad === 'Yeni Tür'));
+    assert.equal((await admin('PUT', '/api/kategoriler', { eski: 'Yeni Ad Kat', yeni: 'Kurban' })).s, 409);
+    const wb = (await admin('GET', '/api/bagislar?limit=1')).j; const wl = Array.isArray(wb) ? wb : (wb.liste || wb.bagislar || []);
+    if (wl.length) { const w = await admin('GET', `/api/bagislar/${wl[0].id}/wa`); assert.equal(w.s, 200, JSON.stringify(w.j)); assert.ok(/^https:\/\/wa\.me\/\d{7,15}\?text=/.test(w.j.link) && w.j.mesaj.length > 10); assert.equal((await admin('POST', `/api/bagislar/${wl[0].id}/sms`, {})).s, 200); }
+    assert.equal((await admin('GET', '/api/bagislar/999999/wa')).s, 404);
     const b = { ad: 'Nijer Niamey Camii', tur: 'Cami', durum: 'Planlama', ulke: 'Nijer', para: 'USD', kur: 35, hedef: 50000 };
     assert.equal((await admin('POST', '/api/eser', { ...b, hedef: 0 })).s, 400); assert.equal((await admin('POST', '/api/eser', { ...b, ulke: '' })).s, 400);
     const r = await admin('POST', '/api/eser', { ...b, tur_ac: true }); assert.equal(r.s, 201, JSON.stringify(r.j));

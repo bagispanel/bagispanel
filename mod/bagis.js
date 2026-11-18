@@ -61,7 +61,23 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
     const t = db.prepare('SELECT m FROM sms_sablon WHERE k=?').get(k); if (!t) return;
     const mesaj = fill(t.m, { dernek: dernek(), ...v }); const id = +db.prepare('INSERT INTO sms_log(mesaj,kime,sablon,kullanici) VALUES(?,?,?,?)').run(mesaj, kime, k, user || null).lastInsertRowid; return { id, mesaj, tel };
   }
-  ctx.sms = sms; ctx.dstr = dstr;
+  function wa(k, v, kime, user, tel) { // WhatsApp'a elle gönderim: metin hazırlanır, kişi kendi WhatsApp'ında gönderir; kayda yazılır
+    const t = db.prepare('SELECT m FROM sms_sablon WHERE k=?').get(k); if (!t) throw new Err(404, 'Mesaj şablonu yok.');
+    const d = String(tel || '').replace(/\D/g, ''); if (d.length < 7) throw new Err(409, 'Bu kişinin geçerli telefonu yok.');
+    const mesaj = fill(t.m, { dernek: dernek(), ...v }); db.prepare('INSERT INTO sms_log(mesaj,kime,sablon,kullanici) VALUES(?,?,?,?)').run(mesaj, kime, 'wa:' + k, user || null);
+    return { mesaj, tel: d, link: `https://wa.me/${d}?text=${encodeURIComponent(mesaj)}` };
+  }
+  ctx.sms = sms; ctx.dstr = dstr; ctx.wa = wa;
+  R('POST', '/api/bagislar/:id/sms', 'alin|bekleyen|bagisci|rapor', 'e', async (c) => { // kabul SMS'ini elle (yeniden) gönder
+    const d = db.prepare('SELECT g.no, g.durum, b.ad, b.tel, t.ad tur FROM bagislar g JOIN bagiscilar b ON b.id=g.bagisci_id JOIN bagis_turleri t ON t.id=g.tur_id WHERE g.id=?').get(+c.m[1]); if (!d) throw new Err(404, 'Bağış yok.');
+    if (d.durum === 'İptal') throw new Err(409, 'İptal edilmiş bağış için mesaj gönderilmez.'); if (String(d.tel || '').replace(/\D/g, '').length < 7) throw new Err(409, 'Bu kişinin geçerli telefonu yok.');
+    ctx.sms('kabul', { ad: d.ad, tur: d.tur, bno: d.no }, d.ad, c.user.kadi, d.tel); return [200, { ok: 1 }];
+  });
+  R('GET', '/api/bagislar/:id/wa', 'alin|bekleyen|bagisci|rapor', 'g', async (c) => {
+    const d = db.prepare('SELECT g.no, g.durum, b.ad, b.tel, t.ad tur FROM bagislar g JOIN bagiscilar b ON b.id=g.bagisci_id JOIN bagis_turleri t ON t.id=g.tur_id WHERE g.id=?').get(+c.m[1]); if (!d) throw new Err(404, 'Bağış yok.');
+    if (d.durum === 'İptal') throw new Err(409, 'İptal edilmiş bağış için mesaj hazırlanmaz.');
+    return [200, wa('kabul', { ad: d.ad, tur: d.tur, bno: d.no }, d.ad, c.user.kadi, d.tel)];
+  });
   R('GET', '/api/sablonlar', 'sablon|sms', 'g', async () => [200, { sablonlar: db.prepare('SELECT * FROM sms_sablon').all(), dernek: dernek() }]);
   R('PUT', '/api/sablonlar/([a-z]+)', 'sablon', 'd', async (c) => {
     const m = str(c.body.m, 600); if (!m) throw new Err(400, 'Mesaj boş olamaz.');

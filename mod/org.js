@@ -74,6 +74,14 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
     const mk = (k) => { const tp = db.prepare('SELECT m FROM sms_sablon WHERE k=?').get(k); return tp ? tp.m.replace(/\{(\w+)\}/g, (_, x) => { const v = { ...msgVars(u, s, t), dernek: getA('dernek_adi', '[Dernek adı]') }; return v[x] !== undefined ? v[x] : '{' + x + '}'; }) : ''; };
     return [200, { k: mk(T0[u.org]), g: mk(T1[u.org]), kisi: n, ad: s.ad }];
   });
+  R('GET', '/api/org/pay/:id/wa', 'orgK|orgS|orgD', 'd', async (c) => { // tek kişiye WhatsApp ile elle gönderim (toplu yok)
+    const k = new URL(c.req.url, 'http://x').searchParams.get('k') === 'v' ? 'v' : 'b';
+    const p = db.prepare('SELECT p.*, u.id uid, t.org FROM paylar p JOIN birimler_org u ON u.id=p.birim_id JOIN bagis_turleri t ON t.id=u.tur_id WHERE p.id=?').get(+c.m[1]); if (!p) throw new Err(404, 'Kayıt yok.');
+    if (!A.can(c.perms, MENU[p.org], 'd')) throw new Err(403, 'Yetkiniz yok.');
+    const uu = db.prepare('SELECT * FROM birimler_org WHERE id=?').get(p.uid), t = tur(uu.tur_id), s = db.prepare('SELECT p.*, g.no bno FROM paylar p JOIN bagislar g ON g.id=p.bagis_id WHERE p.id=?').get(p.id);
+    if (k === 'v' && !uu.video) throw new Err(409, 'Önce video bağlayın.'); if (k === 'b' && uu.adim < 3) throw new Err(409, 'Birim henüz tamamlanmadı.');
+    const r = ctx.wa(k === 'v' ? T1[p.org] : T0[p.org], msgVars(uu, s, t), s.ad, c.user.kadi, s.tel); if (k === 'v') db.prepare('UPDATE paylar SET vs=? WHERE id=? AND vs IS NULL').run(iso(), p.id); return [200, r];
+  });
   R('POST', '/api/org/pay-gonder', 'orgK|orgS|orgD', 'd', async (c) => { // video bağlantısını yalnızca tek kişiye gönder
     const p = db.prepare('SELECT p.*, u.adim, u.video, u.id uid, t.org FROM paylar p JOIN birimler_org u ON u.id=p.birim_id JOIN bagis_turleri t ON t.id=u.tur_id WHERE p.id=?').get(+c.body.id); if (!p) throw new Err(404, 'Kayıt yok.');
     if (!A.can(c.perms, MENU[p.org], 'd')) throw new Err(403, 'Yetkiniz yok.'); if (!p.video) throw new Err(409, 'Önce video bağlayın.'); if (p.adim < 3) throw new Err(409, 'Birim henüz tamamlanmadı.'); if (p.vs) throw new Err(409, 'Bu kişiye zaten gönderildi.');

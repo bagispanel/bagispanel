@@ -121,11 +121,7 @@ R('POST', '/api/users/:id/sifre', 'kullanici', 'd', async (c) => {
   db.prepare('UPDATE users SET pass=?,must_change=1 WHERE id=?').run(A.hash(c.body.sifre), id); A.endUserSessions(id);
   A.audit(c.user, 'sifre_sifirlandi', t.kadi, ip(c.req)); return [200, { ok: 1 }];
 });
-R('DELETE', '/api/users/:id', 'kullanici', 's', async (c) => {
-  const id = +c.m[1], t = db.prepare('SELECT * FROM users WHERE id=?').get(id); if (!t) throw new Err(404, 'Kullanıcı yok.');
-  if (id === c.user.id) throw new Err(403, 'Kendinizi silemezsiniz.');
-  return tx(() => { db.prepare('DELETE FROM users WHERE id=?').run(id); needAdmin(); A.audit(c.user, 'kullanici_silindi', t.kadi, ip(c.req)); return [200, { ok: 1 }]; });
-});
+R('DELETE', '/api/users/:id', 'kullanici', 's', async () => { throw new Err(405, 'Kullanıcı silinmez; geçmiş kayıtları korumak için “Pasife al” kullanın.'); });
 R('GET', '/api/users/:id/yetki', 'kullanici', 'g', async (c) => {
   const id = +c.m[1]; if (!db.prepare('SELECT 1 FROM users WHERE id=?').get(id)) throw new Err(404, 'Kullanıcı yok.');
   const o = {}; db.prepare('SELECT * FROM user_yetki WHERE user_id=?').all(id).forEach(r => o[r.menu] = { g: r.g, e: r.e, d: r.d, s: r.s });

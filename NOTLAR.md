@@ -124,3 +124,9 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 - Öğrenci/yetim kartı: Yetim kutusu artık hazır seçili gelmez. Zorunlu: ad, cinsiyet, ülke, doğum tarihi ya da yaş, yetim/hafız (en az biri), yetimse yetimlik durumu, eğitim türü, okul/medrese seçiliyse adı. Okul/medrese adı yazılırken eski girişler önerilir; aynı ad farklı yazımla gelirse tek yazım kullanılır; listede okul filtresi ve Takip ve Raporlar → Dağılım'da okul/medreseye göre dağılım var.
 - Hatalar düzeltildi: Banka Hareketleri durumu Banka Hesapları/Bağış Al ile aynı değişkeni (ST.bk) kullanıyordu → sayfa çöküyordu (ST.bkh); sayfa verisi gelmeden çizim hata verebiliyordu (artık "Yükleniyor…"); ana sayfa/iletişim bazı tarihleri UTC hesaplıyordu (gece 00:00–03:00 arası bir gün geri) → yerel saat.
 - Sıradaki öneriler: kategori ad düzenleme, kullanıcı silmeyi kaldırma (yalnızca Pasife al), yetki ekranı sadeleştirme, sertifika PDF şablonu, uyarılara "bana atanmış sohbet" mantığı (WhatsApp'ta sorumlu atama), Web sitesi paneli.
+
+## Silme/pasife alma, ad düzenleme, elle WhatsApp (18 Kas)
+- Bağış silinmez (yalnızca İptal). Kullanıcı silinmez (DELETE 405), yalnızca "Pasife al". Kullanımdaki bağış türü silinemez.
+- Ana kategori adı (PUT /api/kategoriler {eski,yeni}) ve alt kategori adı (PUT /api/turler/:id {ad}) değiştirilebilir; türler id ile bağlı olduğundan bağış, rapor, filtre ve organizasyonda yeni ad görünür. Kalıcı Eser ve Sponsorluk adları sistemde kullanıldığı için sabit.
+- WhatsApp toplu gönderilmez: GET /api/bagislar/:id/wa ve GET /api/org/pay/:id/wa?k=b|v mesajı şablondan hazırlar, wa.me bağlantısı döner; kişi kendi WhatsApp'ında gönderir (sms_log'a 'wa:' önekiyle yazılır). Elle SMS: POST /api/bagislar/:id/sms.
+- Fikir (yapılmadı): havale açıklamasını yapay zekâ ile okuyup eşleştirme; API anahtarı, dış servis ve KVKK onayı gerekir.

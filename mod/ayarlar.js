@@ -170,6 +170,20 @@ CREATE TABLE IF NOT EXISTS bagis_turleri(
     const id = +db.prepare('INSERT INTO bagis_turleri(kat,ad,org,cap,fiyat,birim,tam,sertifika,ulke,kuyu,seri) VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(o.kat, o.ad, o.org, o.cap ?? null, o.fiyat ?? null, o.birim ?? null, o.tam || 0, cert, o.ulke ?? null, o.kuyu ?? null, o.seri ?? null).lastInsertRowid;
     A.audit(c.user, 'tur_eklendi', `${o.kat} / ${o.ad}`, ip(c.req)); return [201, { id, ad: o.ad, org: o.org, ulke: o.ulke }];
   });
+  R('PUT', '/api/kategoriler', 'turler', 'd', async (c) => {
+    const eski = str(c.body.eski, 60), yeni = str(c.body.yeni, 60);
+    if (!yeni) throw new Err(400, 'Yeni adı yazın.');
+    if (['kalıcı eser', 'sponsorluk'].includes(nm(eski))) throw new Err(409, 'Bu kategori sistemde kullanıldığı için adı değiştirilemez.');
+    if (!db.prepare('SELECT 1 FROM kategoriler WHERE ad=?').get(eski)) throw new Err(404, 'Ana kategori yok.');
+    if (nm(yeni) !== nm(eski) && (['kurban', 'su kuyusu'].includes(nm(yeni)) || db.prepare('SELECT ad FROM kategoriler').all().some(x => nm(x.ad) === nm(yeni)))) throw new Err(409, 'Bu ana kategori zaten var.');
+    return tx(() => { db.prepare('UPDATE kategoriler SET ad=? WHERE ad=?').run(yeni, eski); db.prepare('UPDATE bagis_turleri SET kat=? WHERE kat=?').run(yeni, eski); A.audit(c.user, 'kategori_adi', `${eski} → ${yeni}`, ip(c.req)); return [200, { ok: 1 }]; });
+  });
+  R('PUT', '/api/turler/:id', 'turler', 'd', async (c) => {
+    const o = db.prepare('SELECT * FROM bagis_turleri WHERE id=?').get(+c.m[1]); if (!o) throw new Err(404, 'Tür yok.');
+    const ad = str(c.body.ad, 80); if (!ad) throw new Err(400, 'Alt kategori adını yazın.');
+    if (db.prepare('SELECT id,ad FROM bagis_turleri WHERE kat=?').all(o.kat).some(x => x.id !== o.id && nm(x.ad) === nm(ad))) throw new Err(409, 'Bu kategoride aynı adlı tür var.');
+    db.prepare('UPDATE bagis_turleri SET ad=? WHERE id=?').run(ad, o.id); A.audit(c.user, 'tur_adi', `${o.kat}: ${o.ad} → ${ad}`, ip(c.req)); return [200, { ok: 1 }];
+  });
   R('DELETE', '/api/turler/:id', 'turler', 's', async (c) => {
     const o = db.prepare('SELECT * FROM bagis_turleri WHERE id=?').get(+c.m[1]); if (!o) throw new Err(404, 'Tür yok.');
     if (used('tur', o.id)) throw new Err(409, 'Bu türde bağış var, silinemez.');
