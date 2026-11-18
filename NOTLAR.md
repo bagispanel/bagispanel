@@ -201,3 +201,18 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
   - Web sitesi yönetimi aynı panelde (4 tema, bağış formu)
   - Rol ve birim bazlı yetki, denetim kayıtları
   - Raporlar ve analiz (dönemsel, tür, bağışçı, saha)
+
+## KVKK: her konumda ele alınacak (hukukçuyla kontrol ettirilecek)
+Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik kontrol listesi (hukuki görüş değildir):
+- Rol: dernek veri sorumlusu, biz veri işleyen. Dernekle veri işleme sözleşmesi + aydınlatma metni; VERBİS durumu derneğe ait.
+- Bağış alma ve web sitesi bağış formu: aydınlatma metni + açık rıza kutusu (web formunda zorunlu kutu var, panelde "Bağış Al"da yok), rıza kaydı (tarih, kaynak).
+- Çerez onayı ve aydınlatma sayfası (web sitesi).
+- İletişim: SMS, WhatsApp, e-posta için izin ve vazgeçme (çık) yolu; toplu mesajda ret edenlerin hariç tutulması.
+- Bağışçı hakları: erişim, düzeltme, silme/anonimleştirme talebi için ekran ve süreç; saklama süreleri (mali kayıtlar yasal süre).
+- Dışa aktarma (Excel, PDF): kim, ne zaman indirdi kayıt altında; yetkiye bağlı.
+- Yetki ve görünürlük: kullanıcı yalnızca yetkili olduğu veriyi görür; denetim kayıtlarında kişisel veriye bakma/değiştirme izi.
+- Herkese açık bağlantılar: sertifika ve sponsor bağlantıları rastgele kodlu, arama motoruna kapalı; video ve konum bağlantıları için erişim kuralı.
+- Yedekler: şifreli ve süreli; canlıda veritabanı güvenliği, HTTPS.
+- Üçüncü taraf aktarım: SMS/WhatsApp/banka sağlayıcıları; yurt dışına aktarım varsa (bulut, yapay zekâ) açık rıza veya uygun güvence.
+- Dijital asistan (yapay zekâ): açılırsa kişisel veri dışarıdaki servise gider; derneğin sözleşmede onayı, minimum veri, yetki sınırı, kayıt tutma; varsayılan kapalı.
+- Çocuk verisi: öğrenci/yetim kartlarında maskeleme (sponsor raporunda isim/foto kısıtı).
