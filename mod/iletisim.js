@@ -252,16 +252,26 @@ CREATE INDEX IF NOT EXISTS ix_wa_tel ON wa_mesaj(tel);
   });
 
   // ---------- WhatsApp gelen kutusu ve webhook ----------
+  db.exec('CREATE TABLE IF NOT EXISTS wa_atama(tel TEXT PRIMARY KEY, user_id INTEGER NOT NULL, zaman TEXT NOT NULL DEFAULT (datetime(\'now\',\'localtime\')))');
+  R('GET', '/api/wa/ekip', 'twa', 'g', async () => [200, db.prepare('SELECT id, ad FROM users WHERE aktif=1 ORDER BY ad').all()]);
+  R('PUT', '/api/wa/atama', 'twa', 'e', async (c) => {
+    const tel = digits(c.body.tel); if (!tel) throw new Err(400, 'Konuşma seçin.');
+    if (!db.prepare('SELECT 1 FROM wa_mesaj WHERE tel=?').get(tel)) throw new Err(404, 'Konuşma bulunamadı.');
+    const uid = c.body.kullanici_id === null || c.body.kullanici_id === '' || c.body.kullanici_id === undefined ? null : +c.body.kullanici_id;
+    if (uid === null) db.prepare('DELETE FROM wa_atama WHERE tel=?').run(tel);
+    else { const u = db.prepare('SELECT id, ad FROM users WHERE id=? AND aktif=1').get(uid); if (!u) throw new Err(400, 'Kullanıcı bulunamadı ya da pasif.'); db.prepare("INSERT INTO wa_atama(tel,user_id) VALUES(?,?) ON CONFLICT(tel) DO UPDATE SET user_id=excluded.user_id, zaman=datetime('now','localtime')").run(tel, uid); }
+    A.audit(c.user, 'wa_atama', tel + (uid ? ' → ' + uid : ' (atama kalktı)'), ip(c.req)); return [200, { ok: 1 }];
+  });
   R('GET', '/api/wa/konusmalar', 'twa', 'g', async () => {
     const L = db.prepare(`SELECT tel, MAX(id) son_id, SUM(CASE WHEN yon='gelen' AND okundu=0 THEN 1 ELSE 0 END) okunmamis, MAX(CASE WHEN yon='gelen' THEN zaman END) son_gelen FROM wa_mesaj GROUP BY tel ORDER BY son_id DESC LIMIT 200`).all();
-    return [200, L.map(x => { const m = db.prepare('SELECT * FROM wa_mesaj WHERE id=?').get(x.son_id), ad = (db.prepare("SELECT ad FROM wa_mesaj WHERE tel=? AND ad IS NOT NULL AND ad<>'' ORDER BY id DESC LIMIT 1").get(x.tel) || {}).ad || ''; const sa = x.son_gelen ? (Date.now() - new Date(x.son_gelen.replace(' ', 'T')).getTime()) / 3600000 : 99; return { tel: x.tel, ad, son: m.govde, yon: m.yon, zaman: m.zaman, okunmamis: x.okunmamis, pencere: sa < 24, bekliyor: m.yon === 'gelen' }; })];
+    return [200, L.map(x => { const m = db.prepare('SELECT * FROM wa_mesaj WHERE id=?').get(x.son_id), ad = (db.prepare("SELECT ad FROM wa_mesaj WHERE tel=? AND ad IS NOT NULL AND ad<>'' ORDER BY id DESC LIMIT 1").get(x.tel) || {}).ad || ''; const sa = x.son_gelen ? (Date.now() - new Date(x.son_gelen.replace(' ', 'T')).getTime()) / 3600000 : 99; const at = db.prepare('SELECT a.user_id, u.ad FROM wa_atama a JOIN users u ON u.id=a.user_id WHERE a.tel=?').get(x.tel); return { tel: x.tel, ad, son: m.govde, yon: m.yon, zaman: m.zaman, okunmamis: x.okunmamis, pencere: sa < 24, bekliyor: m.yon === 'gelen', sorumlu: at ? at.user_id : null, sorumlu_ad: at ? at.ad : null }; })];
   });
   R('GET', '/api/wa/konusma', 'twa', 'g', async (c) => { const tel = digits(new URL(c.req.url, 'http://x').searchParams.get('tel')); db.prepare("UPDATE wa_mesaj SET okundu=1 WHERE tel=? AND yon='gelen'").run(tel); const bg = db.prepare('SELECT id,ad FROM bagiscilar').all().find(b => e164(b.tel) === tel); return [200, { tel, bagisci: bg || null, mesajlar: db.prepare('SELECT yon,tip,govde,zaman FROM wa_mesaj WHERE tel=? ORDER BY id DESC LIMIT 100').all(tel).reverse() }]; });
   R('POST', '/api/wa/yanit', 'twa', 'e', async (c) => {
     const tel = digits(c.body.tel), metin = String(c.body.metin || '').trim().slice(0, 1500); if (!tel || !metin) throw new Err(400, 'Mesajı yazın.');
     const son = db.prepare("SELECT zaman FROM wa_mesaj WHERE tel=? AND yon='gelen' ORDER BY id DESC LIMIT 1").get(tel); if (!son || Date.now() - new Date(son.zaman.replace(' ', 'T')).getTime() > 24 * 3600000) throw new Err(400, 'Son müşteri mesajından 24 saat geçti. Serbest yanıt yazılamaz; onaylı şablonla yeniden yazın.');
     const r = await gonder('wa', tel, { mesaj: metin }); if (!r.ok) throw new Err(502, r.hata);
-    db.prepare("INSERT INTO wa_mesaj(wid,tel,yon,tip,govde,okundu) VALUES(?,?,?,?,?,1)").run(r.mid || null, tel, 'giden', 'text', metin); logla('wa', tel, metin, 'yanit', c.user.kadi, r.deneme ? 'Deneme (gönderilmedi)' : 'Gönderildi'); return [200, { ok: 1, deneme: !!r.deneme }];
+    db.prepare("INSERT INTO wa_mesaj(wid,tel,yon,tip,govde,okundu) VALUES(?,?,?,?,?,1)").run(r.mid || null, tel, 'giden', 'text', metin); db.prepare('INSERT OR IGNORE INTO wa_atama(tel,user_id) VALUES(?,?)').run(tel, c.user.id); logla('wa', tel, metin, 'yanit', c.user.kadi, r.deneme ? 'Deneme (gönderilmedi)' : 'Gönderildi'); return [200, { ok: 1, deneme: !!r.deneme }];
   });
   R('GET', '/api/wa/webhook', null, null, async (c) => { const p = new URL(c.req.url, 'http://x').searchParams; if (p.get('hub.mode') === 'subscribe' && p.get('hub.verify_token') && p.get('hub.verify_token') === cfg().wa.verify) return [200, { text: p.get('hub.challenge') || '' }]; throw new Err(403, 'Doğrulama başarısız.'); });
   R('POST', '/api/wa/webhook', null, null, async (c) => {

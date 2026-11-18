@@ -441,6 +441,10 @@ server.listen(0, async () => {
     const kon = (await admin('GET', '/api/wa/konusmalar')).j; assert.equal(kon.length, 1); assert.equal(kon[0].okunmamis, 1); assert.equal(kon[0].pencere, true); assert.equal(kon[0].bekliyor, true);
     assert.equal((await admin('GET', '/api/toplu/' + r.j.id)).j.alicilar[0].durum, 'Teslim edildi');
     assert.equal((await admin('POST', '/api/wa/yanit', { tel: '905551112233', metin: 'Aleykümselam, gönderiyoruz.' })).s, 200); assert.equal(waGelen[waGelen.length - 1].j.type, 'text');
+    { const k = (await admin('GET', '/api/wa/konusmalar')).j[0]; assert.equal(k.sorumlu_ad != null, true, 'yanıtlayan otomatik üstlenir'); const ekip = (await admin('GET', '/api/wa/ekip')).j; assert.ok(ekip.length >= 1);
+      assert.equal((await admin('PUT', '/api/wa/atama', { tel: '905551112233', kullanici_id: null })).s, 200); assert.equal((await admin('GET', '/api/wa/konusmalar')).j[0].sorumlu, null);
+      assert.equal((await admin('PUT', '/api/wa/atama', { tel: '905551112233', kullanici_id: ekip[0].id })).s, 200); assert.equal((await admin('GET', '/api/wa/konusmalar')).j[0].sorumlu, ekip[0].id);
+      assert.equal((await admin('PUT', '/api/wa/atama', { tel: '905559999999', kullanici_id: ekip[0].id })).s, 404); assert.equal((await admin('PUT', '/api/wa/atama', { tel: '905551112233', kullanici_id: 99999 })).s, 400); }
     assert.equal((await admin('GET', '/api/wa/konusma?tel=905551112233')).j.mesajlar.length, 2); assert.equal((await admin('GET', '/api/wa/konusmalar')).j[0].okunmamis, 0);
   });
   await t('banka hesabı: resmî ünvan, şube/hesap no, düzenleme', async () => {
