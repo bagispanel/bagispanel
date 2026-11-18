@@ -495,6 +495,7 @@ server.listen(0, async () => {
     const wb = (await admin('GET', '/api/bagislar?limit=1')).j; const wl = Array.isArray(wb) ? wb : (wb.liste || wb.bagislar || []);
     if (wl.length) { const w = await admin('GET', `/api/bagislar/${wl[0].id}/wa`); assert.equal(w.s, 200, JSON.stringify(w.j)); assert.ok(/^https:\/\/wa\.me\/\d{7,15}\?text=/.test(w.j.link) && w.j.mesaj.length > 10); assert.equal((await admin('POST', `/api/bagislar/${wl[0].id}/sms`, {})).s, 200); }
     assert.equal((await admin('GET', '/api/bagislar/999999/wa')).s, 404);
+    assert.equal((await admin('POST', '/api/org/pay/999999/sms', { k: 'b' })).s, 404); assert.equal((await admin('GET', '/api/org/pay/999999/wa?k=b')).s, 404);
     const b = { ad: 'Nijer Niamey Camii', tur: 'Cami', durum: 'Planlama', ulke: 'Nijer', para: 'USD', kur: 35, hedef: 50000 };
     assert.equal((await admin('POST', '/api/eser', { ...b, hedef: 0 })).s, 400); assert.equal((await admin('POST', '/api/eser', { ...b, ulke: '' })).s, 400);
     const r = await admin('POST', '/api/eser', { ...b, tur_ac: true }); assert.equal(r.s, 201, JSON.stringify(r.j));
