@@ -130,3 +130,8 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 - Ana kategori adı (PUT /api/kategoriler {eski,yeni}) ve alt kategori adı (PUT /api/turler/:id {ad}) değiştirilebilir; türler id ile bağlı olduğundan bağış, rapor, filtre ve organizasyonda yeni ad görünür. Kalıcı Eser ve Sponsorluk adları sistemde kullanıldığı için sabit.
 - WhatsApp toplu gönderilmez: GET /api/bagislar/:id/wa ve GET /api/org/pay/:id/wa?k=b|v mesajı şablondan hazırlar, wa.me bağlantısı döner; kişi kendi WhatsApp'ında gönderir (sms_log'a 'wa:' önekiyle yazılır). Elle SMS: POST /api/bagislar/:id/sms.
 - Fikir (yapılmadı): havale açıklamasını yapay zekâ ile okuyup eşleştirme; API anahtarı, dış servis ve KVKK onayı gerekir.
+
+## Kurban vekâlet (18 Kas)
+- Bağış Al'da kurban türünde "Kurban vekâleti alındı" kutusu + yöntem. Web sitesi API'si (POST /api/dis/bagis) `vekalet: true` gönderirse yöntem "Online"; bağış onaylanınca hisselere geçer.
+- Organizasyon ekranında vekâlet yok (bilinçli). Takip: Raporlama › Kurban Vekâlet Raporu (menü anahtarı `vekrap`): durum, nereden geldi (Web sitesi/Panel/Banka), yöntem, tarih, arama süzgeçleri; tek ya da toplu "alındı" işareti; Excel (eksik/tüm). Yeni menü yönetim birimine otomatik açılır, diğer birimlere Yetkiler'den verilir.
+- Ana sayfa "Bekleyen işler"de Kurban › "Vekâlet alınmadı" kısayolu. Bağışçı profilinde hisse bazında vekâlet ✓/yok.

@@ -527,13 +527,21 @@ server.listen(0, async () => {
       const vt = (await admin('GET', '/api/turler')).j.turler.find(x => x.org === 'Kurban' && x.cap === 1);
       const v1 = await admin('POST', '/api/bagislar', { kod: '+90', tel: '532 909 80 01', ad: 'Vekalet Bir', tur_id: vt.id, adet: 1, odeme: 'Nakit', hy: 'Koç', vekalet: true, vekalet_yontem: 'WhatsApp' }); assert.equal(v1.s, 201, JSON.stringify(v1.j));
       const v2 = await admin('POST', '/api/bagislar', { kod: '+90', tel: '532 909 80 02', ad: 'Vekalet Iki', tur_id: vt.id, adet: 1, odeme: 'Nakit', hy: 'Koç' }); assert.equal(v2.s, 201);
-      const ok = (await admin('GET', '/api/org/kurban?q=' + encodeURIComponent('Vekalet'))).j; const ps = ok.liste.flatMap(u => u.paylar).filter(p => /^Vekalet/.test(p.ad));
+      const ok = (await admin('GET', '/api/vekalet?durum=Hepsi&q=Vekalet')).j; const ps = ok.liste.filter(p => /^Vekalet/.test(p.ad));
       const a = ps.find(p => p.ad === 'Vekalet Bir'), b = ps.find(p => p.ad === 'Vekalet Iki'); assert.ok(a && a.vk && a.vy === 'WhatsApp' && b && !b.vk, JSON.stringify(ps));
-      assert.equal((await admin('POST', '/api/org/vekalet', { a: 'al', paylar: [b.id], yontem: 'Yüz yüze' })).s, 200);
-      const ok2 = (await admin('GET', '/api/org/kurban?q=Vekalet&vk=Eksik')).j; assert.ok(!ok2.liste.flatMap(u => u.paylar).some(p => p.ad === 'Vekalet Iki'));
-      assert.equal((await admin('POST', '/api/org/vekalet', { a: 'geri', paylar: [b.id] })).s, 200);
-      assert.equal((await admin('POST', '/api/org/vekalet', { a: 'al' })).s, 400);
-      const ex = await admin('GET', '/api/org/vekalet-excel?durum=eksik'); assert.equal(ex.s, 200); assert.ok(ex.j.dosya.length > 100 && /\.xlsx$/.test(ex.j.ad));
+      assert.equal((await admin('POST', '/api/vekalet/isaretle', { a: 'al', paylar: [b.id], yontem: 'Yüz yüze' })).s, 200);
+      const ok2 = (await admin('GET', '/api/vekalet?durum=Alınmadı&q=Vekalet')).j; assert.ok(!ok2.liste.some(p => p.ad === 'Vekalet Iki'));
+      assert.equal((await admin('POST', '/api/vekalet/isaretle', { a: 'geri', paylar: [b.id] })).s, 200);
+      assert.equal((await admin('POST', '/api/vekalet/isaretle', { a: 'al' })).s, 400);
+      { // web sitesinden gelen kurban bağışı: vekâlet kutusu işaretliyse onaydan sonra 'Online' alındı görünür
+        const key = (await admin('POST', '/api/entegre/anahtar', { ad: 'Vekalet Web' })).j.anahtar;
+        const w = await fetch(base + '/api/dis/bagis', { method: 'POST', headers: { 'content-type': 'application/json', 'x-bp': '1', 'x-api-key': key }, body: JSON.stringify({ kod: '+90', tel: '532 909 80 03', ad: 'Vekalet Web', tur_id: vt.id, adet: 1, tutar: 0, odeme: 'Kredi kartı / online', hy: 'Koç', vekalet: true, xid: 'VEK-WEB-1' }) });
+        assert.equal(w.status, 201, await w.clone().text()); const wid = (await w.json()).id;
+        assert.equal((await admin('POST', '/api/bagislar/onayla', { ids: [wid] })).s, 200);
+        const wl = (await admin('GET', '/api/vekalet?durum=Alındı&kaynak=' + encodeURIComponent('Web sitesi') + '&yontem=Online&q=Vekalet')).j.liste; assert.ok(wl.some(p => p.ad === 'Vekalet Web' && p.kaynak === 'Web sitesi' && p.vy === 'Online'), JSON.stringify(wl));
+        assert.ok(!(await admin('GET', '/api/vekalet?durum=Hepsi&kaynak=Panel&q=Vekalet Web')).j.liste.some(p => p.ad === 'Vekalet Web'));
+      }
+      const ex = await admin('GET', '/api/vekalet/excel?durum=eksik'); assert.equal(ex.s, 200); assert.ok(ex.j.dosya.length > 100 && /\.xlsx$/.test(ex.j.ad));
   });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });
