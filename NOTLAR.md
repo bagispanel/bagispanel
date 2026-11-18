@@ -179,3 +179,8 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 ## Kuyu numarası / PDF tasarımları (değerlendirilecek)
 - Kuyu tabelası/PDF tasarımı tek tip olsun; ölçü (genişlik/yükseklik) girişi hiç istenmesin.
 - PDF tasarımlarında derneğin logosu (Kurum Bilgileri) otomatik gelsin; daha güzel, sade bir tasarım yapılsın.
+
+## Menü düzeni (karar)
+- Sertifika Ayarları, Mesaj Şablonları, İletişim Ayarları Sistem Ayarları'na taşındı (PDF Şablonları yanında). İletişim'de günlük işler kaldı.
+- Banka Hesapları Kurum Yönetimi'nde kalır: derneğin kendi hesapları, ileride çağrı merkezinden bağışçıya otomatik hesap bilgisi gönderilecek.
+- Rapor birleştirme ve Banka Hareketleri taşıma önerisi kabul edilmedi.
