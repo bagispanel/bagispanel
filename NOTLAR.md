@@ -216,3 +216,16 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - Üçüncü taraf aktarım: SMS/WhatsApp/banka sağlayıcıları; yurt dışına aktarım varsa (bulut, yapay zekâ) açık rıza veya uygun güvence.
 - Dijital asistan (yapay zekâ): açılırsa kişisel veri dışarıdaki servise gider; derneğin sözleşmede onayı, minimum veri, yetki sınırı, kayıt tutma; varsayılan kapalı.
 - Çocuk verisi: öğrenci/yetim kartlarında maskeleme (sponsor raporunda isim/foto kısıtı).
+
+## Dijital asistan (sonra konuşulacak)
+- İki parça: (1) "Nasıl yaparım" yardım kütüphanesi (yapay zekâsız, arama + adımlar + "Git" düğmesi); (2) veri soruları ("bu ay kaç kurban kestim", "X'in video linki"): önce hazır soru kalıplarıyla, yapay zekâ derneğe özel ve varsayılan kapalı.
+- Sol altta (zilin yanında) asistan düğmesi; kullanıcı yalnızca yetkili olduğu veriyle ilgili cevap alır.
+- Maliyet tahmini (varsayım): soru başı Haiku 5.5 ~0,0007 $, Sonnet 5.5 ~0,013 $; 5.000 soru/ay: Haiku ~3-4 $, Sonnet ~65 $. Günlük/aylık limit konur. Resmî fiyat sayfasından teyit edilecek.
+- API anahtarı bizde; dernekten istenen şey sözleşme/aydınlatmada üçüncü taraf aktarım onayı (KVKK).
+- Bağlantılı soru: zil/"yapay zekâ olduğu belli olsun" cümlesi asistan düğmesi anlamına mı geliyordu, kullanıcıya teyit edilecek.
+
+## Modül tanıtım videoları (pilot sonra)
+- Yatay, altyazılı, ekran gezdirmeli kısa videolar; her modül için 1-2 dk; senaryo metni + SRT.
+- Ortamda Türkçe sesli okuma aracı yok: seslendirmeyi dışarıdan (ses aracı ya da seslendirmen) ekleriz, ben videoya oturturum.
+- Senaryo metinleri aynı zamanda yardım kütüphanesinin içeriği olur.
+- Pilot önerisi: Kurban Organizasyonu (bağıştan videolu mesaja kadar akış).
