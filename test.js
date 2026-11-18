@@ -597,7 +597,7 @@ server.listen(0, async () => {
     assert.ok(h.includes('Sertifika Sahibi') && h.includes('Sertifikalı Fidan') && h.includes('Bağış Sertifikası')); assert.ok(!h.includes('123456') && !h.includes('123.456'), 'tutar sertifikada görünmez');
     assert.equal((await fetch(base + '/sertifika/yanlis-kod-yok')).status, 404); assert.equal((await fetch(base + '/sertifika/' + link[1].slice(0, -1) + 'x')).status, 404);
     // yeniden gönder (SMS): sertifika bağlantılı mesaj; WhatsApp: aynı metin
-    const m = (await admin('GET', `/api/bagislar/${r.j.id}/mesaj`)).j; assert.equal(m.sertifika, true); assert.ok(m.b.mesaj.includes('/sertifika/'));
+    const m = (await admin('GET', `/api/bagislar/${r.j.id}/mesaj`)).j; assert.equal(m.sertifika, true); assert.ok(m.s.mesaj.includes('/sertifika/') && m.s.yol.startsWith('/sertifika/') && !m.b.mesaj.includes('/sertifika/'), 'sertifika ve kabul ayrı mesaj');
     assert.equal((await admin('POST', `/api/bagislar/${r.j.id}/sms`)).j.sertifika, true); assert.equal(await smsSay(x => x.sablon === 'sertifika'), s0 + 2);
     const wa = await admin('GET', `/api/bagislar/${r.j.id}/wa`); assert.equal(wa.s, 200); assert.ok(decodeURIComponent(wa.j.link).includes('/sertifika/' + link[1]));
     // sertifikasız tür: yalnız kabul
@@ -607,6 +607,13 @@ server.listen(0, async () => {
       const kt = await turId('Sertifikaistan'), kr = await bag({ tur_id: kt, adet: 1, tutar: 12000, ad: 'Kuyu Sahibi', tel: '541 300 00 79' }); assert.equal(kr.s, 201, JSON.stringify(kr.j));
       const ks = (await admin('GET', '/api/sms')).j.find(x => x.sablon === 'sertifika' && x.mesaj.includes('Kuyu Sahibi')); const kh = await (await fetch(/https?:\/\/\S+\/sertifika\/[A-Za-z0-9_-]+/.exec(ks.mesaj)[0].replace(/^https?:\/\/[^/]+/, base))).text();
       assert.ok(kh.includes('Sertifikaistan - Kuyu') && !/12\.000|₺|Tam fiyat/.test(kh.replace(/<style>[\s\S]*?<\/style>/, '')), 'fiyat ve biçim eki görünmez'); }
+    { // sertifikası kapalı türde de elle sertifika gönderilir (SMS penceresindeki Sertifika seçeneği)
+      const fr = await bag({ tur_id: await turId('Fitre'), tutar: 15, ad: 'Elle Sertifika', tel: '541 300 00 92' }); assert.equal(fr.s, 201);
+      const fm = (await admin('GET', `/api/bagislar/${fr.j.id}/mesaj`)).j; assert.equal(fm.sertifika, false); assert.ok(fm.s && fm.s.mesaj.includes('/sertifika/'));
+      const e0 = await smsSay(x => x.sablon === 'sertifika'); assert.equal((await admin('POST', `/api/bagislar/${fr.j.id}/sms`, { k: 's' })).j.sertifika, true); assert.equal(await smsSay(x => x.sablon === 'sertifika'), e0 + 1);
+      assert.equal((await admin('POST', `/api/bagislar/${fr.j.id}/sms`, { k: 'b' })).j.sertifika, false);
+      const w2 = await admin('GET', `/api/bagislar/${fr.j.id}/wa?k=s`); assert.ok(decodeURIComponent(w2.j.link).includes('/sertifika/'));
+      assert.equal((await fetch(base + fm.s.yol)).status, 200); }
     // iptal edilen bağışın sertifikası açılmaz
     assert.equal((await admin('POST', `/api/bagislar/${r.j.id}/iptal`, { sebep: 'Deneme' })).s, 200); assert.equal((await fetch(base + '/sertifika/' + link[1])).status, 404);
   });

@@ -175,3 +175,7 @@ Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar
 - Her bağış türünde "Sertifika" seçimi: Gönderilmesin / Klasik / Modern / Zarif (Bağış Türleri tablosundan sonradan da değişir; yeni tür formunda da var).
 - Sponsorluk belgesi ve tamamlama sertifikası tasarımı ayrı seçilir; metinleri sabit. Tutar hiçbir tasarımda görünmez.
 - Önizleme `/sertifika/onizleme` yalnız giriş yapmış kullanıcıya açık (panelde iframe). Yedek fikir: mühür, QR doğrulama, türe özel metin.
+
+## Kuyu numarası / PDF tasarımları (değerlendirilecek)
+- Kuyu tabelası/PDF tasarımı tek tip olsun; ölçü (genişlik/yükseklik) girişi hiç istenmesin.
+- PDF tasarımlarında derneğin logosu (Kurum Bilgileri) otomatik gelsin; daha güzel, sade bir tasarım yapılsın.

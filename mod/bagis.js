@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
   const sertLink = (id) => { let k = (db.prepare('SELECT sert_kod FROM bagislar WHERE id=?').get(id) || {}).sert_kod; if (!k) { k = require('crypto').randomBytes(9).toString('base64url'); db.prepare('UPDATE bagislar SET sert_kod=? WHERE id=?').run(k, id); } return (ctx.sonHost || '') + '/sertifika/' + k; };
   ctx.sertLink = sertLink;
   // bağışa gidecek mesaj: sertifikalı tür onaylıysa kabul + sertifika bağlantısı tek mesaj, değilse yalnız kabul (SMS israfı olmasın)
-  const bagMsj = (d) => d.sertifika && d.durum === 'Onaylı' ? ['sertifika', { ad: d.ad, tur: d.tur, bno: d.no, link: sertLink(d.id) }] : ['kabul', { ad: d.ad, tur: d.tur, bno: d.no }];
+  const bagMsj = (d, k) => (k === 's' || (k !== 'b' && d.sertifika)) && d.durum === 'Onaylı' ? ['sertifika', { ad: d.ad, tur: d.tur, bno: d.no, link: sertLink(d.id) }] : ['kabul', { ad: d.ad, tur: d.tur, bno: d.no }];
   const BSEL = 'SELECT g.id, g.no, g.durum, b.ad, b.tel, t.ad tur, t.sertifika FROM bagislar g JOIN bagiscilar b ON b.id=g.bagisci_id JOIN bagis_turleri t ON t.id=g.tur_id WHERE g.id=?';
 
   // ---- SMS şablonları
@@ -81,17 +81,23 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
   R('POST', '/api/bagislar/:id/sms', 'alin|bekleyen|bagisci|rapor', 'e', async (c) => { // kabul SMS'ini elle (yeniden) gönder
     const d = db.prepare(BSEL).get(+c.m[1]); if (!d) throw new Err(404, 'Bağış yok.');
     if (d.durum === 'İptal') throw new Err(409, 'İptal edilmiş bağış için mesaj gönderilmez.'); if (String(d.tel || '').replace(/\D/g, '').length < 7) throw new Err(409, 'Bu kişinin geçerli telefonu yok.');
-    const [k, v] = bagMsj(d); ctx.sms(k, v, d.ad, c.user.kadi, d.tel); return [200, { ok: 1, sertifika: k === 'sertifika' }];
+    if (c.body && c.body.k === 's' && d.durum !== 'Onaylı') throw new Err(409, 'Sertifika, bağış onaylandıktan sonra gönderilir.');
+    const [k, v] = bagMsj(d, c.body && c.body.k); ctx.sms(k, v, d.ad, c.user.kadi, d.tel); return [200, { ok: 1, sertifika: k === 'sertifika' }];
   });
   R('GET', '/api/bagislar/:id/mesaj', 'alin|bekleyen|bagisci|rapor', 'g', async (c) => { // kabul mesajı önizlemesi
     const d = db.prepare(BSEL).get(+c.m[1]); if (!d) throw new Err(404, 'Bağış yok.');
-    const [k, v] = bagMsj(d), tp = db.prepare('SELECT m FROM sms_sablon WHERE k=?').get(k), tel = String(d.tel || '').replace(/\D/g, '').length >= 7;
-    return [200, { ad: d.ad, tel: d.tel || '', telVar: tel, sertifika: k === 'sertifika', b: { mesaj: tp ? fill(tp.m, { dernek: dernek(), ...v }) : '', uygun: tel && d.durum !== 'İptal', neden: !tel ? 'Telefon kayıtlı değil.' : d.durum === 'İptal' ? 'İptal edilmiş bağış için mesaj gönderilmez.' : '' } }];
+    const tel = String(d.tel || '').replace(/\D/g, '').length >= 7, uy = tel && d.durum !== 'İptal', neden = !tel ? 'Telefon kayıtlı değil.' : d.durum === 'İptal' ? 'İptal edilmiş bağış için mesaj gönderilmez.' : '';
+    const yaz = (kk) => { const [k, v] = bagMsj(d, kk), tp = db.prepare('SELECT m FROM sms_sablon WHERE k=?').get(k); return { mesaj: tp ? fill(tp.m, { dernek: dernek(), ...v }) : '', uygun: uy, neden }; };
+    const o = { ad: d.ad, tel: d.tel || '', telVar: tel, sertifika: !!d.sertifika && d.durum === 'Onaylı', b: yaz('b') };
+    if (d.durum === 'Onaylı') { o.s = yaz('s'); o.s.yol = '/sertifika/' + sertLink(d.id).split('/sertifika/')[1]; }
+    return [200, o];
   });
   R('GET', '/api/bagislar/:id/wa', 'alin|bekleyen|bagisci|rapor', 'g', async (c) => {
     const d = db.prepare(BSEL).get(+c.m[1]); if (!d) throw new Err(404, 'Bağış yok.');
     if (d.durum === 'İptal') throw new Err(409, 'İptal edilmiş bağış için mesaj hazırlanmaz.');
-    const [k, v] = bagMsj(d); return [200, wa(k, v, d.ad, c.user.kadi, d.tel)];
+    const qk = new URL(c.req.url, 'http://x').searchParams.get('k');
+    if (qk === 's' && d.durum !== 'Onaylı') throw new Err(409, 'Sertifika, bağış onaylandıktan sonra gönderilir.');
+    const [k, v] = bagMsj(d, qk); return [200, wa(k, v, d.ad, c.user.kadi, d.tel)];
   });
   R('GET', '/api/sablonlar', 'sablon|sms', 'g', async () => [200, { sablonlar: db.prepare('SELECT * FROM sms_sablon').all(), dernek: dernek() }]);
   R('PUT', '/api/sablonlar/([a-z]+)', 'sablon', 'd', async (c) => {
