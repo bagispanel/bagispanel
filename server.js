@@ -179,6 +179,11 @@ R('GET', '/api/audit', 'denetim', 'g', async () => [200, db.prepare('SELECT * FR
 
 // ---- modüller (her biri kendi tablolarını ve uçlarını tanımlar)
 const ctx = { R, Err, A, db, tx, str, ip, usage: { ulke: [], partner: [], banka: [], tur: [] }, used: (k, v) => ctx.usage[k].reduce((n, f) => n + f(v), 0) };
+ctx.call = async (m, p, body) => { // yalnızca sunucu içi (deneme verisi): rotayı yönetici yetkisiyle doğrudan çalıştırır
+  const r = routes.find(x => x.m === m && x.re.test(p.split('?')[0])); if (!r) throw new Error('rota yok: ' + p);
+  const user = db.prepare('SELECT * FROM users ORDER BY id LIMIT 1').get(); const c = { req: { url: p, headers: {}, socket: { remoteAddress: '127.0.0.1' } }, m: p.split('?')[0].match(r.re), body: body || {}, user, perms: A.effective(user.id) };
+  return (await r.h(c))[1];
+};
 ['ayarlar', 'bagis', 'excel', 'kurum', 'org', 'ana', 'iletisim', 'calisma', 'sube', 'gonullu', 'eser', 'sponsor', 'banka', 'bildirim', 'ara', 'analiz', 'demo'].forEach(m => require('./mod/' + m)(ctx));
 
 // ---- sunucu
