@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   const MENU = { Kurban: 'orgK', 'Su kuyusu': 'orgS', 'Diğer': 'orgD' };
   const T0 = { Kurban: 'kesim', 'Su kuyusu': 'kuyu', 'Diğer': 'dig' }, T1 = { Kurban: 'video', 'Su kuyusu': 'kuyuv', 'Diğer': 'digv' };
   const sts = (u) => { if (u.adim === 1 && u.ulke && u.org === 'Su kuyusu') return 2; return u.adim < 3 ? u.adim : u.adim === 3 ? (u.video ? 4 : 3) : 5; };
-  const knoOf = (u) => u.kn ? ((db.prepare('SELECT onek FROM kn_seri WHERE ad=?').get(u.ksr) || { onek: '' }).onek) + u.kn : '';
+  try { db.exec('ALTER TABLE birimler_org ADD COLUMN kno_m TEXT'); } catch { /* var */ }
+  const knoOf = (u) => u.kno_m || ''; // derneğin kendi yazdığı isteğe bağlı kuyu numarası
 
   function yukle(org, p) {
     const q = nm(p.get('q')), qd = q.replace(/\D/g, '');
@@ -37,7 +38,7 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   }
   Object.entries(ORGS).forEach(([k, org]) => R('GET', '/api/org/' + k, MENU[org], 'g', async (c) => [200, yukle(org, new URL(c.req.url, 'http://x').searchParams)]));
 
-  function msgVars(u, s, t) { const dt = dtGet(u); return { ad: s.ad, tur: t.ad, sahip_no: s.no, ulke: u.ulke || '-', tarih: ctx.dstr(dt[3] || iso()), bno: s.bno || '-', kuyu_no: u.kn ? knoOf(u) : '-', kuyu_adi: u.ad || '', link: 'https://…/v/' + crypto.createHash('sha1').update(String(s.id)).digest('hex').slice(0, 8) }; }
+  function msgVars(u, s, t) { const dt = dtGet(u); return { ad: s.ad, tur: t.ad, sahip_no: s.no, ulke: u.ulke || '-', tarih: ctx.dstr(dt[3] || iso()), bno: s.bno || '-', kuyu_no: knoOf(u) || u.kod || '-', kuyu_adi: u.ad || '', link: 'https://…/v/' + crypto.createHash('sha1').update(String(s.id)).digest('hex').slice(0, 8) }; }
   R('POST', '/api/org/islem', 'orgK|orgS|orgD', 'd', async (c) => {
     const a = c.body.a, ids = (Array.isArray(c.body.ids) ? c.body.ids : []).map(Number).filter(Boolean); if (!ids.length) throw new Err(400, 'Önce satır seçin.');
     return tx(() => {
@@ -65,7 +66,7 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   R('PUT', '/api/org/birim/:id', 'orgK|orgS|orgD', 'd', async (c) => {
     const u = db.prepare('SELECT u.*, t.org FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE u.id=?').get(+c.m[1]); if (!u) throw new Err(404, 'Kayıt yok.'); if (!A.can(c.perms, MENU[u.org], 'd')) throw new Err(403, 'Yetkiniz yok.');
     const konum = str(c.body.konum, 300); if (konum && !/^https?:\/\//i.test(konum) && !/^-?\d{1,3}(\.\d+)?\s*[, ]\s*-?\d{1,3}(\.\d+)?$/.test(konum)) throw new Err(400, 'Konum bir harita bağlantısı ya da “enlem, boylam” olmalı.');
-    db.prepare('UPDATE birimler_org SET konum=?, video=?, ad=? WHERE id=?').run(konum || null, c.body.video === undefined ? u.video : (str(c.body.video, 300) || null), c.body.ad === undefined ? u.ad : (str(c.body.ad, 80) || ''), u.id); return [200, { ok: 1 }];
+    db.prepare('UPDATE birimler_org SET konum=?, video=?, ad=?, kno_m=? WHERE id=?').run(konum || null, c.body.video === undefined ? u.video : (str(c.body.video, 300) || null), c.body.ad === undefined ? u.ad : (str(c.body.ad, 80) || ''), c.body.kno === undefined ? (u.kno_m || null) : (str(c.body.kno, 24) || null), u.id); return [200, { ok: 1 }];
   });
 
   R('GET', '/api/org/onizleme', 'orgK|orgS|orgD', 'g', async (c) => { // gidecek SMS metni (ilk kişi için örnek)
@@ -105,31 +106,6 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
     if (!A.can(c.perms, MENU[p.org], 'd')) throw new Err(403, 'Yetkiniz yok.'); if (!p.video) throw new Err(409, 'Önce video bağlayın.'); if (p.adim < 3) throw new Err(409, 'Birim henüz tamamlanmadı.'); if (p.vs) throw new Err(409, 'Bu kişiye zaten gönderildi.');
     const uu = db.prepare('SELECT * FROM birimler_org WHERE id=?').get(p.uid), t = tur(uu.tur_id), s = db.prepare('SELECT p.*, g.no bno FROM paylar p JOIN bagislar g ON g.id=p.bagis_id WHERE p.id=?').get(p.id);
     ctx.sms(T1[p.org], msgVars(uu, s, t), s.ad, c.user.kadi, s.tel); db.prepare('UPDATE paylar SET vs=? WHERE id=?').run(iso(), p.id); return [200, { ok: 1 }];
-  });
-  // ---- numaralandırma
-  R('GET', '/api/numara', 'orgS', 'g', async () => {
-    const mx = (k) => db.prepare('SELECT COALESCE(MAX(kn),0) m FROM birimler_org WHERE ks=?').get(k).m;
-    const turler = db.prepare("SELECT id,ad FROM bagis_turleri WHERE org='Su kuyusu'").all().map(t => ({ ...t, seri: seriOf(t.id), tip: niOf(tur(t.id)) }));
-    const sayac = db.prepare('SELECT * FROM kn_sayac ORDER BY k').all().map(x => ({ ...x, max: mx(x.k) }));
-    const seriler = db.prepare('SELECT * FROM kn_seri ORDER BY ad').all().map(s => ({ ...s, kullanim: turler.some(t => t.seri === s.ad) || sayac.some(x => (x.k === s.ad || x.k.startsWith(s.ad + ' · ')) && x.max) }));
-    return [200, { seriler, turler, sayac }];
-  });
-  R('PUT', '/api/numara/map', 'numara', 'd', async (c) => {
-    const m = c.body.map || {}; tx(() => Object.entries(m).forEach(([id, s]) => { if (!db.prepare('SELECT 1 FROM kn_seri WHERE ad=?').get(s)) throw new Err(400, 'Seri yok.'); db.prepare('INSERT INTO kn_map(tur_id,seri) VALUES(?,?) ON CONFLICT(tur_id) DO UPDATE SET seri=?').run(+id, s, s); })); return [200, { ok: 1 }];
-  });
-  R('POST', '/api/numara/seri', 'numara', 'e', async (c) => {
-    const ad = str(c.body.ad, 40); if (!ad) throw new Err(400, 'Seri adını yazın.'); if (db.prepare('SELECT 1 FROM kn_seri WHERE ad=?').get(ad)) throw new Err(409, 'Bu seri zaten var.');
-    db.prepare('INSERT INTO kn_seri(ad,onek,ulkeye_gore) VALUES(?,?,?)').run(ad, str(c.body.onek, 10), c.body.ulke ? 1 : 0); if (!c.body.ulke) db.prepare('INSERT OR IGNORE INTO kn_sayac(k,n) VALUES(?,?)').run(ad, Math.max(1, +c.body.baslangic || 1)); return [201, { ok: 1 }];
-  });
-  R('PUT', '/api/numara/seri', 'numara', 'd', async (c) => { db.prepare('UPDATE kn_seri SET onek=? WHERE ad=?').run(str(c.body.onek, 10), str(c.body.ad, 40)); return [200, { ok: 1 }]; });
-  R('DELETE', '/api/numara/seri', 'numara', 's', async (c) => {
-    const ad = new URL(c.req.url, 'http://x').searchParams.get('ad'); if (ad === 'Genel') throw new Err(409, 'Genel seri silinemez.');
-    if (db.prepare('SELECT 1 FROM kn_map WHERE seri=?').get(ad) || db.prepare('SELECT 1 FROM birimler_org WHERE ksr=?').get(ad)) throw new Err(409, 'Bu seri kullanımda.'); db.prepare('DELETE FROM kn_seri WHERE ad=?').run(ad); db.prepare('DELETE FROM kn_sayac WHERE k=?').run(ad); return [200, { ok: 1 }];
-  });
-  R('PUT', '/api/numara/sayac', 'orgS', 'd', async (c) => {
-    const k = str(c.body.k, 120), n = Math.floor(+c.body.n); if (!(n >= 1)) throw new Err(400, 'Geçerli bir numara yazın.');
-    const mx = db.prepare('SELECT COALESCE(MAX(kn),0) m FROM birimler_org WHERE ks=?').get(k).m; if (n <= mx) throw new Err(409, `Bu sayaçta en büyük verilmiş numara ${mx}. ${mx + 1} ya da daha büyük yazın.`);
-    db.prepare('INSERT INTO kn_sayac(k,n) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET n=?').run(k, n, n); ctx.kfix(); return [200, { ok: 1 }];
   });
 
   // ---- PDF ayarları ve listeler

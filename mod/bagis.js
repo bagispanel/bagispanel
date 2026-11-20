@@ -165,16 +165,7 @@ CREATE TABLE IF NOT EXISTS kn_sayac(k TEXT PRIMARY KEY, n INTEGER NOT NULL);`);
   db.prepare("INSERT OR IGNORE INTO kn_seri(ad,onek,ulkeye_gore) VALUES('Genel','',0)").run();
   db.prepare("INSERT OR IGNORE INTO kn_sayac(k,n) VALUES('Genel',1)").run();
   const seriOf = (tid) => { const m = db.prepare('SELECT seri FROM kn_map WHERE tur_id=?').get(tid); return m && db.prepare('SELECT 1 FROM kn_seri WHERE ad=?').get(m.seri) ? m.seri : 'Genel'; };
-  function kfix() {
-    const L = db.prepare(`SELECT u.* FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org='Su kuyusu' AND u.adim>=1 AND u.kn IS NULL`).all()
-      .sort((a, b) => ((JSON.parse(a.dt)[1] || '').localeCompare(JSON.parse(b.dt)[1] || '')) || a.id - b.id);
-    for (const u of L) {
-      const k = sayacKey(u, { id: u.tur_id }); if (!k) continue;
-      const r = db.prepare('SELECT n FROM kn_sayac WHERE k=?').get(k), n = r ? r.n : 1;
-      db.prepare('INSERT INTO kn_sayac(k,n) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET n=?').run(k, n + 1, n + 1);
-      db.prepare('UPDATE birimler_org SET kn=?, ks=?, ksr=? WHERE id=?').run(n, k, seriOf(u.tur_id), u.id);
-    }
-  }
+  function kfix() { /* otomatik kuyu numarası kaldırıldı: kuyu kodu sistemde hep vardır, isteğe bağlı numara elle yazılır */ }
   ctx.kfix = kfix;
 
   // ---- organizasyona yerleştirme (onaylanan bağış)

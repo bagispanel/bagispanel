@@ -255,3 +255,8 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - Öneri notu (kurumlara): "Kuyu numaralarını sürekli değiştirmeyin. Raporlama ve kuyu takibi (hangi ülkede ne açıldı) için düzen sağlar."
 - Tam büyükbaş: 7 farklı isim ve farklı telefon yazılabilir, mevcut davranış korunur (tek vekâlet seçeneği eklenmeyecek).
 - Eski seri/önek yönetimi arayüzden kalktı; API'si duruyor.
+
+## Kuyu numaralandırma tamamen kaldırıldı (20 Kas, güncel karar)
+- Otomatik kuyu numarası, seri/sayaç, Numaralandırma menüsü ve "Kuyu numaraları" kutusu kaldırıldı (her ülkenin ve her kuyu tipinin numaralandırması farklı olduğu için).
+- Kuyuyu sistem her zaman KY-YYYY-NNNN koduyla tanır. İsteğe bağlı "Kuyu no" alanı kuyu detayında elle yazılır (derneğin kendi numarası); tabelada/PDF'te önce o, yoksa kuyu kodu görünür. "Açıldı" SMS'indeki {kuyu_no} aynı kuralı kullanır.
+- Önceki "Kuyu numaraları" öneri notu artık gösterilmiyor (numara sistem tarafından verilmediği için).

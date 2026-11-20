@@ -143,12 +143,15 @@ server.listen(0, async () => {
     const k = await turId('Akika · küçükbaş'), r = await bag({ tur_id: k, tel: '541 300 30 00', ad: 'Iptal K' }); assert.equal((await admin('POST', `/api/bagislar/${r.j.id}/iptal`, { sebep: 'Mükerrer (çift) kayıt' })).s, 200);
     assert.equal((await admin('GET', '/api/org/kurban?q=Iptal K')).j.toplam, 0);
   });
-  await t('kuyu: hisseli dolunca numara verilir, kuyu serisi sayaçlanır', async () => {
+  await t('kuyu: hisseli dolunca kuyu kodu oluşur, numara elle ve isteğe bağlı', async () => {
     const ky = await turId('Testistan - Çeşme'); const L = []; for (let i = 0; i < 7; i++) L.push(await bag({ tur_id: ky, adet: 1, tel: '541 300 40 0' + i, ad: 'Ky' + i }));
-    L.forEach(x => assert.equal(x.s, 201)); const u = (await admin('GET', '/api/org/kuyu')).j.liste.find(x => x.tur_id === ky); assert.equal(u.ulke, 'Testistan'.length ? u.ulke : ''); assert.equal(u.kn, 1); assert.match(u.kod, /^KY-\d{4}-0001$/);
+    L.forEach(x => assert.equal(x.s, 201)); const u = (await admin('GET', '/api/org/kuyu')).j.liste.find(x => x.tur_id === ky); assert.equal(u.ulke, 'Testistan'.length ? u.ulke : ''); assert.equal(u.kn, null, 'otomatik kuyu numarası verilmez'); assert.match(u.kod, /^KY-\d{4}-0001$/);
   });
-  await t('numaralandırma: sayaç geri alınamaz', async () => {
-    const n = (await admin('GET', '/api/numara')).j; assert.ok(n.seriler.some(s => s.ad === 'Genel')); assert.equal((await admin('PUT', '/api/numara/sayac', { k: 'Genel', n: 1 })).s, 409); assert.equal((await admin('PUT', '/api/numara/sayac', { k: 'Genel', n: 100 })).s, 200);
+  await t('kuyu numarası isteğe bağlı elle yazılır, mesajda yoksa kod kullanılır', async () => {
+    const u = (await admin('GET', '/api/org/kuyu')).j.liste[0]; assert.equal(u.kno, '');
+    assert.equal((await admin('PUT', '/api/org/birim/' + u.id, { kno: 'NJR-12' })).s, 200);
+    assert.equal((await admin('GET', '/api/org/kuyu')).j.liste.find(x => x.id === u.id).kno, 'NJR-12');
+    assert.equal((await admin('GET', '/api/numara')).s, 404, 'numaralandırma ekranı/ucu yok');
   });
   await t('fon: hedef aşılınca fazlası devreder', async () => {
     assert.equal((await admin('POST', '/api/turler', { sec: 'kuyu', ad: 'Anne Fatma Fonu', bicim: 'Fon', fiyat: 1000 })).s, 201);
