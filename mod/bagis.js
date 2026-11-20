@@ -56,10 +56,10 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
     sertifika: ['Bağış sertifikası', 'Sertifikası olan bağış türlerinde, onaydan sonra gider.', 'Sayın {ad}, {tur} bağışınız alınmıştır, teşekkür ederiz. Sertifikanız: {link} {dernek}'],
     kesim: ['Kurban kesim', 'Kurban “kesildi” işaretlenince gider.', 'Sayın {ad}, {sahip_no} numaralı kurbanınız {ulke} ülkesinde {tarih} tarihinde kesilmiştir. {dernek}'],
     video: ['Kurban video', 'Video kontrolden sonra gönderilirken gider.', 'Sayın {ad}, {sahip_no} numaralı kurbanınızın videosu: {link} {dernek}'],
-    kuyu: ['Su kuyusu açıldı', 'Su kuyusu “açıldı” işaretlenince gider.', 'Sayın {ad}, {kuyu_no} numaralı su kuyunuz {ulke} ülkesinde {tarih} tarihinde açılmıştır. {dernek}'],
+    kuyu: ['Su kuyusu açıldı', 'Su kuyusu “açıldı” işaretlenince gider.', 'Sayın {ad}, su kuyunuz {ulke} ülkesinde {tarih} tarihinde açılmıştır. {dernek}'],
     dig: ['Videolu bağış dağıtıldı', 'Videolu bağışlar “dağıtıldı” işaretlenince gider.', 'Sayın {ad}, {tur} bağışınız {ulke} ülkesinde {tarih} tarihinde ulaştırılmıştır. {dernek}'],
     digv: ['Videolu bağış video', 'Videolu bağışın videosu gönderilirken gider.', 'Sayın {ad}, {tur} bağışınızın videosu: {link} {dernek}'],
-    kuyuv: ['Su kuyusu video', 'Su kuyusu videosu gönderilirken gider.', 'Sayın {ad}, {kuyu_no} numaralı su kuyunuzun videosu: {link} {dernek}']
+    kuyuv: ['Su kuyusu video', 'Su kuyusu videosu gönderilirken gider.', 'Sayın {ad}, su kuyunuzun videosu: {link} {dernek}']
   };
   Object.entries(TPL0).forEach(([k, v]) => db.prepare('INSERT OR IGNORE INTO sms_sablon(k,ad,n,m) VALUES(?,?,?,?)').run(k, v[0], v[1], v[2]));
   db.prepare('UPDATE sms_sablon SET m=? WHERE k=? AND m=?').run(TPL0.sertifika[2], 'sertifika', 'Sayın {ad}, {tur} bağışınız için sertifikanız: {link} {dernek}');

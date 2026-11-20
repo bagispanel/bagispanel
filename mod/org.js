@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   }
   Object.entries(ORGS).forEach(([k, org]) => R('GET', '/api/org/' + k, MENU[org], 'g', async (c) => [200, yukle(org, new URL(c.req.url, 'http://x').searchParams)]));
 
-  function msgVars(u, s, t) { const dt = dtGet(u); return { ad: s.ad, tur: t.ad, sahip_no: s.no, ulke: u.ulke || '-', tarih: ctx.dstr(dt[3] || iso()), bno: s.bno || '-', kuyu_no: knoOf(u) || u.kod || '-', kuyu_adi: u.ad || '', link: 'https://…/v/' + crypto.createHash('sha1').update(String(s.id)).digest('hex').slice(0, 8) }; }
+  function msgVars(u, s, t) { const dt = dtGet(u); return { ad: s.ad, tur: t.ad, sahip_no: s.no, ulke: u.ulke || '-', tarih: ctx.dstr(dt[3] || iso()), bno: s.bno || '-', kuyu_no: knoOf(u), kuyu_adi: u.ad || '', link: 'https://…/v/' + crypto.createHash('sha1').update(String(s.id)).digest('hex').slice(0, 8) }; }
   R('POST', '/api/org/islem', 'orgK|orgS|orgD', 'd', async (c) => {
     const a = c.body.a, ids = (Array.isArray(c.body.ids) ? c.body.ids : []).map(Number).filter(Boolean); if (!ids.length) throw new Err(400, 'Önce satır seçin.');
     return tx(() => {
