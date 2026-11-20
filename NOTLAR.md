@@ -260,3 +260,9 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - Otomatik kuyu numarası, seri/sayaç, Numaralandırma menüsü ve "Kuyu numaraları" kutusu kaldırıldı (her ülkenin ve her kuyu tipinin numaralandırması farklı olduğu için).
 - Kuyuyu sistem her zaman KY-YYYY-NNNN koduyla tanır. İsteğe bağlı "Kuyu no" alanı kuyu detayında elle yazılır (derneğin kendi numarası); tabelada/PDF'te önce o, yoksa kuyu kodu görünür. "Açıldı" SMS'indeki {kuyu_no} aynı kuralı kullanır.
 - Önceki "Kuyu numaraları" öneri notu artık gösterilmiyor (numara sistem tarafından verilmediği için).
+
+## Kuyu tabelası ve "Kuyu no" kaldırıldı (21 Kas, en güncel karar)
+- Kuyu tabelası PDF'i, tabela boyut/tasarım ayarları ve elle "Kuyu no" alanı kaldırıldı. KY-YYYY-NNNN kodu yalnızca arka planda kimlik olarak durur (arama, iptal uyarısı, Ana Sayfa, Analiz); listede, SMS'te ve ekranda gösterilmez. Eski kayıtlar etkilenmez.
+- Kuyu, bağışçı isimleri + ülke + tarih ile takip edilir. "Kuyunun adı" isteğe bağlı bir etikettir (kaldırılabilir, karar bekliyor).
+- "Açıldı" SMS'i: "Sayın {ad}, su kuyunuz {ülke} ülkesinde {tarih} tarihinde açılmıştır."
+- Tek tip, ölçüsüz, kurum logolu tabela ileride geri gelebilir (üstteki eski maddeler bu karara göre okunmalı).
