@@ -239,3 +239,8 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - Sınırlar (taslak): dernek başına disk kotası, tek dosya boyutu, aylık SMS/WhatsApp kullanımı, kullanıcı sayısı; pakete bağlanır ve ekranda kalan kota gösterilir.
 - Hız: bağış listeleri ve raporlar sayfalı/süzgeçli; büyük Excel içe aktarma ve toplu işlemler arka planda; yoğun dönem (kurban) için yük testi.
 - İzleme: sağlık kontrolü, hata kaydı, yedek doğrulama, güncelleme planı (tüm derneklere aynı sürüm).
+
+## Tasarım turu: organizasyon, sertifika, sponsor kartı, makbuz (iyice çalışılacak)
+- Tüm organizasyon yapısında (kurban, kuyu, videolu bağış, kalıcı eser), sertifikaların hepsinde, sponsor kartında ve makbuz tasarımında detaylı tasarım çalışması yapılacak.
+- Videolu organizasyon PDF'inde 20-40-60-80-100'lü sayfa tasarımları var. Yeni fikir: PDF alırken "sayfada kaç isim olsun" serbest girilsin (örn. 50 isim); sistem satır/sütun sayısını, sayfa yönünü ve yazı boyutunu isim sayısına göre kendisi ayarlasın; uzun isim satıra sığacak şekilde küçülsün, taşma olmasın.
+- Kuyu numaralandırma: gerekmeyebilir ya da PDF/tabela oluşturulurken verilsin; bu karar bekliyor (öneri: numara tabela alınırken otomatik verilsin, ayrı adım ve "numara yok" engeli olmasın).
