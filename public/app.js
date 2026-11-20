@@ -10,7 +10,7 @@ const can=(m,a)=>!!(PERMS[m]&&PERMS[m][a]);
 const ttl=(h,l)=>`<h1>${esc(h)}</h1><p class="lead">${esc(l)}</p>`;
 const label=k=>{for(const g of MENU)for(const x of g[1])if(x[0]==k)return x[1];return k};
 async function boot(){try{KRM=await fetch('/api/kurum').then(r=>r.ok?r.json():{}).catch(()=>({}));const j=await api('GET','/api/me');ME=j.user;VER={s:j.surum,o:j.ortam,d:j.demo};PERMS=j.perms;['pbilgi','mesaj','gorev'].forEach(k=>PERMS[k]={g:1,e:1,d:1,s:0});MENU=j.menu;if(ME.must_change)route='sifre'}catch(e){ME=null}draw();if(ME){bnBasla();bnCek()}else bnKur()}
-function draw(){if(!ME){$('#app').innerHTML=loginUI();if(typeof bnKur=='function')bnKur();return}$('#app').innerHTML=side()+`<main class="main">${page()}</main>`;after()}
+function draw(){if(!ME){$('#app').innerHTML=loginUI();if(typeof bnKur=='function')bnKur();return}$('#app').innerHTML=side()+`<main class="main"><div class="top"><button class="btn l" data-a="mnu" aria-label="Menü">${IC('menu',22)}</button><b>${esc((KRM&&(KRM.kisa||KRM.ad))||'bağışpanel')}</b></div>${page()}</main>`;after()}
 let KRM={};
 function loginUI(){const k=KRM||{},mk=c=>MARK.replace('fill="#fff" clip-path','style="fill:'+c+'" clip-path').replace('width="40" height="36"','width="54" height="49"'),ad=k.ad||'',ic=[['Telefon',k.tel],['E-posta',k.eposta],['Web',k.web],['Adres',k.adres]].filter(x=>x[1]);return `<div class="lg"><div class="lgc"${k.renk?` style="--kr:${esc(k.renk)}"`:''}><aside class="lgl"${k.renk?` style="--pri:${esc(k.renk)}"`:''}>${k.logo?`<div class="lgo"><img src="${esc(k.logo)}" alt=""></div>`:`<div class="lgm">${mk('var(--pk)')}</div>`}<h2>${esc(ad||'bağışpanel')}</h2>${k.slogan?`<p class="lgs">${esc(k.slogan)}</p>`:ad?'':'<p class="lgs">Dernek ve vakıflar için bağış yönetimi</p>'}${ic.length?`<dl class="lgi">${ic.map(x=>`<dt>${x[0]}</dt><dd>${esc(x[1])}</dd>`).join('')}</dl>`:''}</aside><form class="lgr" data-f="login"><div class="lgb">${mk('var(--pri)')}<span><b>bağış</b>panel</span></div><h1>Hoş geldiniz</h1><p class="note" style="margin:0 0 16px">Devam etmek için hesabınızla giriş yapın.</p><label style="margin-bottom:12px">Kullanıcı adı<input name="kadi" autocomplete="username" autofocus></label><label style="margin-bottom:12px">Şifre<input name="sifre" type="password" autocomplete="current-password"></label>${msg?`<p class="err" role="alert">${esc(msg)}</p>`:''}<button class="btn" style="width:100%;margin-top:4px">Giriş yap</button></form></div></div>`}
 /* menü grupları varsayılan kapalı; yalnızca içinde bulunulan sayfanın grubu ya da elle açılan grup açık */
@@ -36,7 +36,7 @@ const AFT=[];function after(){AFT.forEach(f=>f())}
 const go=r=>{if(r!=route){ST.pe=null;ST.bkd=null;ST.bx=null;ST.pd=null;ST.td=null;ST.byeni=false;['gn','es','sb','cs','sp'].forEach(k=>{const o=ST[k];if(o){o.yeni=false;o.ed=null;if('sec' in o){o.sec=null;o.det=null}if('syeni' in o){o.syeni=false;o.ssec=null;o.sdet=null;o.pre=null;o.bsec=null;o.ara=[];o.tam=false}}})}route=r;ST.mk=null;ST.pdfp=null;if(r!='bagisci')ST.pf=null;ST.ud=null;ST.uy=null;ST.bp=null;ST.ld=(PG[r]&&PG[r].load)?1:0;draw();{const m=document.querySelector('.main');if(m){m.classList.add('fx');setTimeout(()=>m.classList.remove('fx'),450)}}if(['kullanici','birim','denetim'].includes(r)||(PG[r]&&PG[r].load))load()};
 document.addEventListener('click',async ev=>{const t=ev.target.closest('[data-a]');if(!t)return;const a=t.dataset.a,v=t.dataset.v;try{
  if(ACTS[a]){await ACTS[a](v,t,ev);return}
- if(a=='go')go(v);else if(a=='tg'){const c=gOpen(v);ST['o_'+v]=!c;const sb=t.nextElementSibling;if(sb)sb.classList.toggle('cl',c);const ch=t.querySelector('.ch');if(ch)ch.classList.toggle('cl',c)}
+ if(a=='mnu'){const s=document.querySelector('.side');if(s)s.classList.toggle('o')}else if(a=='go')go(v);else if(a=='tg'){const c=gOpen(v);ST['o_'+v]=!c;const sb=t.nextElementSibling;if(sb)sb.classList.toggle('cl',c);const ch=t.querySelector('.ch');if(ch)ch.classList.toggle('cl',c)}
  else if(a=='logout'){await api('POST','/api/logout');ME=null;msg='';draw()}
  else if(a=='ued'){ST.ud=+v?await api('GET','/api/users/'+v):null;ST.foto=null;ST.uy=null;draw()}
  else if(a=='utog'){const u=ST.users.find(x=>x.id==v);await api('PUT','/api/users/'+v,{aktif:!u.aktif});ST.users=await api('GET','/api/users');draw()}
@@ -65,3 +65,5 @@ document.addEventListener('submit',async ev=>{const f=ev.target.closest('[data-f
  if(k=='birim'){await api('POST','/api/birimler',{ad:d.ad,kopya_id:+d.kopya_id});toast('Birim eklendi.');ST.birimler=await api('GET','/api/birimler');draw()}
 }catch(e){toast(e.message,1)}});
 boot();
+
+document.addEventListener('click',e=>{const s=document.querySelector('.side.o');if(s&&!e.target.closest('.side')&&!e.target.closest('[data-a=mnu]'))s.classList.remove('o')});

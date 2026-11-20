@@ -244,3 +244,7 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - Tüm organizasyon yapısında (kurban, kuyu, videolu bağış, kalıcı eser), sertifikaların hepsinde, sponsor kartında ve makbuz tasarımında detaylı tasarım çalışması yapılacak.
 - Videolu organizasyon PDF'inde 20-40-60-80-100'lü sayfa tasarımları var. Yeni fikir: PDF alırken "sayfada kaç isim olsun" serbest girilsin (örn. 50 isim); sistem satır/sütun sayısını, sayfa yönünü ve yazı boyutunu isim sayısına göre kendisi ayarlasın; uzun isim satıra sığacak şekilde küçülsün, taşma olmasın.
 - Kuyu numaralandırma: gerekmeyebilir ya da PDF/tabela oluşturulurken verilsin; bu karar bekliyor (öneri: numara tabela alınırken otomatik verilsin, ayrı adım ve "numara yok" engeli olmasın).
+
+## Cila (20 Kas)
+- Koyu tema 47 ekranda gözden geçirildi: belirgin sorun bulunmadı.
+- Mobil: menü düğmesi hiç yoktu (menü ekran dışında kalıyordu); üst çubuğa menü düğmesi + kurum adı eklendi, menü açılınca arkası kararır, bir sayfaya gidince kapanır. Ana Sayfa'da taşan kartlar düzeltildi. 46 ekranda yatay taşma yok.
