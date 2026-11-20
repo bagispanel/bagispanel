@@ -176,7 +176,8 @@ module.exports = function (ctx) {
   const tk = (t) => { const s = db.prepare('SELECT * FROM sp_sponsorluk WHERE token=?').get(t); if (!s) throw new Err(404, 'Bağlantı geçersiz.'); return s; };
   R('GET', '/api/sp/kart/([a-f0-9]{24})', null, null, async (c) => {
     const s = tk(c.m[1]), o = ogr(s.ogrenci_id), b = db.prepare('SELECT ad FROM bagiscilar WHERE id=?').get(s.bagisci_id), hs = hesap(s), t = db.prepare('SELECT ad FROM bagis_turleri WHERE id=?').get(s.tur_id);
-    return [200, { dernek: ctx.h.getA('dernek_adi', ''), sponsor: b.ad, tur: t && t.ad, ogrenci: { ad: o.ad, cinsiyet: o.cinsiyet, ulke: o.ulke, bolge: o.bolge, yas: yasHesap(o), yetim: !!o.yetim, hafiz: !!o.hafiz, yetim_durum: o.yetim_durum, okul_tur: o.okul_tur, okul_ad: o.okul_ad, sinif: o.sinif, cuz: o.hafiz ? o.cuz : null, ayet: o.ayet, hoca: o.hoca, yer: o.yer, durum: o.durum, tamam_tur: o.tamam_tur, tamam_tarih: o.tamam_tarih },
+    const kb = ctx.h.getA('kurumb', {}) || {};
+    return [200, { dernek: ctx.h.getA('dernek_adi', ''), logo: kb.logo || '', renk: /^#[0-9a-fA-F]{6}$/.test(kb.renk || '') ? kb.renk : '', sponsor: b.ad, tur: t && t.ad, ogrenci: { ad: o.ad, cinsiyet: o.cinsiyet, ulke: o.ulke, bolge: o.bolge, yas: yasHesap(o), yetim: !!o.yetim, hafiz: !!o.hafiz, yetim_durum: o.yetim_durum, okul_tur: o.okul_tur, okul_ad: o.okul_ad, sinif: o.sinif, cuz: o.hafiz ? o.cuz : null, ayet: o.ayet, hoca: o.hoca, yer: o.yer, durum: o.durum, tamam_tur: o.tamam_tur, tamam_tarih: o.tamam_tarih },
       sponsorluk: { baslangic: s.baslangic, bitis: hs.bitis, sure: s.sure, yuzde: hs.yuzde, durum: s.durum, odeme_adet: hs.odeme_adet },
       medya: db.prepare('SELECT id,tip,ad FROM sp_medya WHERE ogrenci_id=? AND tip IN (\'foto\',\'video\') ORDER BY profil DESC,id DESC').all(o.id), notlar: db.prepare('SELECT metin,kayit FROM sp_not WHERE ogrenci_id=? ORDER BY id DESC LIMIT 20').all(o.id).map(n => ({ metin: n.metin, tarih: n.kayit.slice(0, 10) })) }];
   });
