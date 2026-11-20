@@ -193,7 +193,7 @@ server.listen(0, async () => {
   await t('pdf ayarları: tasarım kaydedilir, geçersiz reddedilir', async () => {
     assert.equal((await admin('PUT', '/api/pdf', { tasarim: { hisse: 'iki', kucuk: 'tek', diger: '100' } })).s, 200);
     const a = (await admin('GET', '/api/pdf')).j.ayar; assert.equal(a.vb, 100); assert.equal(a.tasarim.hisse, 'iki'); assert.equal(a.tasarim.diger, '100');
-    assert.equal((await admin('PUT', '/api/pdf', { tasarim: { hisse: 'yok' } })).s, 400); assert.equal((await admin('PUT', '/api/pdf', { tasarim: { diger: '33' } })).s, 400);
+    assert.equal((await admin('PUT', '/api/pdf', { tasarim: { hisse: 'yok' } })).s, 400); assert.equal((await admin('PUT', '/api/pdf', { tasarim: { diger: '9' } })).s, 400);
     await admin('PUT', '/api/pdf', { tasarim: { hisse: 'tek', kucuk: 'tek', diger: '40' } });
   });
   await t('ülke bayrağı yüklenir, geçersiz görsel reddedilir, kaldırılır', async () => {

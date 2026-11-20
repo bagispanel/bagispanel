@@ -108,12 +108,13 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   });
 
   // ---- PDF ayarları ve listeler
-  const TAS = { hisse: ['tek', 'iki', 'yatay'], kucuk: ['tek'], diger: ['20', '40', '60', '80', '100'] };
-  const PDFS = () => { const a = getA('pdf', {}); const dg = TAS.diger.includes((a.tasarim || {}).diger) ? a.tasarim.diger : '40'; return { vb: +dg, pre: a.pre || 'VL-', tasarim: { hisse: 'tek', ...(a.tasarim || {}), kucuk: 'tek', diger: dg } }; };
+  const TAS = { hisse: ['tek', 'iki', 'yatay'], kucuk: ['tek'], diger: [] }; // diger: sayfadaki isim sayısı, 10–120 serbest
+  const dgOk = (v) => /^\d{2,3}$/.test(String(v)) && +v >= 10 && +v <= 120;
+  const PDFS = () => { const a = getA('pdf', {}); const dg = dgOk((a.tasarim || {}).diger) ? String(+a.tasarim.diger) : '40'; return { vb: +dg, pre: a.pre || 'VL-', tasarim: { hisse: 'tek', ...(a.tasarim || {}), kucuk: 'tek', diger: dg } }; };
   R('GET', '/api/pdf', 'pdfay|orgK|orgS|orgD', 'g', async () => [200, { ayar: PDFS(), secenek: TAS, listeler: db.prepare('SELECT no,tarih,ids FROM pdf_liste ORDER BY no DESC LIMIT 200').all().map(x => ({ no: x.no, tarih: x.tarih, adet: JSON.parse(x.ids).length })) }]);
   R('PUT', '/api/pdf', 'pdfay', 'd', async (c) => {
     const cur = PDFS(), b = c.body;
-    const t = { ...cur.tasarim }; Object.entries(b.tasarim || {}).forEach(([k, v]) => { if (!TAS[k] || !TAS[k].includes(v)) throw new Err(400, 'Geçersiz tasarım seçimi.'); t[k] = v; });
+    const t = { ...cur.tasarim }; Object.entries(b.tasarim || {}).forEach(([k, v]) => { if (k === 'diger') { if (!dgOk(v)) throw new Err(400, 'Sayfadaki isim sayısı 10 ile 120 arasında olmalı.'); t[k] = String(+v); return; } if (!TAS[k] || !TAS[k].includes(v)) throw new Err(400, 'Geçersiz tasarım seçimi.'); t[k] = v; });
     setA('pdf', { ...getA('pdf', {}), tasarim: t }); return [200, { ok: 1 }];
   });
   const plKey = (u) => [u.tur_id, u.ulke, u.partner || ''].join('|');
