@@ -632,6 +632,16 @@ server.listen(0, async () => {
     assert.equal((await admin('PUT', `/api/turler/${tid}/sertifika`, { tasarim: 'zarif' })).s, 200); assert.ok((await (await fetch(base + '/sertifika/' + kod)).text()).includes('t-zarif'));
     assert.equal((await admin('PUT', `/api/turler/${tid}/sertifika`, { tasarim: 'yok' })).s, 400);
     assert.equal((await admin('PUT', `/api/turler/${tid}/sertifika`, { tasarim: '' })).s, 200); assert.equal((await admin('GET', '/api/turler')).j.turler.find(x => x.id === tid).sertifika, false);
+    { // kurum rengi: Kurum Bilgileri'nde seçilir, giriş ekranı ve sertifika kullanır
+      assert.equal((await admin('PUT', '/api/kurum/bilgi', { ad: 'Test Derneği', renk: 'kırmızı' })).s, 400);
+      assert.equal((await admin('PUT', '/api/kurum/bilgi', { ad: 'Test Derneği', renk: '#336699' })).s, 200);
+      assert.equal((await (await fetch(base + '/api/kurum')).json()).renk, '#336699', 'giriş ekranı için açık');
+      assert.ok((await admin('GET', '/api/sertifika/ayar')).j.renkler.kurum, 'sertifikada Kurum rengi seçeneği');
+      assert.equal((await admin('PUT', '/api/sertifika/ayar', { baslik: 'x', renk: 'kurum', sponsor_tasarim: 'klasik' })).s, 200);
+      assert.equal((await admin('PUT', `/api/turler/${tid}/sertifika`, { tasarim: 'klasik' })).s, 200);
+      const r2 = await bag({ tur_id: tid, tutar: 50, ad: 'Renk Deneme', tel: '541 300 00 93' }); assert.equal(r2.s, 201);
+      const k2 = /\/sertifika\/([A-Za-z0-9_-]+)/.exec((await admin('GET', '/api/sms')).j.find(x => x.mesaj.includes('Renk Deneme')).mesaj); assert.ok(k2);
+      assert.ok((await (await fetch(base + '/sertifika/' + k2[1])).text()).includes('#336699'), 'sertifika kurum rengiyle'); }
     assert.equal((await fetch(base + '/sertifika/onizleme?t=modern')).status, 404, 'önizleme girişsiz açılmaz');
   });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);

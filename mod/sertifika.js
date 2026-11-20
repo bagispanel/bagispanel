@@ -4,8 +4,9 @@ module.exports = function (ctx) {
   const { db, R, Err, A, str, ip } = ctx, { getA, setA } = ctx.h;
   try { db.exec("ALTER TABLE bagis_turleri ADD COLUMN sert_tasarim TEXT NOT NULL DEFAULT ''"); } catch { /* var */ }
   const TAS = { klasik: 'Klasik', modern: 'Modern', zarif: 'Zarif' };
+  const kurumRenk = () => { const r = (getA('kurumb', {}) || {}).renk; return /^#[0-9a-fA-F]{6}$/.test(r || '') ? r : ''; };
   const RENK = { lacivert: ['Lacivert ve altın', '#0e5566', '#c9a227'], yesil: ['Yeşil ve altın', '#1f6b45', '#c9a227'], bordo: ['Bordo ve bakır', '#7a1f2b', '#b8923a'], gri: ['Antrasit ve bakır', '#2b3a4a', '#a8896a'] };
-  const VARS = { baslik: 'Bağış Sertifikası', metin: 'projesine verdiği değerli destek için teşekkür eder, bağışlarını Allah katında kabul eylemesini dileriz.', imza_ad: '', imza_unvan: '', imza_gorsel: '', renk: 'lacivert', sponsor_tasarim: 'klasik' };
+  const VARS = { baslik: 'Bağış Sertifikası', metin: 'projesine verdiği değerli destek için teşekkür eder, bağışlarını Allah katında kabul eylemesini dileriz.', imza_ad: '', imza_unvan: '', imza_gorsel: '', renk: 'kurum', sponsor_tasarim: 'klasik' };
   const ayar = () => ({ ...VARS, ...getA('sertset', {}) });
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   // Tür adlarında fiyat/biçim ekleri olabilir ("Nijer - Tulumba · Tam fiyat (12.000 ₺)"): sertifikada tutar görünmesin, yalnız proje adı kalsın
@@ -43,7 +44,7 @@ module.exports = function (ctx) {
 @page{size:A4 landscape;margin:0}@media print{body{background:#fff;padding:0;display:block}.sf{width:100%;height:100vh;box-shadow:none;aspect-ratio:auto}.bt{display:none}}`;
   const gor = (x) => (typeof x === 'string' && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(x)) ? x : '';
   const sayfaHtml = (v, kurum, dernek, a, tas, onizle) => {
-    const r = RENK[a.renk] || RENK.lacivert, ig = gor(a.imza_gorsel), lg = gor(kurum.logo);
+    const r = a.renk === 'kurum' && kurumRenk() ? ['Kurum rengi', kurumRenk(), '#c9a227'] : (RENK[a.renk] || RENK.lacivert), ig = gor(a.imza_gorsel), lg = gor(kurum.logo);
     return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(v.baslik)} · ${esc(v.ad)}</title><style>${CSS}</style></head><body${onizle ? ' style="padding:0;background:transparent"' : ''}>
 <div class="sf t-${TAS[tas] ? tas : 'klasik'}" style="--p:${r[1]};--a:${r[2]}"><div>${lg ? `<img class="lg" src="${esc(lg)}" alt="">` : ''}<div class="d">${esc(dernek)}</div></div><div class="mid"><h1>${esc(v.baslik)}</h1><div class="s">Sayın</div><div class="n">${esc(v.ad)}</div>${v.adina ? `<p class="a">${esc(v.adina)} adına</p>` : ''}<div class="p">${esc(v.proje)}</div><div class="o">✦ ✦ ✦</div><p class="m">${esc(v.metin)}</p></div><div class="f"><span>${esc(tarihTR(v.tarih))}${v.no ? '<br>Belge no: ' + esc(v.no) : ''}</span>${a.imza_ad || ig ? `<div class="im">${ig ? `<img src="${esc(ig)}" alt="">` : ''}<div class="l"><b>${esc(a.imza_ad)}</b>${esc(a.imza_unvan)}</div></div>` : '<span></span>'}</div></div>
 ${onizle ? '' : '<button class="bt" data-p>Yazdır / PDF olarak kaydet</button><script src="/sertifika.js"></script>'}</body></html>`;
@@ -55,7 +56,7 @@ ${onizle ? '' : '<button class="bt" data-p>Yazdır / PDF olarak kaydet</button><
     const yok = (kodu, m) => { res.writeHead(kodu, basliklar); res.end(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sertifika</title><style>${CSS}</style><body><p style="font-family:system-ui;margin-top:80px">${esc(m)}</p></body>`); };
     if (kod === 'onizleme') { // yalnız giriş yapmış kullanıcı; kaydedilmiş ayarlar + seçilen tasarım/renk
       if (!A.sessionUser(ctx.cookies(req).bp)) return yok(404, 'Sertifika bulunamadı.');
-      const t = url.searchParams.get('t'), r = url.searchParams.get('r'), pa = { ...a, renk: RENK[r] ? r : a.renk };
+      const t = url.searchParams.get('t'), r = url.searchParams.get('r'), pa = { ...a, renk: RENK[r] || (r === 'kurum' && kurumRenk()) ? r : a.renk };
       res.writeHead(200, { ...basliklar, 'Content-Security-Policy': basliklar['Content-Security-Policy'].replace("frame-ancestors 'none'", "frame-ancestors 'self'") });
       return res.end(sayfaHtml({ baslik: a.baslik, ad: 'Ayşe Yılmaz', adina: '', proje: 'Su Kuyusu Projesi', metin: a.metin, tarih: new Date().toISOString().slice(0, 10), no: '' }, kurum, dernek, pa, t, true));
     }
@@ -65,11 +66,11 @@ ${onizle ? '' : '<button class="bt" data-p>Yazdır / PDF olarak kaydet</button><
     res.writeHead(200, basliklar); res.end(sayfaHtml(v, kurum, dernek, a, v.tasarim, false));
   };
 
-  R('GET', '/api/sertifika/ayar', 'sertset', 'g', async () => [200, { ayar: ayar(), tasarimlar: TAS, renkler: Object.fromEntries(Object.entries(RENK).map(([k, v]) => [k, { ad: v[0], p: v[1], a: v[2] }])), varsayilan: { baslik: VARS.baslik, metin: VARS.metin }, kurum_ad: (getA('kurumb', {}).ad || getA('dernek_adi', '')), kullanan: db.prepare("SELECT sert_tasarim t, COUNT(*) n FROM bagis_turleri WHERE sertifika=1 GROUP BY sert_tasarim").all() }]);
+  R('GET', '/api/sertifika/ayar', 'sertset', 'g', async () => [200, { ayar: ayar(), tasarimlar: TAS, renkler: Object.fromEntries([...(kurumRenk() ? [['kurum', { ad: 'Kurum rengi', p: kurumRenk(), a: '#c9a227' }]] : []), ...Object.entries(RENK).map(([k, v]) => [k, { ad: v[0], p: v[1], a: v[2] }])]), varsayilan: { baslik: VARS.baslik, metin: VARS.metin }, kurum_ad: (getA('kurumb', {}).ad || getA('dernek_adi', '')), kullanan: db.prepare("SELECT sert_tasarim t, COUNT(*) n FROM bagis_turleri WHERE sertifika=1 GROUP BY sert_tasarim").all() }]);
   R('PUT', '/api/sertifika/ayar', 'sertset', 'e', async (c) => {
     const b = c.body, o = ayar();
     const baslik = str(b.baslik, 60) || VARS.baslik, metin = str(b.metin, 300) || VARS.metin;
-    if (!RENK[b.renk]) throw new Err(400, 'Renk seçin.'); if (!TAS[b.sponsor_tasarim]) throw new Err(400, 'Sponsor sertifikası tasarımını seçin.');
+    if (!RENK[b.renk] && !(b.renk === 'kurum' && kurumRenk())) throw new Err(400, 'Renk seçin.'); if (!TAS[b.sponsor_tasarim]) throw new Err(400, 'Sponsor sertifikası tasarımını seçin.');
     let ig = o.imza_gorsel; if (b.imza_sil) ig = ''; else if (b.imza_gorsel) { if (!gor(b.imza_gorsel) || b.imza_gorsel.length > 400000) throw new Err(400, 'İmza görseli PNG/JPEG olmalı ve küçük boyutlu olmalı.'); ig = b.imza_gorsel; }
     setA('sertset', { baslik, metin, imza_ad: str(b.imza_ad, 80), imza_unvan: str(b.imza_unvan, 80), imza_gorsel: ig, renk: b.renk, sponsor_tasarim: b.sponsor_tasarim });
     A.audit(c.user, 'sertifika_ayar', '', ip(c.req)); return [200, { ok: 1 }];
