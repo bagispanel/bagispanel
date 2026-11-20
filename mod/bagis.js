@@ -163,6 +163,7 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS kn_map(tur_id INTEGER PRIMARY KEY, seri TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS kn_sayac(k TEXT PRIMARY KEY, n INTEGER NOT NULL);`);
   db.prepare("INSERT OR IGNORE INTO kn_seri(ad,onek,ulkeye_gore) VALUES('Genel','',0)").run();
+  db.prepare("INSERT OR IGNORE INTO kn_sayac(k,n) VALUES('Genel',1)").run();
   const seriOf = (tid) => { const m = db.prepare('SELECT seri FROM kn_map WHERE tur_id=?').get(tid); return m && db.prepare('SELECT 1 FROM kn_seri WHERE ad=?').get(m.seri) ? m.seri : 'Genel'; };
   function kfix() {
     const L = db.prepare(`SELECT u.* FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org='Su kuyusu' AND u.adim>=1 AND u.kn IS NULL`).all()

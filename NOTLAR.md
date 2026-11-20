@@ -248,3 +248,10 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 ## Cila (20 Kas)
 - Koyu tema 47 ekranda gözden geçirildi: belirgin sorun bulunmadı.
 - Mobil: menü düğmesi hiç yoktu (menü ekran dışında kalıyordu); üst çubuğa menü düğmesi + kurum adı eklendi, menü açılınca arkası kararır, bir sayfaya gidince kapanır. Ana Sayfa'da taşan kartlar düzeltildi. 46 ekranda yatay taşma yok.
+
+## Numaralandırma menüsü kaldırıldı (20 Kas)
+- Numaralandırma menüsü kalktı. Kuyu numarası, hedef dolunca sistem tarafından otomatik verilir (tek sayaç) ve tabela/PDF'te çıkar. "Açıldı" SMS'indeki {kuyu_no} bu yüzden dolu gelir.
+- Su Kuyusu Projeleri sayfasında kapalı bir "Kuyu numaraları" kutusu var: kurumlara öneri notu + "sıradaki numara" ayarı (başka sistemden geçişte ilk numara için).
+- Öneri notu (kurumlara): "Kuyu numaralarını sürekli değiştirmeyin. Raporlama ve kuyu takibi (hangi ülkede ne açıldı) için düzen sağlar."
+- Tam büyükbaş: 7 farklı isim ve farklı telefon yazılabilir, mevcut davranış korunur (tek vekâlet seçeneği eklenmeyecek).
+- Eski seri/önek yönetimi arayüzden kalktı; API'si duruyor.

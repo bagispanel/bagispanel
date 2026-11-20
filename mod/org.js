@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
     ctx.sms(T1[p.org], msgVars(uu, s, t), s.ad, c.user.kadi, s.tel); db.prepare('UPDATE paylar SET vs=? WHERE id=?').run(iso(), p.id); return [200, { ok: 1 }];
   });
   // ---- numaralandırma
-  R('GET', '/api/numara', 'numara', 'g', async () => {
+  R('GET', '/api/numara', 'orgS', 'g', async () => {
     const mx = (k) => db.prepare('SELECT COALESCE(MAX(kn),0) m FROM birimler_org WHERE ks=?').get(k).m;
     const turler = db.prepare("SELECT id,ad FROM bagis_turleri WHERE org='Su kuyusu'").all().map(t => ({ ...t, seri: seriOf(t.id), tip: niOf(tur(t.id)) }));
     const sayac = db.prepare('SELECT * FROM kn_sayac ORDER BY k').all().map(x => ({ ...x, max: mx(x.k) }));
@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
     const ad = new URL(c.req.url, 'http://x').searchParams.get('ad'); if (ad === 'Genel') throw new Err(409, 'Genel seri silinemez.');
     if (db.prepare('SELECT 1 FROM kn_map WHERE seri=?').get(ad) || db.prepare('SELECT 1 FROM birimler_org WHERE ksr=?').get(ad)) throw new Err(409, 'Bu seri kullanımda.'); db.prepare('DELETE FROM kn_seri WHERE ad=?').run(ad); db.prepare('DELETE FROM kn_sayac WHERE k=?').run(ad); return [200, { ok: 1 }];
   });
-  R('PUT', '/api/numara/sayac', 'numara', 'd', async (c) => {
+  R('PUT', '/api/numara/sayac', 'orgS', 'd', async (c) => {
     const k = str(c.body.k, 120), n = Math.floor(+c.body.n); if (!(n >= 1)) throw new Err(400, 'Geçerli bir numara yazın.');
     const mx = db.prepare('SELECT COALESCE(MAX(kn),0) m FROM birimler_org WHERE ks=?').get(k).m; if (n <= mx) throw new Err(409, `Bu sayaçta en büyük verilmiş numara ${mx}. ${mx + 1} ya da daha büyük yazın.`);
     db.prepare('INSERT INTO kn_sayac(k,n) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET n=?').run(k, n, n); ctx.kfix(); return [200, { ok: 1 }];

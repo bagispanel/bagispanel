@@ -8,5 +8,5 @@ module.exports = [
   ['Bağışçı ve Gönüllü İlişkileri', [['bagisci','Bağışçı Rehberi'],['gonullu','Gönüllü Yönetimi']]],
   ['İletişim', [['tsms','Toplu SMS'],['tmail','Toplu E-posta'],['twa','WhatsApp'],['cagri','Çağrı Merkezi'],['sms','Gönderilen Mesajlar']]],
   ['Kurum Yönetimi', [['kurumb','Kurum Bilgileri'],['sube','Şube ve Temsilcilikler'],['partner','Partner Kurumlar'],['banka','Banka Hesapları'],['kullanici','Kullanıcı Yönetimi'],['birim','Birimler ve Yetkiler']]],
-  ['Sistem Ayarları', [['ulke','Ülkeler'],['pdfay','PDF Şablonları'],['sertset','Sertifika Ayarları'],['sablon','Mesaj Şablonları'],['iayar','İletişim Ayarları'],['numara','Numaralandırma'],['denetim','Denetim Kayıtları']]]
+  ['Sistem Ayarları', [['ulke','Ülkeler'],['pdfay','PDF Şablonları'],['sertset','Sertifika Ayarları'],['sablon','Mesaj Şablonları'],['iayar','İletişim Ayarları'],['denetim','Denetim Kayıtları']]]
 ];
