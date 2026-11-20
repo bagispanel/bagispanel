@@ -147,12 +147,6 @@ server.listen(0, async () => {
     const ky = await turId('Testistan - Çeşme'); const L = []; for (let i = 0; i < 7; i++) L.push(await bag({ tur_id: ky, adet: 1, tel: '541 300 40 0' + i, ad: 'Ky' + i }));
     L.forEach(x => assert.equal(x.s, 201)); const u = (await admin('GET', '/api/org/kuyu')).j.liste.find(x => x.tur_id === ky); assert.equal(u.ulke, 'Testistan'.length ? u.ulke : ''); assert.equal(u.kn, null, 'otomatik kuyu numarası verilmez'); assert.match(u.kod, /^KY-\d{4}-0001$/);
   });
-  await t('kuyu numarası isteğe bağlı elle yazılır, mesajda yoksa kod kullanılır', async () => {
-    const u = (await admin('GET', '/api/org/kuyu')).j.liste[0]; assert.equal(u.kno, '');
-    assert.equal((await admin('PUT', '/api/org/birim/' + u.id, { kno: 'NJR-12' })).s, 200);
-    assert.equal((await admin('GET', '/api/org/kuyu')).j.liste.find(x => x.id === u.id).kno, 'NJR-12');
-    assert.equal((await admin('GET', '/api/numara')).s, 404, 'numaralandırma ekranı/ucu yok');
-  });
   await t('fon: hedef aşılınca fazlası devreder', async () => {
     assert.equal((await admin('POST', '/api/turler', { sec: 'kuyu', ad: 'Anne Fatma Fonu', bicim: 'Fon', fiyat: 1000 })).s, 201);
     const f = await turId('Anne Fatma Fonu'); await bag({ tur_id: f, tutar: 700, tel: '541 300 50 00', ad: 'Fon1' }); await bag({ tur_id: f, tutar: 500, tel: '541 300 50 01', ad: 'Fon2' });
@@ -196,11 +190,11 @@ server.listen(0, async () => {
     assert.deepEqual(ad, ['Ali A', 'Cem C', 'Sahip Kisi', 'Sahip Kisi', 'Veli B']); assert.ok(L.flatMap(u => u.paylar).every(p => /^KS-/.test(p.no)));
     const k2 = await turId('Akika · küçükbaş'); await bag({ tur_id: k2, tel: '541 300 80 10', ad: 'Koyun Sahibi', hy: 'Koyun' }); assert.equal((await admin('GET', '/api/org/kurban?q=Koyun Sahibi')).j.liste[0].hayvan, 'Koyun');
   });
-  await t('pdf ayarları: tasarım ve tabela boyutu kaydedilir, geçersiz reddedilir', async () => {
-    assert.equal((await admin('PUT', '/api/pdf', { tasarim: { hisse: 'iki', kucuk: 'tek', diger: '100' }, tabela: { w: 400, h: 300 } })).s, 200);
-    const a = (await admin('GET', '/api/pdf')).j.ayar; assert.equal(a.vb, 100); assert.equal(a.tasarim.hisse, 'iki'); assert.equal(a.tasarim.diger, '100'); assert.equal(a.tabela.w, 400);
-    assert.equal((await admin('PUT', '/api/pdf', { tasarim: { hisse: 'yok' } })).s, 400); assert.equal((await admin('PUT', '/api/pdf', { tabela: { w: 5, h: 300 } })).s, 400); assert.equal((await admin('PUT', '/api/pdf', { tasarim: { diger: '33' } })).s, 400);
-    await admin('PUT', '/api/pdf', { tasarim: { hisse: 'tek', kucuk: 'tek', diger: '40' }, tabela: { w: 210, h: 297 } });
+  await t('pdf ayarları: tasarım kaydedilir, geçersiz reddedilir', async () => {
+    assert.equal((await admin('PUT', '/api/pdf', { tasarim: { hisse: 'iki', kucuk: 'tek', diger: '100' } })).s, 200);
+    const a = (await admin('GET', '/api/pdf')).j.ayar; assert.equal(a.vb, 100); assert.equal(a.tasarim.hisse, 'iki'); assert.equal(a.tasarim.diger, '100');
+    assert.equal((await admin('PUT', '/api/pdf', { tasarim: { hisse: 'yok' } })).s, 400); assert.equal((await admin('PUT', '/api/pdf', { tasarim: { diger: '33' } })).s, 400);
+    await admin('PUT', '/api/pdf', { tasarim: { hisse: 'tek', kucuk: 'tek', diger: '40' } });
   });
   await t('ülke bayrağı yüklenir, geçersiz görsel reddedilir, kaldırılır', async () => {
     const yeni = await admin('POST', '/api/ulkeler', { ad: 'Bayrakistan' }); assert.equal(yeni.s, 201); const ul = { id: yeni.j.id };

@@ -13,14 +13,13 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   const T0 = { Kurban: 'kesim', 'Su kuyusu': 'kuyu', 'Diğer': 'dig' }, T1 = { Kurban: 'video', 'Su kuyusu': 'kuyuv', 'Diğer': 'digv' };
   const sts = (u) => { if (u.adim === 1 && u.ulke && u.org === 'Su kuyusu') return 2; return u.adim < 3 ? u.adim : u.adim === 3 ? (u.video ? 4 : 3) : 5; };
   try { db.exec('ALTER TABLE birimler_org ADD COLUMN kno_m TEXT'); } catch { /* var */ }
-  const knoOf = (u) => u.kno_m || ''; // derneğin kendi yazdığı isteğe bağlı kuyu numarası
 
   function yukle(org, p) {
     const q = nm(p.get('q')), qd = q.replace(/\D/g, '');
     const rows = db.prepare('SELECT u.*, t.ad turad, t.kat, t.org, t.seri, t.kuyu kj FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org=? ORDER BY u.id DESC').all(org);
     const pays = db.prepare('SELECT p.*, g.no bno, g.bagisci_id, b.ad bad, b.tel btel FROM paylar p JOIN bagislar g ON g.id=p.bagis_id JOIN bagiscilar b ON b.id=g.bagisci_id WHERE p.birim_id IN (SELECT u.id FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org=?)').all(org);
     const by = {}; pays.forEach(x => (by[x.birim_id] = by[x.birim_id] || []).push(x));
-    let L = rows.map(u => { const k = u.kj ? JSON.parse(u.kj) : null; return { id: u.id, tur_id: u.tur_id, tur: u.turad, kat: u.kat, kod: u.kod, ad: u.ad, cap: u.cap, adim: u.adim, sts: sts(u), ulke: u.ulke, partner: u.partner, hayvan: u.hayvan, hedef: u.hedef, devir: u.devir, tas: u.tas, solo: !!u.solo, kn: u.kn, kno: knoOf(u), ks: u.ks, konum: u.konum, video: u.video, pl: u.pl, dt: dtGet(u), ni: org === 'Kurban' ? u.seri : (k ? k.tip : u.turad), bicim: k ? k.bicim : '', paylar: (by[u.id] || []).map(x => ({ bagisci_id: x.bagisci_id, id: x.id, no: x.no, ad: x.ad, tel: x.tel, tarih: x.tarih, tutar: x.tutar, vs: x.vs, bno: x.bno, bagisci: x.bad })), toplam: (by[u.id] || []).reduce((a, x) => a + (x.tutar || 0), 0) + (u.devir || 0) }; });
+    let L = rows.map(u => { const k = u.kj ? JSON.parse(u.kj) : null; return { id: u.id, tur_id: u.tur_id, tur: u.turad, kat: u.kat, kod: u.kod, ad: u.ad, cap: u.cap, adim: u.adim, sts: sts(u), ulke: u.ulke, partner: u.partner, hayvan: u.hayvan, hedef: u.hedef, devir: u.devir, tas: u.tas, solo: !!u.solo, kn: u.kn, ks: u.ks, konum: u.konum, video: u.video, pl: u.pl, dt: dtGet(u), ni: org === 'Kurban' ? u.seri : (k ? k.tip : u.turad), bicim: k ? k.bicim : '', paylar: (by[u.id] || []).map(x => ({ bagisci_id: x.bagisci_id, id: x.id, no: x.no, ad: x.ad, tel: x.tel, tarih: x.tarih, tutar: x.tutar, vs: x.vs, bno: x.bno, bagisci: x.bad })), toplam: (by[u.id] || []).reduce((a, x) => a + (x.tutar || 0), 0) + (u.devir || 0) }; });
     const cnts = [0, 0, 0, 0, 0, 0]; L.forEach(u => cnts[u.sts]++);
     const f = (k, v) => v && v !== 'Tümü';
     if (f(0, p.get('hy')) && p.get('hy') === 'Büyükbaş') L = L.filter(u => u.cap > 1); if (p.get('hy') === 'Küçükbaş') L = L.filter(u => u.cap === 1);
@@ -38,7 +37,7 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   }
   Object.entries(ORGS).forEach(([k, org]) => R('GET', '/api/org/' + k, MENU[org], 'g', async (c) => [200, yukle(org, new URL(c.req.url, 'http://x').searchParams)]));
 
-  function msgVars(u, s, t) { const dt = dtGet(u); return { ad: s.ad, tur: t.ad, sahip_no: s.no, ulke: u.ulke || '-', tarih: ctx.dstr(dt[3] || iso()), bno: s.bno || '-', kuyu_no: knoOf(u), kuyu_adi: u.ad || '', link: 'https://…/v/' + crypto.createHash('sha1').update(String(s.id)).digest('hex').slice(0, 8) }; }
+  function msgVars(u, s, t) { const dt = dtGet(u); return { ad: s.ad, tur: t.ad, sahip_no: s.no, ulke: u.ulke || '-', tarih: ctx.dstr(dt[3] || iso()), bno: s.bno || '-', kuyu_adi: u.ad || '', link: 'https://…/v/' + crypto.createHash('sha1').update(String(s.id)).digest('hex').slice(0, 8) }; }
   R('POST', '/api/org/islem', 'orgK|orgS|orgD', 'd', async (c) => {
     const a = c.body.a, ids = (Array.isArray(c.body.ids) ? c.body.ids : []).map(Number).filter(Boolean); if (!ids.length) throw new Err(400, 'Önce satır seçin.');
     return tx(() => {
@@ -66,7 +65,7 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   R('PUT', '/api/org/birim/:id', 'orgK|orgS|orgD', 'd', async (c) => {
     const u = db.prepare('SELECT u.*, t.org FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE u.id=?').get(+c.m[1]); if (!u) throw new Err(404, 'Kayıt yok.'); if (!A.can(c.perms, MENU[u.org], 'd')) throw new Err(403, 'Yetkiniz yok.');
     const konum = str(c.body.konum, 300); if (konum && !/^https?:\/\//i.test(konum) && !/^-?\d{1,3}(\.\d+)?\s*[, ]\s*-?\d{1,3}(\.\d+)?$/.test(konum)) throw new Err(400, 'Konum bir harita bağlantısı ya da “enlem, boylam” olmalı.');
-    db.prepare('UPDATE birimler_org SET konum=?, video=?, ad=?, kno_m=? WHERE id=?').run(konum || null, c.body.video === undefined ? u.video : (str(c.body.video, 300) || null), c.body.ad === undefined ? u.ad : (str(c.body.ad, 80) || ''), c.body.kno === undefined ? (u.kno_m || null) : (str(c.body.kno, 24) || null), u.id); return [200, { ok: 1 }];
+    db.prepare('UPDATE birimler_org SET konum=?, video=?, ad=? WHERE id=?').run(konum || null, c.body.video === undefined ? u.video : (str(c.body.video, 300) || null), c.body.ad === undefined ? u.ad : (str(c.body.ad, 80) || ''), u.id); return [200, { ok: 1 }];
   });
 
   R('GET', '/api/org/onizleme', 'orgK|orgS|orgD', 'g', async (c) => { // gidecek SMS metni (ilk kişi için örnek)
@@ -109,14 +108,13 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   });
 
   // ---- PDF ayarları ve listeler
-  const TAS = { hisse: ['tek', 'iki', 'yatay'], kucuk: ['tek'], diger: ['20', '40', '60', '80', '100'], tabela: ['klasik', 'ad', 'bayrak'] };
-  const PDFS = () => { const a = getA('pdf', {}); const dg = TAS.diger.includes((a.tasarim || {}).diger) ? a.tasarim.diger : '40'; return { vb: +dg, pre: a.pre || 'VL-', tasarim: { hisse: 'tek', tabela: 'klasik', ...(a.tasarim || {}), kucuk: 'tek', diger: dg }, tabela: { w: 210, h: 297, ...(a.tabela || {}) } }; };
+  const TAS = { hisse: ['tek', 'iki', 'yatay'], kucuk: ['tek'], diger: ['20', '40', '60', '80', '100'] };
+  const PDFS = () => { const a = getA('pdf', {}); const dg = TAS.diger.includes((a.tasarim || {}).diger) ? a.tasarim.diger : '40'; return { vb: +dg, pre: a.pre || 'VL-', tasarim: { hisse: 'tek', ...(a.tasarim || {}), kucuk: 'tek', diger: dg } }; };
   R('GET', '/api/pdf', 'pdfay|orgK|orgS|orgD', 'g', async () => [200, { ayar: PDFS(), secenek: TAS, listeler: db.prepare('SELECT no,tarih,ids FROM pdf_liste ORDER BY no DESC LIMIT 200').all().map(x => ({ no: x.no, tarih: x.tarih, adet: JSON.parse(x.ids).length })) }]);
   R('PUT', '/api/pdf', 'pdfay', 'd', async (c) => {
     const cur = PDFS(), b = c.body;
     const t = { ...cur.tasarim }; Object.entries(b.tasarim || {}).forEach(([k, v]) => { if (!TAS[k] || !TAS[k].includes(v)) throw new Err(400, 'Geçersiz tasarım seçimi.'); t[k] = v; });
-    const tb = { ...cur.tabela }; if (b.tabela) { const w = +b.tabela.w, h = +b.tabela.h; if (!(w >= 50 && w <= 1500 && h >= 50 && h <= 1500)) throw new Err(400, 'Tabela boyutu 50–1500 mm arasında olmalı.'); tb.w = Math.round(w); tb.h = Math.round(h); }
-    setA('pdf', { ...getA('pdf', {}), tasarim: t, tabela: tb }); return [200, { ok: 1 }];
+    setA('pdf', { ...getA('pdf', {}), tasarim: t }); return [200, { ok: 1 }];
   });
   const plKey = (u) => [u.tur_id, u.ulke, u.partner || ''].join('|');
   R('POST', '/api/pdf/olustur', 'orgD', 'd', async (c) => {
@@ -133,7 +131,7 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
     const p = new URL(c.req.url, 'http://x').searchParams, no = p.get('no'); let ids = no ? JSON.parse((db.prepare('SELECT ids FROM pdf_liste WHERE no=?').get(no) || { ids: '[]' }).ids) : (p.get('ids') || '').split(',').map(Number).filter(Boolean);
     if (!ids.length) return [200, { liste: [] }];
     const us = db.prepare(`SELECT u.*, t.ad turad, t.kat, t.org, t.seri FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE u.id IN (${ids.map(() => '?').join(',')}) ORDER BY u.id`).all(...ids), mn = { Kurban: 'orgK', 'Su kuyusu': 'orgS', 'Diğer': 'orgD' };
-    return [200, { dernek: getA('dernek_adi', '[Dernek adı]'), liste: us.filter(u => A.can(c.perms, mn[u.org], 'g')).map(u => ({ id: u.id, kod: u.kod, ad: u.ad, tur: u.turad, kat: u.kat, org: u.org, cap: u.cap, ulke: u.ulke, partner: u.partner, kno: knoOf(u), ks: u.ks, konum: u.konum, pl: u.pl, hayvan: u.hayvan, dt: dtGet(u), ni: u.seri, paylar: db.prepare('SELECT p.no,p.ad,g.no bno FROM paylar p JOIN bagislar g ON g.id=p.bagis_id WHERE p.birim_id=? ORDER BY p.id').all(u.id) })) }];
+    return [200, { dernek: getA('dernek_adi', '[Dernek adı]'), liste: us.filter(u => A.can(c.perms, mn[u.org], 'g')).map(u => ({ id: u.id, kod: u.kod, ad: u.ad, tur: u.turad, kat: u.kat, org: u.org, cap: u.cap, ulke: u.ulke, partner: u.partner, ks: u.ks, konum: u.konum, pl: u.pl, hayvan: u.hayvan, dt: dtGet(u), ni: u.seri, paylar: db.prepare('SELECT p.no,p.ad,g.no bno FROM paylar p JOIN bagislar g ON g.id=p.bagis_id WHERE p.birim_id=? ORDER BY p.id').all(u.id) })) }];
   });
 
   // ---- entegrasyon: anahtarlı dış API

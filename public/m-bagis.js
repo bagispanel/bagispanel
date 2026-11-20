@@ -120,7 +120,7 @@ let bsT;INP.bsea=v=>{ST.bq=v;clearTimeout(bsT);bsT=setTimeout(async()=>{ST.bc=aw
 
 /* ---------- SMS ---------- */
 PG.sms={async load(){ST.sl=await api('GET','/api/sms')},view(){const L=ST.sl||[];return ttl('Gönderilen Mesajlar','SMS, e-posta ve WhatsApp ile giden tüm mesajlar. Deneme modunda mesajlar gönderilmez, yalnızca burada kayıt altına alınır.')+`<div class="card tw">${L.length?`<table><tr><th>Zaman</th><th>Kanal</th><th>Kime</th><th>Mesaj</th><th>Kaynak</th><th>Durum</th></tr>`+L.map(x=>`<tr><td>${esc(x.zaman)}</td><td>${esc(x.kanal||'SMS')}</td><td>${esc(x.kime||'-')}</td><td>${esc(x.mesaj)}</td><td>${esc(String(x.sablon||'').startsWith('toplu:')?'Toplu gönderim':x.sablon||'')}</td><td><span class="tag" style="${x.durum=='Hata'?'color:var(--er)':''}">${esc(x.durum||'-')}</span>${x.hata?`<br><small class="note">${esc(x.hata)}</small>`:''}</td></tr>`).join('')+`</table>`:'<p>Henüz mesaj yok.</p>'}</div>`}};
-const SAMPLE={ad:'Ayşe Yılmaz',tur:'Vacip hisseli büyükbaş',bno:'BG-2027-00012',sahip_no:'KS-2027-0012',ulke:'Çad',tarih:'01.06.2027',link:'https://…/v/abc123',kuyu_no:'21',kuyu_adi:'Anne Fatma Kuyusu'};
+const SAMPLE={ad:'Ayşe Yılmaz',tur:'Vacip hisseli büyükbaş',bno:'BG-2027-00012',sahip_no:'KS-2027-0012',ulke:'Çad',tarih:'01.06.2027',link:'https://…/v/abc123',kuyu_adi:'Anne Fatma Kuyusu'};
 const fillT=(m,dn)=>m.replace(/\{(\w+)\}/g,(_,k)=>k=='dernek'?dn:(SAMPLE[k]!==undefined?SAMPLE[k]:'{'+k+'}'));
 const spc=m=>{const tr=/[ğĞşŞıİ]/.test(m);return m.length<=(tr?70:160)?1:Math.ceil(m.length/(tr?67:153))};
 const pvT=(m,dn)=>{const x=fillT(m,dn);return `<div class="card" style="background:var(--bg);margin:8px 0">${esc(x)}</div><p class="note" style="margin:0">${x.length} karakter · yaklaşık ${spc(x)} SMS parçası</p>`};
