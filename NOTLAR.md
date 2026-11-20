@@ -3,9 +3,9 @@
 Bu dosya Meriç'in "notlara al, sonra senden isteyeceğim" dediği işleri tutar. İstediğinde "notlardaki şunu yap" demen yeterli.
 
 ## Onay bekleyen kararlar
-- [ ] **Kategori ve alt kategori isimleri düzenlenebilsin** (isim değişince geçmiş bağışlar, raporlar, org kayıtları yeni ismi görür; kuyu/kurban türlerinde sistemin eklediği son ek otomatik kalır, aynı isim ikinci kez açılamaz).
-- [ ] **Kullanıcı silme kalksın, yalnızca "Pasife al"** (geçmiş bağışlarda sorumlu adı ve denetim kaydı bozulmasın).
-- [ ] **Kullanıcı yetki ekranını sadeleştir**: "Birimden gelen / istisna" özeti, istisnalar renkli.
+- [x] Kategori ve alt kategori adı düzenleme: yapıldı (geçmiş bağışlar ve raporlar yeni adı görür).
+- [x] Kullanıcı silme kalktı, yalnızca "Pasife al": yapıldı.
+- [ ] Kullanıcı yetki ekranını sadeleştir: "Birimden gelen / istisna" özeti, istisnalar renkli.
 
 ## Tasarım
 - [x] Açık, sıcak tema varsayılan; menü simgeli, geçişli; ana sayfa yenilendi; kurumsal menü adları.
@@ -266,3 +266,15 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - Kuyu, bağışçı isimleri + ülke + tarih ile takip edilir. "Kuyunun adı" isteğe bağlı bir etikettir (kaldırılabilir, karar bekliyor).
 - "Açıldı" SMS'i: "Sayın {ad}, su kuyunuz {ülke} ülkesinde {tarih} tarihinde açılmıştır."
 - Tek tip, ölçüsüz, kurum logolu tabela ileride geri gelebilir (üstteki eski maddeler bu karara göre okunmalı).
+
+
+## Geriye dönük raporlama ilkesi (21 Kas, çok önemli)
+- Sistemde pasife alınan, silinen ya da adı değişen hiçbir şey geçmiş raporu bozmamalı.
+- Kullanıcı: silinmez, yalnızca pasife alınır (geçmiş bağışlarda sorumlu adı kalır). Ülke, partner, banka hesabı, bağış türü: kullanımdaysa silinemez. Ana ve alt kategori adı değişince geçmiş yeni adı görür.
+- Kalıcı eser projesi: bağış toplanmışsa silinemez (durum "Askıda" yapılır). Gönüllü silme KVKK talebi içindir: ad, telefon, adres gibi kişisel bilgiler silinir, kayıt "Silinmiş kayıt / Pasif" olarak sayımlarda kalır.
+- Yeni eklenecek her silme/pasife alma bu kurala uymalı; testlerde kontrol edilir.
+
+## PDF başlığı ve serbest isim sayısı (21 Kas, yapıldı)
+- Kurban ve videolu PDF'lerde üst bölüm: solda TR bayrağı, ortada dernek logosu ve adı, sağda seçilen ülkenin bayrağı; altında büyük tür başlığı (örn. KURANI KERİM) ve küçük bilgi satırı.
+- Videolu bağış listesinde "Sayfada kaç isim" serbest girilir (10–120); satır, sütun, sayfa yönü ve yazı boyu otomatik, taşma yok.
+- Küçük ekler ("SMS gönder" kutusu) gerekmiyor, kapatıldı.

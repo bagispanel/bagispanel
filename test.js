@@ -330,6 +330,7 @@ server.listen(0, async () => {
     assert.equal((await admin('GET', '/api/gonullu?medeni=' + encodeURIComponent('Bekâr') + '&il=Ankara')).j.adet, 1);
     assert.equal((await admin('GET', '/api/gonullu?medeni=Evli')).j.adet, 0);
     assert.equal((await admin('DELETE', '/api/gonullu/' + c.j.id)).s, 200);
+    { const l = (await admin('GET', '/api/gonullu')).j; const x = l.liste.find(z => z.id === c.j.id); assert.ok(x && x.ad === 'Silinmiş kayıt' && x.durum === 'Pasif', 'gönüllü silinince kişisel bilgi gider, kayıt sayımlarda kalır'); }
     const u = (await mkUser('gonulsuz1', 'Çağrı merkezi')).q; assert.equal((await u('GET', '/api/gonullu')).s, 403);
   });
   await t('kalıcı eser: proje, sayaç, belge, not, web API, yetki', async () => {
@@ -346,7 +347,8 @@ server.listen(0, async () => {
     const k = (await admin('POST', '/api/entegre/anahtar', { ad: 'Eser sitesi' })).j.anahtar, hd = { 'x-api-key': k };
     assert.equal((await fetch(base + '/api/dis/kalici-eser')).status, 401); const pj = await (await fetch(base + '/api/dis/kalici-eser', { headers: hd })).json(); assert.equal(pj.length, 1); assert.equal(pj[0].insaat_yuzde, 15); assert.ok(!('sorumlu_tel' in pj[0]));
     const u = (await mkUser('eserci1', 'Çağrı merkezi')).q; assert.equal((await u('GET', '/api/eser')).s, 403);
-    assert.equal((await admin('DELETE', '/api/eser/' + c.j.id)).s, 200); assert.equal((await admin('GET', '/api/eser')).j.liste.length, 0);
+    assert.equal((await admin('DELETE', '/api/eser/' + c.j.id)).s, 409, 'bağış toplanmış proje silinemez (geçmiş rapor korunur)'); assert.equal((await admin('GET', '/api/eser')).j.liste.length, 1);
+    { const bos = await admin('POST', '/api/eser', { ...ba, ad: 'Boş proje', tur_ids: [], elle: 0 }); assert.equal(bos.s, 201, JSON.stringify(bos.j)); assert.equal((await admin('DELETE', '/api/eser/' + bos.j.id)).s, 200); }
   });
   await t('sponsorluk: öğrenci kartı, sponsor atama, taksit/gecikme, hatırlatma, kart linki, sertifika', async () => {
     const ob = { ad: 'Ahmed Musa', cinsiyet: 'Erkek', ulke: 'Çad', bolge: 'Ndjamena', dogum: '2012-03-04', yetim: true, hafiz: true, yetim_durum: 'Babasız (yetim)', okul_tur: 'Medrese', okul_ad: 'Nur Medresesi', cuz: 5, yer: 'Dernek' };
@@ -640,6 +642,15 @@ server.listen(0, async () => {
       const k2 = /\/sertifika\/([A-Za-z0-9_-]+)/.exec((await admin('GET', '/api/sms')).j.find(x => x.mesaj.includes('Renk Deneme')).mesaj); assert.ok(k2);
       assert.ok((await (await fetch(base + '/sertifika/' + k2[1])).text()).includes('#336699'), 'sertifika kurum rengiyle'); }
     assert.equal((await fetch(base + '/sertifika/onizleme?t=modern')).status, 404, 'önizleme girişsiz açılmaz');
+  });
+  await t('geriye dönük raporlama: kategori/alt kategori adı değişince geçmiş yeni adı görür, kullanıcı silinmez yalnızca pasife alınır', async () => {
+    assert.equal((await admin('PUT', '/api/kategoriler', { eski: 'Test Kategori', yeni: 'Test Kategori Yeni' })).s, 200);
+    const T = (await admin('GET', '/api/turler')).j; assert.ok(T.turler.some(x => x.kat === 'Test Kategori Yeni' && x.ad === 'Sertifikalı Fidan') && !T.turler.some(x => x.kat === 'Test Kategori'), 'eski türler yeni kategoriye taşındı');
+    const tid = await turId('Sertifikalı Fidan'); assert.equal((await admin('PUT', '/api/turler/' + tid, { ad: 'Sertifikalı Fidan 2' })).s, 200);
+    const rp = (await admin('GET', '/api/analiz/tur')).j; assert.ok(JSON.stringify(rp).includes('Test Kategori Yeni'), 'raporlar yeni adı gösterir'); assert.ok(!JSON.stringify(rp).includes('"Test Kategori"'));
+    const u = (await mkUser('pasifrapor', 'Çağrı merkezi')).q; const us = (await admin('GET', '/api/users')).j.find(x => x.kadi === 'pasifrapor');
+    assert.equal((await admin('DELETE', '/api/users/' + us.id)).s, 405, 'kullanıcı silinmez');
+    assert.equal((await admin('PUT', '/api/users/' + us.id, { aktif: false })).s, 200); assert.ok((await admin('GET', '/api/users')).j.find(x => x.kadi === 'pasifrapor' && !x.aktif), 'pasif kullanıcı listede kalır');
   });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });
