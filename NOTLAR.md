@@ -278,3 +278,9 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - Kurban ve videolu PDF'lerde üst bölüm: solda TR bayrağı, ortada dernek logosu ve adı, sağda seçilen ülkenin bayrağı; altında büyük tür başlığı (örn. KURANI KERİM) ve küçük bilgi satırı.
 - Videolu bağış listesinde "Sayfada kaç isim" serbest girilir (10–120); satır, sütun, sayfa yönü ve yazı boyu otomatik, taşma yok.
 - Küçük ekler ("SMS gönder" kutusu) gerekmiyor, kapatıldı.
+
+## Sahadan WhatsApp ile otomatik video akışı (21 Kas, sonra bakılacak)
+- Gördüğümüz akış: kurban PDF'i WhatsApp'tan sahadaki partnere otomatik gider (PDF'te listeye özel karekod/kod), saha videoyu aynı hatta geri gönderir, sistem videoyu alıp listeyle eşleştirir, yükler ve bağışçıya bağlantıyı gönderir.
+- Eşleştirme yolları: (1) saha PDF mesajına "yanıtla" ile gönderirse zincir listeyi belli eder (en sağlam), (2) açıklamadaki kod, (3) videodan kare alıp karekod okuma (kaliteye bağlı, en zayıf).
+- Gerekenler: WhatsApp Business API (Meta işletme doğrulaması), gelen mesaj alıcı ucu, gerçek video yükleme ve depolama, PDF'e makine için küçük karekod.
+- Önerilen sıra: (1) panelden elle video yükle + listeyle eşleştir, (2) PDF'e küçük karekod, (3) WhatsApp API. Otomatik gönderim yerine eşleşen video önce "Video kontrolü"ne düşsün, onaylayan kişi göndersin (yanlış videonun bağışçıya gitmesi riski).
