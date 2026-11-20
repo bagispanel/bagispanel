@@ -229,3 +229,13 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - Ortamda Türkçe sesli okuma aracı yok: seslendirmeyi dışarıdan (ses aracı ya da seslendirmen) ekleriz, ben videoya oturturum.
 - Senaryo metinleri aynı zamanda yardım kütüphanesinin içeriği olur.
 - Pilot önerisi: Kurban Organizasyonu (bağıştan videolu mesaja kadar akış).
+
+## Her dernek için sunucu / kurulum / boyut (karar verilecek)
+- Soru: her derneğin sistemini nasıl tutacağız? Bizim için kurulum ve bakım basit olmalı; hız ve boyut sınırları net olmalı.
+- Seçenekler: (a) her derneğe ayrı küçük sunucu/kurulum (izole, KVKK için temiz, yedek ve silme kolay; maliyet ve bakım dernek sayısıyla artar), (b) tek sunucuda çok kiracılı yapı (ucuz, ama veri ayrımı ve hata riski daha yüksek). Başlangıç için (a) + tek komutla kurulum önerilir.
+- Kurulum: derneğe yeni örnek açma tek komut/şablon olsun (alan adı, kurum bilgisi, ilk yönetici, demo verisi kapalı).
+- Veritabanı: şimdi SQLite dosyası; canlı için PostgreSQL ya da düzenli, şifreli yedekli SQLite kararı.
+- Dosya/video depolama: şu an sunucu diskinde; video 1,8 MB, foto otomatik küçültülür, PDF 1,5 MB. Gerçek video yükleme için ayrı depolama (bulut nesne depolama) ve dernek başına kota gerekir.
+- Sınırlar (taslak): dernek başına disk kotası, tek dosya boyutu, aylık SMS/WhatsApp kullanımı, kullanıcı sayısı; pakete bağlanır ve ekranda kalan kota gösterilir.
+- Hız: bağış listeleri ve raporlar sayfalı/süzgeçli; büyük Excel içe aktarma ve toplu işlemler arka planda; yoğun dönem (kurban) için yük testi.
+- İzleme: sağlık kontrolü, hata kaydı, yedek doğrulama, güncelleme planı (tüm derneklere aynı sürüm).
