@@ -264,7 +264,7 @@ CREATE TABLE IF NOT EXISTS kn_sayac(k TEXT PRIMARY KEY, n INTEGER NOT NULL);`);
     if (f('kanal') === 'CRM') W.push("g.kaynak='Manuel (CRM)'"); else if (f('kanal') === 'Web sitesi / dış kaynak') W.push("g.kaynak<>'Manuel (CRM)'");
     if (f('sorumlu')) { W.push('g.kullanici=?'); A_.push(f('sorumlu')); }
     const base = SEL + (W.length ? ' WHERE ' + W.join(' AND ') : ''), d = f('durum');
-    const lim = Math.min(5000, +p.get('lim') || 1000);
+    const lim = Math.min(50000, +p.get('lim') || 1000);
     const L = db.prepare(`SELECT * FROM (${base}) ${d ? 'WHERE durum=?' : ''} ORDER BY id DESC LIMIT ${lim}`).all(...A_, ...(d ? [d] : [])).map(bagisSatir);
     const G = (col, extra) => db.prepare(`SELECT ${col} k, durum, COUNT(*) n, SUM(tl) s FROM (${base}) GROUP BY ${col}, durum`).all(...A_);
     const S = {}, N = {}; db.prepare(`SELECT durum, COUNT(*) n, SUM(tl) s FROM (${base}) GROUP BY durum`).all(...A_).forEach(x => { S[x.durum] = x.s; N[x.durum] = x.n; });

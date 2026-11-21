@@ -28,7 +28,7 @@ module.exports = function (ctx) {
   const dt = (v, ad) => { v = String(v || '').trim(); if (!v) return null; if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || isNaN(new Date(v))) throw new Err(400, ad + ' geçersiz.'); return v; };
   const yasHesap = (o) => { if (o.dogum) { const b = new Date(o.dogum), n = new Date(); let y = n.getFullYear() - b.getFullYear(); if (n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) y--; return y; } return o.yas_elle == null ? null : o.yas_elle; };
   const dernek = () => ctx.h.getA('dernek_adi', '[Dernek adı]');
-  const baseUrl = (req) => { const p = req.headers['x-forwarded-proto'] || 'http'; return `${p}://${req.headers.host}`; };
+  const baseUrl = (req) => { const h = req && req.headers && req.headers.host; if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL.replace(/\/$/, ''); if (!h || (h === 'localhost' && ctx.sonHost)) return ctx.sonHost || 'http://localhost'; const p = req.headers['x-forwarded-proto'] || 'http'; return `${p}://${h}`; }; // zamanlayıcı (istek yok) en son görülen adresi kullanır
   // ---- ödeme/taksit hesabı
   function hesap(s, now) {
     now = now || today(); const od = db.prepare('SELECT COALESCE(SUM(tutar),0) t, COUNT(*) n, MAX(tarih) son FROM sp_odeme WHERE sponsorluk_id=?').get(s.id);

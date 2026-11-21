@@ -64,6 +64,6 @@ document.addEventListener('submit',async ev=>{const f=ev.target.closest('[data-f
   else{body.kadi=d.kadi;body.sifre=d.sifre;const r=await api('POST','/api/users',body);ST.foto=null;ST.users=await api('GET','/api/users');ST.birimler=await api('GET','/api/birimler');const y=await api('GET','/api/users/'+r.id+'/yetki');ST.uy={id:r.id,...y};toast('Kullanıcı eklendi. Şimdi isterseniz kişiye özel yetki ekleyip çıkarabilirsiniz.');draw()}return}
  if(k=='birim'){await api('POST','/api/birimler',{ad:d.ad,kopya_id:+d.kopya_id});toast('Birim eklendi.');ST.birimler=await api('GET','/api/birimler');draw()}
 }catch(e){toast(e.message,1)}});
-boot();
+(document.readyState==="complete"?boot:()=>addEventListener("load",boot))(); // tüm m-*.js dosyaları yüklendikten sonra başla
 
 document.addEventListener('click',e=>{const s=document.querySelector('.side.o');if(s&&!e.target.closest('.side')&&!e.target.closest('[data-a=mnu]'))s.classList.remove('o')});
