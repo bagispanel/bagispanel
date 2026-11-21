@@ -2,7 +2,7 @@
 /* Bağış modülü: Bağış al, Bekleyen onaylar, Raporlar, Bağışçılar, SMS, Şablonlar */
 const TR=n=>Number(n||0).toLocaleString('tr-TR',{maximumFractionDigits:2}),V=i=>{const e=document.getElementById(i);return e?e.value:''},CK=i=>{const e=document.getElementById(i);return !!(e&&e.checked)};
 const PC=[['+90','TR','🇹🇷'],['+49','DE','🇩🇪'],['+31','NL','🇳🇱'],['+33','FR','🇫🇷'],['+44','UK','🇬🇧'],['+32','BE','🇧🇪'],['+43','AT','🇦🇹'],['+41','CH','🇨🇭'],['+1','ABD/CA','🇺🇸'],['+966','SA','🇸🇦'],['+971','AE','🇦🇪'],['+974','QA','🇶🇦'],['+965','KW','🇰🇼'],['+994','AZ','🇦🇿'],['+7','RU','🇷🇺'],['+0','Diğer','🌐']];
-const RATE={TL:1,USD:35,EUR:38},SEBEP=['Hatalı giriş','Mükerrer (çift) kayıt','Bağışçı vazgeçti','Ödeme gelmedi','Diğer'];
+const RATE={TL:1,get USD(){return KURX.USD||35},get EUR(){return KURX.EUR||38}},SEBEP=['Hatalı giriş','Mükerrer (çift) kayıt','Bağışçı vazgeçti','Ödeme gelmedi','Diğer'];
 const opts=(a,v)=>a.map(x=>{const [k,l]=Array.isArray(x)?x:[x,x];return `<option value="${esc(k)}"${k==v?' selected':''}>${esc(l)}</option>`}).join('');
 const sm=(a,v,l,c)=>`<button class="btn ${c||'l'} sm" style="padding:4px 10px" data-a="${a}" data-v="${esc(v)}">${l}</button>`;
 const tTur=id=>((ST.tr||{}).turler||[]).find(t=>t.id==id)||{};

@@ -284,3 +284,9 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - Eşleştirme yolları: (1) saha PDF mesajına "yanıtla" ile gönderirse zincir listeyi belli eder (en sağlam), (2) açıklamadaki kod, (3) videodan kare alıp karekod okuma (kaliteye bağlı, en zayıf).
 - Gerekenler: WhatsApp Business API (Meta işletme doğrulaması), gelen mesaj alıcı ucu, gerçek video yükleme ve depolama, PDF'e makine için küçük karekod.
 - Önerilen sıra: (1) panelden elle video yükle + listeyle eşleştir, (2) PDF'e küçük karekod, (3) WhatsApp API. Otomatik gönderim yerine eşleşen video önce "Video kontrolü"ne düşsün, onaylayan kişi göndersin (yanlış videonun bağışçıya gitmesi riski).
+
+## Döviz kuru (21 Kas, yapıldı)
+- Eskiden kur kodda sabitti (USD 35, EUR 38). Şimdi TCMB günlük kuru (döviz alış) açılışta ve 6 saatte bir otomatik çekilir; Kurum Bilgileri'nde kart: güncel kur, kaynak, tarih, "Şimdi güncelle", "Elle belirle", "Otomatiğe dön". Çekilemezse eski kur korunur ve hata görünür.
+- Her bağış kendi anındaki TL karşılığını saklar; kur değişince eski kayıtlar değişmez.
+- Canlıda sunucunun tcmb.gov.tr'ye erişebildiği ilk çalıştırmada doğrulanmalı (geliştirme ortamında ağ kapalıydı; testler sahte sunucuyla).
+- Kalıcı eser projesinin kuru projeye özel elle girilir (otomatik değil).

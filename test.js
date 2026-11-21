@@ -1,5 +1,5 @@
 // Otomatik test: geçici veri klasöründe sunucuyu açar, yetki ve güvenlik kurallarını dener.
-process.env.DATA_DIR = require('fs').mkdtempSync(require('os').tmpdir() + '/bp-'); process.env.ADMIN_PASSWORD = 'Gecici123';
+process.env.DATA_DIR = require('fs').mkdtempSync(require('os').tmpdir() + '/bp-'); process.env.ADMIN_PASSWORD = 'Gecici123'; process.env.KUR_OTO = '0';
 const { server } = require('./server');
 const assert = require('assert');
 let fails = 0;
@@ -651,6 +651,18 @@ server.listen(0, async () => {
     const u = (await mkUser('pasifrapor', 'Çağrı merkezi')).q; const us = (await admin('GET', '/api/users')).j.find(x => x.kadi === 'pasifrapor');
     assert.equal((await admin('DELETE', '/api/users/' + us.id)).s, 405, 'kullanıcı silinmez');
     assert.equal((await admin('PUT', '/api/users/' + us.id, { aktif: false })).s, 200); assert.ok((await admin('GET', '/api/users')).j.find(x => x.kadi === 'pasifrapor' && !x.aktif), 'pasif kullanıcı listede kalır');
+  });
+  await t('döviz kuru: varsayılan, elle belirleme, TCMB otomatik çekme, geçersiz değer', async () => {
+    const k0 = (await admin('GET', '/api/kur')).j; assert.equal(k0.USD, 35); assert.equal(k0.EUR, 38);
+    assert.equal((await admin('PUT', '/api/kur', { USD: 'abc', EUR: 38 })).s, 400);
+    const e = await admin('PUT', '/api/kur', { USD: 40.5, EUR: 44 }); assert.equal(e.s, 200); assert.equal(e.j.elle, true); assert.equal((await admin('GET', '/api/kur')).j.USD, 40.5);
+    assert.equal((await admin('POST', '/api/kur/yenile', {})).s, 409, 'elle kur açıkken otomatik yenilenmez');
+    const xml = '<?xml version="1.0"?><Tarih_Date Tarih="20.11.2026" Date="11/20/2026"><Currency CrossOrder="0" Kod="USD" CurrencyCode="USD"><ForexBuying>42.1234</ForexBuying><ForexSelling>42.2</ForexSelling></Currency><Currency Kod="EUR" CurrencyCode="EUR"><ForexBuying>45,5</ForexBuying></Currency></Tarih_Date>';
+    const mock = require('http').createServer((q, r) => { r.setHeader('content-type', 'text/xml'); r.end(xml); }); await new Promise(ok => mock.listen(0, ok)); process.env.TCMB_URL = 'http://127.0.0.1:' + mock.address().port + '/today.xml';
+    const o = await admin('PUT', '/api/kur', { otomatik: true }); assert.equal(o.s, 200, JSON.stringify(o.j)); assert.equal(o.j.USD, 42.1234); assert.equal(o.j.EUR, 45.5); assert.equal(o.j.tarih, '2026-11-20'); assert.equal(o.j.elle, false); assert.equal(o.j.hata, '');
+    mock.close(); process.env.TCMB_URL = 'http://127.0.0.1:1/yok.xml';
+    const y = await admin('POST', '/api/kur/yenile', {}); assert.equal(y.s, 502); const k2 = (await admin('GET', '/api/kur')).j; assert.equal(k2.USD, 42.1234, 'çekilemezse eski kur korunur'); assert.ok(k2.hata);
+    await admin('PUT', '/api/kur', { USD: 35, EUR: 38 }); delete process.env.TCMB_URL;
   });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });
