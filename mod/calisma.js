@@ -36,16 +36,18 @@ CREATE INDEX IF NOT EXISTS ix_gorev_a ON gorev(atanan_id, durum);
 
   // ---- Görev Takibi ----
   const DUR = ['Açık', 'Devam ediyor', 'Tamamlandı'], ONC = ['Düşük', 'Normal', 'Yüksek'];
+  try { db.exec('ALTER TABLE gorev ADD COLUMN bagisci_id INTEGER'); } catch { /* var */ }
   R('GET', '/api/gorev', 'auth', null, async (c) => {
     const k = new URL(c.req.url, 'http://x').searchParams.get('kutu') === 'atadigim' ? 'atadigim' : 'bana';
-    const q = `SELECT g.*, a.ad atanan, o.ad olusturan FROM gorev g JOIN users a ON a.id=g.atanan_id JOIN users o ON o.id=g.olusturan_id WHERE ${k === 'bana' ? 'g.atanan_id=?' : 'g.olusturan_id=? AND g.atanan_id<>g.olusturan_id'} ORDER BY (g.durum='Tamamlandı'), CASE g.oncelik WHEN 'Yüksek' THEN 0 WHEN 'Normal' THEN 1 ELSE 2 END, COALESCE(g.son_tarih,'9999'), g.id DESC LIMIT 300`;
+    const q = `SELECT g.*, a.ad atanan, o.ad olusturan, (SELECT ad FROM bagiscilar WHERE id=g.bagisci_id) bagisci FROM gorev g JOIN users a ON a.id=g.atanan_id JOIN users o ON o.id=g.olusturan_id WHERE ${k === 'bana' ? 'g.atanan_id=?' : 'g.olusturan_id=? AND g.atanan_id<>g.olusturan_id'} ORDER BY (g.durum='Tamamlandı'), CASE g.oncelik WHEN 'Yüksek' THEN 0 WHEN 'Normal' THEN 1 ELSE 2 END, COALESCE(g.son_tarih,'9999'), g.id DESC LIMIT 300`;
     return [200, db.prepare(q).all(c.user.id)];
   });
   R('POST', '/api/gorev', 'auth', null, async (c) => {
     const b = c.body || {}, baslik = str(b.baslik, 140); if (!baslik) throw new Err(400, 'Görev başlığını yazın.');
     const atanan = b.atanan_id ? kisi(b.atanan_id).id : c.user.id, st = String(b.son_tarih || ''); if (st && !/^\d{4}-\d{2}-\d{2}$/.test(st)) throw new Err(400, 'Tarih geçersiz.');
     const onc = ONC.includes(b.oncelik) ? b.oncelik : 'Normal';
-    const id = +db.prepare('INSERT INTO gorev(baslik,aciklama,olusturan_id,atanan_id,son_tarih,oncelik) VALUES(?,?,?,?,?,?)').run(baslik, str(b.aciklama, 1000) || null, c.user.id, atanan, st || null, onc).lastInsertRowid;
+    let bid = null; if (b.bagisci_id) { const x = db.prepare('SELECT id FROM bagiscilar WHERE id=?').get(+b.bagisci_id); if (!x) throw new Err(404, 'Bağışçı bulunamadı.'); bid = x.id; }
+    const id = +db.prepare('INSERT INTO gorev(baslik,aciklama,olusturan_id,atanan_id,son_tarih,oncelik,bagisci_id) VALUES(?,?,?,?,?,?,?)').run(baslik, str(b.aciklama, 1000) || null, c.user.id, atanan, st || null, onc, bid).lastInsertRowid;
     if (atanan !== c.user.id) db.prepare('INSERT INTO ic_mesaj(gonderen_id,alici_id,konu,govde) VALUES(?,?,?,?)').run(c.user.id, atanan, 'Yeni görev: ' + baslik, `${c.user.ad} size bir görev atadı.${st ? ' Son tarih: ' + st + '.' : ''}\n\nGörev Takibi sayfasından durumunu güncelleyebilirsiniz.`);
     return [200, { id }];
   });

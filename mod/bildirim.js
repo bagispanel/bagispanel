@@ -17,6 +17,7 @@ module.exports = function (ctx) {
     }
     sayac.mesaj = n1('SELECT COUNT(*) n FROM ic_mesaj WHERE alici_id=? AND okundu=0 AND a_sil=0', c.user.id).n;
     { const m = n1('SELECT m.*, u.ad gad FROM ic_mesaj m LEFT JOIN users u ON u.id=m.gonderen_id WHERE m.alici_id=? AND m.a_sil=0 ORDER BY m.id DESC LIMIT 1', c.user.id); if (m.id) son.mesaj = { id: m.id, baslik: 'Mesaj: ' + (m.gad || ''), ozet: kisa(m.konu, 90), git: 'mesaj' }; }
+    sayac.gorevvade = n1("SELECT COUNT(*) n FROM gorev WHERE atanan_id=? AND durum<>'Tamamlandı' AND son_tarih IS NOT NULL AND son_tarih<=?", c.user.id, bugun()).n;
     sayac.gorev = n1("SELECT COUNT(*) n FROM gorev WHERE atanan_id=? AND durum<>'Tamamlandı'", c.user.id).n;
     { const m = n1('SELECT * FROM gorev WHERE atanan_id=? AND olusturan_id<>? ORDER BY id DESC LIMIT 1', c.user.id, c.user.id); if (m.id) son.gorev = { id: m.id, baslik: 'Yeni görev', ozet: kisa(m.baslik, 90), git: 'gorev' }; }
     if (g('bekleyen')) sayac.bekleyen = n1("SELECT COUNT(*) n FROM bagislar WHERE durum='Bekleyen'").n;

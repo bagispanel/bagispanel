@@ -297,3 +297,10 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - Güvenlik denendi: başlıklar (CSP, nosniff, DENY), çerez HttpOnly+SameSite, yanlış şifre 5 denemeden sonra 429, CSRF başlığı yoksa 403, veritabanı/kod dosyaları dışarıdan okunamıyor.
 - UYARI: Render test ortamı ücretsiz plandır, DEMO=1 ve KALICI DİSK YOKTUR. Orada girilen gerçek kurum bilgisi/veri yeniden başlatmada silinir. Gerçek kullanım için VPS + Docker + otomatik yedek (KURULUM.md) şart.
 - Test edilmeyenler: gerçek SMS/WhatsApp, TCMB kuru (canlıda ilk çalıştırmada bakılacak), gerçek telefon/yazıcı çıktısı, farklı rollerle tüm ekranlar elle.
+
+## Yeni modüller (21 Kas): Kumbara, Yedekleme, Hatırlatma, Rehber
+- **Kumbara Yönetimi** (Saha Organizasyonu): kumbara kaydı (KM-0001…), yer/tür/yetkili, sayım girişi (TL/USD/EUR, TL karşılığı sayım günü kuruyla). Silme yok: kumbara Pasif olur, yanlış sayım nedenle iptal edilir (raporda üstü çizili kalır). 60+ gündür sayılmayan uyarısı. Henüz bağış raporlarına dahil DEĞİL ve QR yok; ileride istenirse eklenir.
+- **Yedekleme** (Sistem Ayarları): durum (düzenli/eski/yok), "Şimdi yedek al", liste, indirme (denetim kaydı). Otomatik yedek sunucuda backup.js --loop ile; yedeği sunucu dışına da kopyalamak şart (KURULUM.md).
+- **Hatırlatma**: Görev Takibi'ne bağışçı bağlantısı (gorev.bagisci_id); bağışçı kartında "Hatırlat" düğmesi; vadesi gelen/geciken görevler zilde ("gorevvade").
+- **Yardım ve Rehber** (Profilim, herkese açık): aranabilir "Nasıl yaparım?" adımları (public/m-rehber.js, RH dizisi). Yeni modül eklenince buraya da girdi eklenmeli.
+- Tanıtım sitesi konumlandırma: "tek panelde bağış + kurban/su kuyusu videolu organizasyon + sponsorluk + gönüllü + WhatsApp/SMS, geriye dönük tam raporlama (hiçbir şey silinmez)".

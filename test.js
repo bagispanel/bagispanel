@@ -664,5 +664,33 @@ server.listen(0, async () => {
     const y = await admin('POST', '/api/kur/yenile', {}); assert.equal(y.s, 502); const k2 = (await admin('GET', '/api/kur')).j; assert.equal(k2.USD, 42.1234, 'çekilemezse eski kur korunur'); assert.ok(k2.hata);
     await admin('PUT', '/api/kur', { USD: 35, EUR: 38 }); delete process.env.TCMB_URL;
   });
+  await t('kumbara: ekleme, sayım (döviz TL karşılığı), pasife alma, iptal (silinmez), yetki', async () => {
+    const e = await admin('POST', '/api/kumbara', { ad: 'Yıldız Market', tur: 'Esnaf', il: 'Konya', ilce: 'Karatay', yetkili: 'Ali Usta', tel: '0532 111 22 33', yerlesim: '2026-10-01' }); assert.equal(e.s, 201, JSON.stringify(e.j)); assert.match(e.j.kod, /^KM-\d{4}$/);
+    assert.equal((await admin('POST', '/api/kumbara', { ad: '' })).s, 400);
+    assert.equal((await admin('POST', '/api/kumbara/' + e.j.id + '/sayim', { tutar: '0' })).s, 400);
+    assert.equal((await admin('POST', '/api/kumbara/' + e.j.id + '/sayim', { tutar: 100, tarih: '2999-01-01' })).s, 400);
+    const s1 = await admin('POST', '/api/kumbara/' + e.j.id + '/sayim', { tutar: '1250,50', para: 'TL', tarih: '2026-11-01', sayan: 'Ayşe' }); assert.equal(s1.s, 201);
+    const s2 = await admin('POST', '/api/kumbara/' + e.j.id + '/sayim', { tutar: 10, para: 'USD', tarih: '2026-11-10' }); assert.equal(s2.s, 201);
+    let d = (await admin('GET', '/api/kumbara/' + e.j.id)).j; assert.equal(d.sayimlar.length, 2); const usd = (await admin('GET', '/api/kur')).j.USD; assert.ok(Math.abs(d.toplam - (1250.5 + 10 * usd)) < 0.01, 'toplam TL karşılığı');
+    assert.equal((await admin('PUT', '/api/kumbara/sayim/' + s2.j.id + '/iptal', {})).s, 400, 'neden şart');
+    assert.equal((await admin('PUT', '/api/kumbara/sayim/' + s2.j.id + '/iptal', { neden: 'Yanlış girildi' })).s, 200); d = (await admin('GET', '/api/kumbara/' + e.j.id)).j; assert.equal(d.sayimlar.length, 2, 'iptal edilen kayıt silinmez'); assert.equal(d.toplam, 1250.5);
+    assert.equal((await admin('PUT', '/api/kumbara/' + e.j.id, { durum: 'Pasif' })).s, 200); assert.equal((await admin('POST', '/api/kumbara/' + e.j.id + '/sayim', { tutar: 5 })).s, 409, 'pasif kumbaraya sayım girilmez');
+    const L = (await admin('GET', '/api/kumbara')).j; assert.ok(L.liste.some(k => k.id === e.j.id && k.durum === 'Pasif') && L.ozet.pasif >= 1, 'pasif kumbara listede kalır'); assert.equal((await admin('DELETE', '/api/kumbara/' + e.j.id)).s, 404);
+    const u = await mkUser('kumbarasiz', 'Çağrı merkezi'); assert.equal((await u.q('GET', '/api/kumbara')).s, 403);
+  });
+  await t('yedekleme: durum, şimdi yedek al, indirme, yetki', async () => {
+    const y0 = (await admin('GET', '/api/yedek')).j; assert.equal(y0.durum, 'yok');
+    const y1 = await admin('POST', '/api/yedek/al', {}); assert.equal(y1.s, 200, JSON.stringify(y1.j)); assert.equal(y1.j.durum, 'iyi'); assert.equal(y1.j.adet, 1); assert.match(y1.j.son.ad, /^bagispanel-\d{8}-\d{4}\.db\.gz$/);
+    const ind = await admin('GET', '/api/yedek/indir/' + y1.j.son.ad); assert.equal(ind.s, 200); assert.ok(Buffer.from(ind.j.dosya, 'base64').slice(0, 2).equals(Buffer.from([0x1f, 0x8b])), 'gzip dosyası');
+    assert.equal((await admin('GET', '/api/yedek/indir/..%2F..%2Fetc%2Fpasswd')).s, 404);
+    const u = await mkUser('yedeksiz', 'Çağrı merkezi'); assert.equal((await u.q('GET', '/api/yedek')).s, 403); assert.equal((await u.q('GET', '/api/yedek/indir/' + y1.j.son.ad)).s, 403);
+  });
+  await t('hatırlatma: görev bağışçıya bağlanır, vadesi gelen zil sayacı', async () => {
+    const b = (await admin('POST', '/api/bagiscilar', { ad: 'Hatırlatma Bağışçısı', tel: '0533 900 00 01' })).j; assert.ok(b.id);
+    assert.equal((await admin('POST', '/api/gorev', { baslik: 'Ara', bagisci_id: 999999 })).s, 404);
+    const g = await admin('POST', '/api/gorev', { baslik: 'Ara: Hatırlatma Bağışçısı', bagisci_id: b.id, son_tarih: '2020-01-01' }); assert.equal(g.s, 200);
+    const L = (await admin('GET', '/api/gorev?kutu=bana')).j.find(x => x.id === g.j.id); assert.equal(L.bagisci, 'Hatırlatma Bağışçısı');
+    assert.ok((await admin('GET', '/api/bildirim')).j.sayac.gorevvade >= 1);
+  });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });

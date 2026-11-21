@@ -1,5 +1,5 @@
 // Bildirimler: yeni WhatsApp, gelen arama, mesaj ve görevler her sayfada görünür (sunucu yetkiye göre süzer).
-const BNL={twa:['WhatsApp: okunmamış mesaj','twa'],cagri:['Bugün cevapsız gelen arama','cagri'],mesaj:['Okunmamış iç mesaj','mesaj'],gorev:['Size atanmış açık görev','gorev'],bekleyen:['Onay bekleyen bağış','bekleyen'],bhar:['Eşleştirme bekleyen banka hareketi','bhar']};
+const BNL={twa:['WhatsApp: okunmamış mesaj','twa'],cagri:['Bugün cevapsız gelen arama','cagri'],mesaj:['Okunmamış iç mesaj','mesaj'],gorevvade:['Zamanı gelen / geciken görev ve hatırlatma','gorev'],gorev:['Size atanmış açık görev','gorev'],bekleyen:['Onay bekleyen bağış','bekleyen'],bhar:['Eşleştirme bekleyen banka hareketi','bhar']};
 let BN={son:null,t:null,acik:false};
 const bnN=k=>((ST.bn&&ST.bn.sayac)||{})[k]||0;
 const bnBadge=k=>bnN(k)>0?`<span class="bd" style="margin-left:auto" data-bk="${k}">${bnN(k)}</span>`:'';

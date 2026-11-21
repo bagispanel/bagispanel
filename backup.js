@@ -14,4 +14,5 @@ function once() {
   const all = fs.readdirSync(out).filter(f => f.endsWith('.gz')).sort(); all.slice(0, Math.max(0, all.length - KEEP)).forEach(f => fs.unlinkSync(path.join(out, f)));
   console.log(new Date().toISOString(), 'yedek alındı:', name + '.db.gz', `(${all.length} yedek)`);
 }
-if (process.argv.includes('--loop')) { const run = () => { try { once(); } catch (e) { console.error('YEDEK HATASI', e.message); } }; setTimeout(run, 60000); setInterval(run, 6 * 3600 * 1000); } else once();
+if (require.main !== module) module.exports = { once, out, KEEP }; // panelden "Şimdi yedek al" için
+else if (process.argv.includes('--loop')) { const run = () => { try { once(); } catch (e) { console.error('YEDEK HATASI', e.message); } }; setTimeout(run, 60000); setInterval(run, 6 * 3600 * 1000); } else once();
