@@ -290,3 +290,10 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - Her bağış kendi anındaki TL karşılığını saklar; kur değişince eski kayıtlar değişmez.
 - Canlıda sunucunun tcmb.gov.tr'ye erişebildiği ilk çalıştırmada doğrulanmalı (geliştirme ortamında ağ kapalıydı; testler sahte sunucuyla).
 - Kalıcı eser projesinin kuru projeye özel elle girilir (otomatik değil).
+
+## Denetim (21 Kas akşam)
+- Temiz kurulumda 42 ekran, demo veriyle 42 ekran, 42 bin bağışlı veriyle hız (0,1–0,2 sn; CSV 42 bin satır 1,5 sn) tarandı.
+- Bulunup düzeltilenler: Şubeler ↔ Mesaj Şablonları ekran çökmesi (ortak hafıza adı), açılışta nadir "bnKur tanımsız" hatası (betik yükleme yarışı), CSV indirmede sessiz 5000 sınırı (artık 50 bin), sponsor otomatik hatırlatma SMS'inde "localhost/undefined" bağlantı adresi (artık son görülen adres ya da PUBLIC_URL).
+- Güvenlik denendi: başlıklar (CSP, nosniff, DENY), çerez HttpOnly+SameSite, yanlış şifre 5 denemeden sonra 429, CSRF başlığı yoksa 403, veritabanı/kod dosyaları dışarıdan okunamıyor.
+- UYARI: Render test ortamı ücretsiz plandır, DEMO=1 ve KALICI DİSK YOKTUR. Orada girilen gerçek kurum bilgisi/veri yeniden başlatmada silinir. Gerçek kullanım için VPS + Docker + otomatik yedek (KURULUM.md) şart.
+- Test edilmeyenler: gerçek SMS/WhatsApp, TCMB kuru (canlıda ilk çalıştırmada bakılacak), gerçek telefon/yazıcı çıktısı, farklı rollerle tüm ekranlar elle.
