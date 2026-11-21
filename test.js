@@ -685,6 +685,29 @@ server.listen(0, async () => {
     assert.equal((await admin('GET', '/api/yedek/indir/..%2F..%2Fetc%2Fpasswd')).s, 404);
     const u = await mkUser('yedeksiz', 'Çağrı merkezi'); assert.equal((await u.q('GET', '/api/yedek')).s, 403); assert.equal((await u.q('GET', '/api/yedek/indir/' + y1.j.son.ad)).s, 403);
   });
+  await t('video yükleme: akış, doğrulama, izleme sayfası, sınır, yetki', async () => {
+    const lg = await fetch(base + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-BP': '1' }, body: JSON.stringify({ kadi: 'admin', sifre: 'Yonetici2027' }) }), ck = lg.headers.get('set-cookie').split(';')[0];
+    const up = (buf, ad, extra) => fetch(base + '/api/org/video?ad=' + encodeURIComponent(ad), { method: 'POST', headers: { 'X-BP': '1', cookie: ck, 'Content-Type': 'application/octet-stream', ...(extra || {}) }, body: buf });
+    const mp4 = Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypisom'), Buffer.alloc(2000, 7)]);
+    assert.equal((await up(Buffer.from('bu bir video degil'), 'x.mp4')).status, 400);
+    assert.equal((await fetch(base + '/api/org/video?ad=a.mp4', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: mp4 })).status, 403);
+    const r = await up(mp4, 'kurban1.mp4'), j = await r.json(); assert.equal(r.status, 200, JSON.stringify(j)); assert.equal(j.ref, 'vid:' + j.id);
+    const ps = await fetch(base + '/api/org/video/' + j.id, { headers: { cookie: ck, range: 'bytes=0-9' } }); assert.equal(ps.status, 206); assert.equal(ps.headers.get('content-type'), 'video/mp4');
+    assert.equal((await fetch(base + '/api/org/video/' + j.id)).status, 401);
+    const k = await turId('Adak · küçükbaş'); const b = await bag({ tur_id: k, tel: '541 300 77 01', ad: 'Video Sahibi' }); assert.equal(b.s, 201);
+    const u = (await admin('GET', '/api/org/kurban?q=Video Sahibi')).j.liste[0];
+    assert.equal((await admin('POST', '/api/org/islem', { a: 'c', ids: [u.id], ulke: 'Çad', partner: 'Test Dernek' })).s, 200);
+    assert.equal((await admin('POST', '/api/org/islem', { a: 'k', ids: [u.id] })).s, 200);
+    assert.equal((await admin('POST', '/api/org/islem', { a: 'v', ids: [u.id], video: j.ref })).s, 200);
+    const u2 = (await admin('GET', '/api/org/kurban?q=Video Sahibi')).j.liste[0]; assert.equal(u2.vid.yuklu, true); assert.equal(u2.vid.ad, 'kurban1.mp4');
+    assert.equal((await admin('POST', '/api/org/islem', { a: 'g', ids: [u.id] })).s, 200);
+    const sms = (await admin('GET', '/api/sms')).j.find(x => x.sablon === 'video' && /izle\.html\?t=/.test(x.mesaj || x.metin || JSON.stringify(x))); assert.ok(sms, 'SMS izleme bağlantısı içermeli');
+    const tk = /izle\.html\?t=([\w-]+)/.exec(JSON.stringify(sms))[1];
+    const pg = await (await fetch(base + '/api/izle/' + tk)).json(); assert.equal(pg.ad, 'Video Sahibi'); assert.equal(pg.src, '/api/izle/' + tk + '/dosya');
+    const fl = await fetch(base + pg.src, { headers: { range: 'bytes=4-7' } }); assert.equal(fl.status, 206); assert.equal(Buffer.from(await fl.arrayBuffer()).toString(), 'ftyp');
+    assert.equal((await fetch(base + '/api/izle/yanlisjeton123')).status, 404); assert.equal((await fetch(base + '/api/izle/' + tk + '/../x')).status === 200, false);
+    assert.ok(JSON.stringify((await admin('GET', '/api/audit')).j).includes('video_yukle'));
+  });
   await t('hatırlatma: görev bağışçıya bağlanır, vadesi gelen zil sayacı', async () => {
     const b = (await admin('POST', '/api/bagiscilar', { ad: 'Hatırlatma Bağışçısı', tel: '0533 900 00 01' })).j; assert.ok(b.id);
     assert.equal((await admin('POST', '/api/gorev', { baslik: 'Ara', bagisci_id: 999999 })).s, 404);

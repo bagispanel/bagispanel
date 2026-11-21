@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
     const rows = db.prepare('SELECT u.*, t.ad turad, t.kat, t.org, t.seri, t.kuyu kj FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org=? ORDER BY u.id DESC').all(org);
     const pays = db.prepare('SELECT p.*, g.no bno, g.bagisci_id, b.ad bad, b.tel btel FROM paylar p JOIN bagislar g ON g.id=p.bagis_id JOIN bagiscilar b ON b.id=g.bagisci_id WHERE p.birim_id IN (SELECT u.id FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org=?)').all(org);
     const by = {}; pays.forEach(x => (by[x.birim_id] = by[x.birim_id] || []).push(x));
-    let L = rows.map(u => { const k = u.kj ? JSON.parse(u.kj) : null; return { id: u.id, tur_id: u.tur_id, tur: u.turad, kat: u.kat, kod: u.kod, ad: u.ad, cap: u.cap, adim: u.adim, sts: sts(u), ulke: u.ulke, partner: u.partner, hayvan: u.hayvan, hedef: u.hedef, devir: u.devir, tas: u.tas, solo: !!u.solo, kn: u.kn, ks: u.ks, konum: u.konum, video: u.video, pl: u.pl, dt: dtGet(u), ni: org === 'Kurban' ? u.seri : (k ? k.tip : u.turad), bicim: k ? k.bicim : '', paylar: (by[u.id] || []).map(x => ({ bagisci_id: x.bagisci_id, id: x.id, no: x.no, ad: x.ad, tel: x.tel, tarih: x.tarih, tutar: x.tutar, vs: x.vs, bno: x.bno, bagisci: x.bad })), toplam: (by[u.id] || []).reduce((a, x) => a + (x.tutar || 0), 0) + (u.devir || 0) }; });
+    let L = rows.map(u => { const k = u.kj ? JSON.parse(u.kj) : null; return { id: u.id, tur_id: u.tur_id, tur: u.turad, kat: u.kat, kod: u.kod, ad: u.ad, cap: u.cap, adim: u.adim, sts: sts(u), ulke: u.ulke, partner: u.partner, hayvan: u.hayvan, hedef: u.hedef, devir: u.devir, tas: u.tas, solo: !!u.solo, kn: u.kn, ks: u.ks, konum: u.konum, video: u.video, vid: ctx.videoCoz(u.video), pl: u.pl, dt: dtGet(u), ni: org === 'Kurban' ? u.seri : (k ? k.tip : u.turad), bicim: k ? k.bicim : '', paylar: (by[u.id] || []).map(x => ({ bagisci_id: x.bagisci_id, id: x.id, no: x.no, ad: x.ad, tel: x.tel, tarih: x.tarih, tutar: x.tutar, vs: x.vs, bno: x.bno, bagisci: x.bad })), toplam: (by[u.id] || []).reduce((a, x) => a + (x.tutar || 0), 0) + (u.devir || 0) }; });
     const cnts = [0, 0, 0, 0, 0, 0]; L.forEach(u => cnts[u.sts]++);
     const f = (k, v) => v && v !== 'Tümü';
     if (f(0, p.get('hy')) && p.get('hy') === 'Büyükbaş') L = L.filter(u => u.cap > 1); if (p.get('hy') === 'Küçükbaş') L = L.filter(u => u.cap === 1);
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   }
   Object.entries(ORGS).forEach(([k, org]) => R('GET', '/api/org/' + k, MENU[org], 'g', async (c) => [200, yukle(org, new URL(c.req.url, 'http://x').searchParams)]));
 
-  function msgVars(u, s, t) { const dt = dtGet(u); return { ad: s.ad, tur: t.ad, sahip_no: s.no, ulke: u.ulke || '-', tarih: ctx.dstr(dt[3] || iso()), bno: s.bno || '-', kuyu_adi: u.ad || '', link: 'https://…/v/' + crypto.createHash('sha1').update(String(s.id)).digest('hex').slice(0, 8) }; }
+  function msgVars(u, s, t) { const dt = dtGet(u); return { ad: s.ad, tur: t.ad, sahip_no: s.no, ulke: u.ulke || '-', tarih: ctx.dstr(dt[3] || iso()), bno: s.bno || '-', kuyu_adi: u.ad || '', link: ctx.videoLink(u, s) || '[video bağlantısı]' }; }
   R('POST', '/api/org/islem', 'orgK|orgS|orgD', 'd', async (c) => {
     const a = c.body.a, ids = (Array.isArray(c.body.ids) ? c.body.ids : []).map(Number).filter(Boolean); if (!ids.length) throw new Err(400, 'Önce satır seçin.');
     return tx(() => {

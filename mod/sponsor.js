@@ -91,6 +91,7 @@ module.exports = function (ctx) {
   R('PUT', '/api/sp/medya/([0-9]+)/profil', 'spogr', 'd', async (c) => { const m = med(+c.m[1]); if (m.tip !== 'foto') throw new Err(400, 'Yalnızca fotoğraf profil olabilir.'); db.prepare('UPDATE sp_medya SET profil=0 WHERE ogrenci_id=?').run(m.ogrenci_id); db.prepare('UPDATE sp_medya SET profil=1 WHERE id=?').run(m.id); return [200, { ok: 1 }]; });
   // ---- sponsorlara mesaj (SMS) yardımcıları
   const aktifler = (oid) => db.prepare("SELECT * FROM sp_sponsorluk WHERE ogrenci_id=? AND durum='Aktif'").all(oid);
+  ctx.baseUrl = baseUrl;
   const sk = (s, req) => ({ ...s, link: baseUrl(req) + '/sponsor.html?t=' + s.token });
   function bildir(key, s, req, user, ek) { const b = db.prepare('SELECT ad,tel FROM bagiscilar WHERE id=?').get(s.bagisci_id), o = ogr(s.ogrenci_id), t = db.prepare('SELECT ad FROM bagis_turleri WHERE id=?').get(s.tur_id); return ctx.sms(key, { ad: b.ad, ogrenci: o.ad, tur: t ? t.ad : 'sponsorluk', link: ek && ek.sertifika ? baseUrl(req) + '/sertifika/' + s.token + '?k=tamam' : sk(s, req).link, kod: kodu(s.id), ...(ek || {}) }, b.ad, user, b.tel); }
   R('POST', '/api/sp/sponsorluk/([0-9]+)/belge', 'sptak', 'e', async (c) => { // sponsorluk belgesini elle gönder (SMS ya da WhatsApp)

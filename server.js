@@ -184,7 +184,7 @@ ctx.call = async (m, p, body) => { // yalnızca sunucu içi (deneme verisi): rot
   const user = db.prepare('SELECT * FROM users ORDER BY id LIMIT 1').get(); const c = { req: { url: p, headers: {}, socket: { remoteAddress: '127.0.0.1' } }, m: p.split('?')[0].match(r.re), body: body || {}, user, perms: A.effective(user.id) };
   return (await r.h(c))[1];
 };
-['ayarlar', 'bagis', 'excel', 'kurum', 'org', 'ana', 'iletisim', 'calisma', 'sube', 'gonullu', 'eser', 'sponsor', 'banka', 'vekalet', 'site', 'kur', 'yedek', 'kumbara', 'sertifika', 'bildirim', 'ara', 'analiz', 'demo'].forEach(m => require('./mod/' + m)(ctx));
+['ayarlar', 'bagis', 'excel', 'kurum', 'org', 'video', 'ana', 'iletisim', 'calisma', 'sube', 'gonullu', 'eser', 'sponsor', 'banka', 'vekalet', 'site', 'kur', 'yedek', 'kumbara', 'sertifika', 'bildirim', 'ara', 'analiz', 'demo'].forEach(m => require('./mod/' + m)(ctx));
 
 // ---- sunucu
 const server = http.createServer(async (req, res) => {
@@ -202,7 +202,7 @@ const server = http.createServer(async (req, res) => {
         if (req.headers['x-bp'] !== '1') return fail(res, 403, 'Geçersiz istek.');
         const o = req.headers.origin; if (o && new URL(o).host !== req.headers.host) return fail(res, 403, 'Geçersiz kaynak.');
       }
-      const c = { req, m: url.pathname.match(r.re), body: req.method === 'GET' || req.method === 'DELETE' ? {} : await readBody(req), token: cookies(req).bp };
+      const c = { req, m: url.pathname.match(r.re), body: req.method === 'GET' || req.method === 'DELETE' || (req.method === 'POST' && url.pathname === '/api/org/video') ? {} : await readBody(req), token: cookies(req).bp };
       if (r.menu) {
         c.user = A.sessionUser(c.token); if (!c.user) return fail(res, 401, 'Oturum gerekli.');
         c.perms = A.effective(c.user.id);

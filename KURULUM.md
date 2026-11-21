@@ -27,4 +27,5 @@ Test ortamı ilk kez ayağa kalkınca `docker compose logs test` içinde admin g
 - **Sunucu dışı kopya (şart):** Hetzner Storage Box veya Backblaze B2 hesabı açın, sunucuda `rclone` ile günlük:
   `0 3 * * * rclone sync /srv/bagispanel/data-canli/yedek uzak:bagispanel-yedek`
 - Geri yükleme: uygulamayı durdurun, `.db.gz` dosyasını açıp `data-canli/bagispanel.db` olarak koyun, başlatın.
+- **Videolar** (`data-canli/videos/`) veritabanı yedeğine girmez, ayrıca kopyalanmalı: `30 3 * * * rclone copy /srv/bagispanel/data-canli/videos uzak:bagispanel-video` (`copy` kullanın, `sync` değil: sunucudan silinen video yedekte kalsın). Video boyut sınırı `VIDEO_MAX_MB` (varsayılan 500). Disk dolmadan büyütün; yükleme diskte 1 GB boş yer kalmadıysa reddedilir.
 - Yılda en az bir kez geri yüklemeyi **deneyin**; denenmemiş yedek yedek sayılmaz.

@@ -304,3 +304,9 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - **Hatırlatma**: Görev Takibi'ne bağışçı bağlantısı (gorev.bagisci_id); bağışçı kartında "Hatırlat" düğmesi; vadesi gelen/geciken görevler zilde ("gorevvade").
 - **Yardım ve Rehber** (Profilim, herkese açık): aranabilir "Nasıl yaparım?" adımları (public/m-rehber.js, RH dizisi). Yeni modül eklenince buraya da girdi eklenmeli.
 - Tanıtım sitesi konumlandırma: "tek panelde bağış + kurban/su kuyusu videolu organizasyon + sponsorluk + gönüllü + WhatsApp/SMS, geriye dönük tam raporlama (hiçbir şey silinmez)".
+
+## Video yükleme (21 Kas)
+- Videolar sunucuda saklanır: `DATA_DIR/videos/` (akış olarak yüklenir, MP4/MOV/WebM, `VIDEO_MAX_MB` varsayılan 500, diskte 1 GB boş yer yoksa reddedilir). `videolar` tablosu; birimin `video` alanı `vid:ID` tutar (eski dış bağlantı/ad kayıtları da çalışır).
+- Bağışçıya SMS'te `{link}` = `…/izle.html?t=<rastgele jeton>`: kurum logolu sayfa, giriş yok, Range destekli. Jeton pay başınadır (paylar.vtoken); ilk/son izleme ve izlenme sayısı tutulur (viz_ilk, viz_son, viz_say) — henüz ekranda gösterilmiyor, istenirse "bağışçı izledi" rozeti eklenir.
+- Videolar DB yedeğine girmez: KURULUM.md'ye rclone copy adımı eklendi. Render ücretsiz test ortamında disk kalıcı değil, video orada kaybolur (yalnız deneme).
+- "Videoyu kaldır" yalnızca bağlantıyı çözer, dosya diskte kalır (geriye dönük raporlama ilkesi). Temizlik aracı yok; ileride gerekirse "bağlı olmayan videolar" listesi eklenir.
