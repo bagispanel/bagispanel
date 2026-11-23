@@ -14,6 +14,11 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   const sts = (u) => { if (u.adim === 1 && u.ulke && u.org === 'Su kuyusu') return 2; return u.adim < 3 ? u.adim : u.adim === 3 ? (u.video ? 4 : 3) : 5; };
   try { db.exec('ALTER TABLE birimler_org ADD COLUMN kno_m TEXT'); } catch { /* var */ }
 
+  R('GET', '/api/org/pay-video/([0-9]+)/onizleme', 'orgK|orgS|orgD|bagisci', 'e', async (c) => { // profilden gidecek video SMS'i, göndermeden
+    const s = db.prepare('SELECT p.*, g.no bno, b.tel btel FROM paylar p JOIN bagislar g ON g.id=p.bagis_id JOIN bagiscilar b ON b.id=g.bagisci_id WHERE p.id=?').get(+c.m[1]); if (!s) throw new Err(404, 'Kayıt bulunamadı.');
+    const u = db.prepare('SELECT * FROM birimler_org WHERE id=?').get(s.birim_id), t = tur(u.tur_id); if (!(s.video || u.video) || u.adim < 4) throw new Err(409, 'Video organizasyonda henüz tamamlanmadı.');
+    return [200, { mesaj: ctx.smsMetin(T1[t.org], msgVars(u, s, t)), tel: s.tel || s.btel, ad: s.ad }];
+  });
   // Bağışçı profilinden tek paya video SMS'i (ilk gönderim ya da yeniden gönderim). Kurumun ekranındaki toplu akışla uyumlu: paylar.vs işaretlenir.
   R('POST', '/api/org/pay-video/([0-9]+)', 'orgK|orgS|orgD|bagisci', 'e', async (c) => {
     const s = db.prepare('SELECT p.*, g.no bno, b.tel btel FROM paylar p JOIN bagislar g ON g.id=p.bagis_id JOIN bagiscilar b ON b.id=g.bagisci_id WHERE p.id=?').get(+c.m[1]); if (!s) throw new Err(404, 'Kayıt bulunamadı.');

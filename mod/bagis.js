@@ -77,7 +77,8 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
     const mesaj = fill(t.m, { dernek: dernek(), ...v }); db.prepare('INSERT INTO sms_log(mesaj,kime,sablon,kullanici) VALUES(?,?,?,?)').run(mesaj, kime, 'wa:' + k, user || null);
     return { mesaj, tel: d, link: `https://wa.me/${d}?text=${encodeURIComponent(mesaj)}` };
   }
-  ctx.sms = sms; ctx.dstr = dstr; ctx.wa = wa;
+  const metin = (k, v) => { const t = db.prepare('SELECT m FROM sms_sablon WHERE k=?').get(k); return t ? fill(t.m, { dernek: dernek(), ...v }) : ''; };
+  ctx.sms = sms; ctx.dstr = dstr; ctx.wa = wa; ctx.smsMetin = metin;
   R('POST', '/api/bagislar/:id/sms', 'alin|bekleyen|bagisci|rapor', 'e', async (c) => { // kabul SMS'ini elle (yeniden) gönder
     const d = db.prepare(BSEL).get(+c.m[1]); if (!d) throw new Err(404, 'Bağış yok.');
     if (d.durum === 'İptal') throw new Err(409, 'İptal edilmiş bağış için mesaj gönderilmez.'); if (String(d.tel || '').replace(/\D/g, '').length < 7) throw new Err(409, 'Bu kişinin geçerli telefonu yok.');

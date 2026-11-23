@@ -314,3 +314,7 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 ## Bağışçı profilinde video (23 Kas)
 - Video, organizasyonda gönderim aşamasına (adim>=4: "Kontrol tamam, gönder") gelince profile düşer; öncesinde profilde "video yok" görünür ve profilden gönderim 409 verir.
 - Bağışçı profili → Bağışlar: gönderim aşamasındaki her payda "Videoyu izle" (açılır oynatıcı, yüklenen videolar için), "Yeni sekmede aç" ve "SMS gönder / SMS'i tekrar gönder" düğmesi. Endpoint: POST /api/org/pay-video/:payId (bağışçı düzenleme yetkisi; paylar.vs işaretlenir, denetim kaydı `video_sms`). Telefon yoksa 409.
+
+## Profil sadeleştirme ve gönderim önizlemesi (23 Kas)
+- Bağışçı profili → Bağışlar: çok hisseli bağışta tek özet satır ("7 hisse · Tamamlandı · Çad · 7 vekâlet eksik · video 7/7 gönderildi"), hisse ayrıntısı açılır liste içinde. Tek hissede tek satır.
+- Profildeki tüm SMS düğmeleri (video, sponsor kartı linki, ödeme hatırlatma) önce önizleme penceresi açar: metin + alıcı + Gönder/Vazgeç. Önizleme uç noktaları SMS kaydı oluşturmaz (GET .../onizleme).

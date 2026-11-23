@@ -367,6 +367,11 @@ server.listen(0, async () => {
     assert.equal((await admin('POST', '/api/sp/sponsorluk', { ogrenci_id: o.j.id, bagisci_id: bg, sure: 12, aylik: 500 })).s, 409);
     let d = (await admin('GET', '/api/sp/sponsorluk/' + sp.j.id)).j; assert.equal(d.odenen, 500); assert.ok(d.gecikme_ay >= 3 && d.odeme_durum === 'Gecikmiş', JSON.stringify([d.gecikme_ay, d.odeme_durum]));
     let rp = (await admin('GET', '/api/sp/rapor')).j; assert.equal(rp.kpi.gecikmis, 1); assert.equal(rp.odemeyenler.length, 1);
+    { // önizleme göndermeden metni verir, SMS kaydı oluşturmaz
+      const nSms = (await admin('GET', '/api/sms')).j.length, o1 = await admin('GET', `/api/sp/sponsorluk/${sp.j.id}/onizleme?tip=hatirlat`), o2 = await admin('GET', `/api/sp/sponsorluk/${sp.j.id}/onizleme?tip=link`);
+      assert.equal(o1.s, 200); assert.ok(o1.j.mesaj && !/\{\w+\}/.test(o1.j.mesaj) && o1.j.tel); assert.equal(o2.s, 200); assert.ok(/sertifika|kart|sp|http/i.test(o2.j.mesaj));
+      assert.equal((await admin('GET', '/api/sms')).j.length, nSms, 'önizleme SMS göndermemeli');
+    }
     { const hr = await admin('POST', `/api/sp/sponsorluk/${sp.j.id}/hatirlat`); assert.equal(hr.s, 200, JSON.stringify(hr.j)); }
     assert.equal((await admin('POST', '/api/sp/hatirlat-toplu', { esik: 2 })).j.gonderilen, 0); // bugün zaten hatırlatıldı
     assert.equal((await admin('POST', `/api/sp/sponsorluk/${sp.j.id}/odeme`, { tutar: 2000, odeme: 'Nakit' })).s, 201);

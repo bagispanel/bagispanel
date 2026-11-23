@@ -93,7 +93,7 @@ module.exports = function (ctx) {
   const aktifler = (oid) => db.prepare("SELECT * FROM sp_sponsorluk WHERE ogrenci_id=? AND durum='Aktif'").all(oid);
   ctx.baseUrl = baseUrl;
   const sk = (s, req) => ({ ...s, link: baseUrl(req) + '/sponsor.html?t=' + s.token });
-  function bildir(key, s, req, user, ek) { const b = db.prepare('SELECT ad,tel FROM bagiscilar WHERE id=?').get(s.bagisci_id), o = ogr(s.ogrenci_id), t = db.prepare('SELECT ad FROM bagis_turleri WHERE id=?').get(s.tur_id); return ctx.sms(key, { ad: b.ad, ogrenci: o.ad, tur: t ? t.ad : 'sponsorluk', link: ek && ek.sertifika ? baseUrl(req) + '/sertifika/' + s.token + '?k=tamam' : sk(s, req).link, kod: kodu(s.id), ...(ek || {}) }, b.ad, user, b.tel); }
+  function bildir(key, s, req, user, ek, kuru) { const b = db.prepare('SELECT ad,tel FROM bagiscilar WHERE id=?').get(s.bagisci_id), o = ogr(s.ogrenci_id), t = db.prepare('SELECT ad FROM bagis_turleri WHERE id=?').get(s.tur_id); const v = { ad: b.ad, ogrenci: o.ad, tur: t ? t.ad : 'sponsorluk', link: ek && ek.sertifika ? baseUrl(req) + '/sertifika/' + s.token + '?k=tamam' : sk(s, req).link, kod: kodu(s.id), ...(ek || {}) }; if (kuru) return { mesaj: ctx.smsMetin(key, v), tel: b.tel, ad: b.ad }; return ctx.sms(key, v, b.ad, user, b.tel); }
   R('POST', '/api/sp/sponsorluk/([0-9]+)/belge', 'sptak', 'e', async (c) => { // sponsorluk belgesini elle gönder (SMS ya da WhatsApp)
     const s = db.prepare('SELECT * FROM sp_sponsorluk WHERE id=?').get(+c.m[1]); if (!s) throw new Err(404, 'Sponsorluk bulunamadı.');
     const b = db.prepare('SELECT ad,tel FROM bagiscilar WHERE id=?').get(s.bagisci_id), o = ogr(s.ogrenci_id), v = { ad: b.ad, ogrenci: o.ad, link: baseUrl(c.req) + '/sertifika/' + s.token + '?k=belge' };
@@ -146,6 +146,11 @@ module.exports = function (ctx) {
     if (b.bildir !== false) bildir('spatama', sp, c.req, c.user.kadi); A.audit(c.user, 'sponsorluk_tanimlandi', bg.ad + ' → ' + o.ad, ip(c.req)); return [201, { id, link: sk(sp, c.req).link }];
   });
   R('POST', '/api/sp/sponsorluk/([0-9]+)/odeme', 'sptak', 'e', async (c) => { const s = spo(+c.m[1]); if (s.durum !== 'Aktif') throw new Err(400, 'Yalnızca aktif sponsorluğa ödeme girilir.'); const r = odemeAl(s, c.body || {}, c.user, c.req); return [201, { bagis_no: r.no }]; });
+  R('GET', '/api/sp/sponsorluk/([0-9]+)/onizleme', 'sptak', 'd', async (c) => { // gidecek SMS metni, göndermeden: tip=link | hatirlat
+    const s = spo(+c.m[1]), tip = new URL(c.req.url, 'http://x').searchParams.get('tip');
+    if (tip === 'hatirlat') { const hs = hesap(s); if (hs.gecikme_ay < 1) throw new Err(400, 'Bu sponsorluğun gecikmiş ödemesi yok.'); return [200, bildir('sphatirla', s, c.req, null, { ay: hs.gecikme_ay, tutar: Math.round(hs.fark) + ' ' + s.para }, true)]; }
+    return [200, bildir('spatama', s, c.req, null, null, true)];
+  });
   R('POST', '/api/sp/sponsorluk/([0-9]+)/link-gonder', 'sptak', 'd', async (c) => { const s = spo(+c.m[1]); bildir('spatama', s, c.req, c.user.kadi); return [200, { ok: 1 }]; });
   function hatirlat(s, req, user) { const hs = hesap(s); if (hs.gecikme_ay < 1) return false; bildir('sphatirla', s, req, user, { ay: hs.gecikme_ay, tutar: Math.round(hs.fark) + ' ' + s.para }); db.prepare('UPDATE sp_sponsorluk SET son_hatirlatma=? WHERE id=?').run(today(), s.id); return true; }
   R('POST', '/api/sp/sponsorluk/([0-9]+)/hatirlat', 'sptak', 'd', async (c) => { const s = spo(+c.m[1]); if (!hatirlat(s, c.req, c.user.kadi)) throw new Err(400, 'Bu sponsorluğun gecikmiş ödemesi yok.'); return [200, { ok: 1 }]; });
