@@ -15,7 +15,7 @@ module.exports = function (ctx) {
   const CONST = { yetim_durum: ['Babasız (yetim)', 'Anasız', 'Anne ve babasız'], okul_tur: ['Okul', 'Medrese', 'Hafızlık kursu', 'Henüz okula gitmiyor'], cinsiyet: ['Erkek', 'Kız'], durum: ['Aktif', 'Tamamladı', 'Ayrıldı'], tamam: ['Eğitimi', 'Hafızlığı'], para: ['TL', 'USD', 'EUR'], sure: [12, 18, 24, 36] };
   // Sponsorluk bağış türleri (ödemeler bağış raporlarında görünsün)
   db.prepare("INSERT OR IGNORE INTO kategoriler(ad) VALUES('Sponsorluk')").run();
-  ['Yetim Sponsorluğu', 'Hafız Sponsorluğu', 'Öğrenci Sponsorluğu'].forEach(a => db.prepare("INSERT OR IGNORE INTO bagis_turleri(kat,ad) VALUES('Sponsorluk',?)").run(a));
+  const spTur = (a) => { db.prepare("INSERT OR IGNORE INTO bagis_turleri(kat,ad) VALUES('Sponsorluk',?)").run(a); return db.prepare('SELECT id FROM bagis_turleri WHERE kat=? AND ad=?').get('Sponsorluk', a).id; }; // sponsorluk türü ilk sponsorlukta kendiliğinden açılır
   const TPL = { spatama: ['Sponsorluk başladı', 'Sponsorluk tanımlanınca sponsora kart linkiyle gider.', 'Sayın {ad}, {ogrenci} için {tur} başlamıştır. Kartı görmek için: {link} Havale açıklamasına {kod} yazmanızı rica ederiz. {dernek}'],
     sphatirla: ['Sponsorluk ödeme hatırlatma', 'Ödemesi gecikenlere gider.', 'Sayın {ad}, {ogrenci} sponsorluğunuza ait {ay} aylık ödemeniz ({tutar}) görünmüyor. Hatırlatmak isteriz. {dernek}'],
     spgelisme: ['Sponsorluk gelişme', 'Öğrenciyle ilgili gelişme notu sponsora iletilirken gider.', 'Sayın {ad}, {ogrenci} hakkında gelişme: {not} Kart: {link} {dernek}'],
@@ -138,7 +138,7 @@ module.exports = function (ctx) {
     const bg = db.prepare('SELECT * FROM bagiscilar WHERE id=?').get(+b.bagisci_id); if (!bg) throw new Err(400, 'Sponsor (bağışçı) seçin. Yoksa önce Bağışçı Rehberi’nden ekleyin.');
     const sure = Math.round(num(b.sure, 'Süre', 120)); if (sure < 1) throw new Err(400, 'Süre (ay) girin.'); const aylik = num(b.aylik, 'Aylık tutar'); if (!(aylik > 0)) throw new Err(400, 'Aylık tutarı girin.');
     const para = CONST.para.includes(b.para) ? b.para : 'TL', tip = b.tip === 'Peşin' ? 'Peşin' : 'Aylık', bas = dt(b.baslangic, 'Başlangıç') || today();
-    let tur = +b.tur_id; if (!tur || !db.prepare("SELECT 1 FROM bagis_turleri WHERE id=? AND kat='Sponsorluk'").get(tur)) tur = db.prepare('SELECT id FROM bagis_turleri WHERE ad=?').get(o.yetim ? 'Yetim Sponsorluğu' : o.hafiz ? 'Hafız Sponsorluğu' : 'Öğrenci Sponsorluğu').id;
+    let tur = +b.tur_id; if (!tur || !db.prepare("SELECT 1 FROM bagis_turleri WHERE id=? AND kat='Sponsorluk'").get(tur)) tur = spTur(o.yetim ? 'Yetim Sponsorluğu' : o.hafiz ? 'Hafız Sponsorluğu' : 'Öğrenci Sponsorluğu');
     { const mev = db.prepare('SELECT durum FROM sp_sponsorluk WHERE ogrenci_id=? AND bagisci_id=? ORDER BY id DESC').get(o.id, bg.id); if (mev) throw new Err(409, mev.durum === 'Aktif' ? 'Bu bağışçı bu öğrenciye zaten sponsor.' : 'Bu bağışçının bu öğrenciyle sponsorluk kaydı zaten var (' + mev.durum + '); aynı bağışçıya yeniden tanımlanmaz.'); }
     const ilk = b.ilk_odeme && +b.ilk_odeme.tutar > 0 ? b.ilk_odeme : null; if (ilk && ilk.odeme === 'Havale/EFT' && !ilk.banka_id) throw new Err(400, 'Havale için banka hesabını seçin.');
     const token = crypto.randomBytes(12).toString('hex'), id = +db.prepare('INSERT INTO sp_sponsorluk(ogrenci_id,bagisci_id,tur_id,baslangic,sure,aylik,para,tip,token) VALUES(?,?,?,?,?,?,?,?,?)').run(o.id, bg.id, tur, bas, sure, aylik, para, tip, token).lastInsertRowid, sp = spo(id);

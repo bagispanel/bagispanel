@@ -1,5 +1,5 @@
 // Otomatik test: geçici veri klasöründe sunucuyu açar, yetki ve güvenlik kurallarını dener.
-process.env.DATA_DIR = require('fs').mkdtempSync(require('os').tmpdir() + '/bp-'); process.env.ADMIN_PASSWORD = 'Gecici123'; process.env.KUR_OTO = '0'; process.env.KVKK_ZORUNLU = '0';
+process.env.DATA_DIR = require('fs').mkdtempSync(require('os').tmpdir() + '/bp-'); process.env.ADMIN_PASSWORD = 'Gecici123'; process.env.TUR_SEED = '1'; process.env.KUR_OTO = '0'; process.env.KVKK_ZORUNLU = '0';
 const { server } = require('./server');
 const assert = require('assert');
 let fails = 0;

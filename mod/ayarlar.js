@@ -22,12 +22,17 @@ CREATE TABLE IF NOT EXISTS bagis_turleri(
     const i = db.prepare('INSERT INTO ulkeler(ad,kita) VALUES(?,?)');
     [['Çad', 'Afrika'], ['Nijer', 'Afrika'], ['Mali', 'Afrika'], ['Somali', 'Afrika'], ['Burkina Faso', 'Afrika'], ['Afganistan', 'Asya'], ['Pakistan', 'Asya'], ['Bangladeş', 'Asya']].forEach(x => i.run(...x));
   }
-  if (!db.prepare('SELECT 1 FROM bagis_turleri').get()) {
-    db.prepare("INSERT OR IGNORE INTO kategoriler(ad) VALUES('Genel bağış')").run();
-    const g = db.prepare("INSERT INTO bagis_turleri(kat,ad) VALUES('Genel bağış',?)"); ['Fitre', 'Zekât', 'Sadaka'].forEach(x => g.run(x));
-    const k = db.prepare("INSERT INTO bagis_turleri(kat,ad,org,cap,fiyat,birim,tam,seri) VALUES('Kurban',?,'Kurban',?,?,?,?,?)");
-    [['Vacip', 'Vacip'], ['Adak', 'Adak'], ['Akika', 'Akika']].forEach(([tur]) => { k.run(`${tur} · hisseli büyükbaş`, 7, 4000, 'Grup', 0, tur); k.run(`${tur} · küçükbaş`, 1, 7000, 'Kurban', 0, tur); });
-    ['Vacip', 'Adak', 'Akika'].forEach(tur => k.run(`${tur} · tam büyükbaş`, 7, 4000, 'Grup', 1, tur));
+  db.exec('CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL)');
+  // Temiz kurulum: yalnızca ana kategoriler gelir; alt kategoriler (türler: Fitre, Vacip kurban, kuyu…) kurum tarafından eklenir.
+  if (!db.prepare("SELECT 1 FROM ayar WHERE k='ilk_kurulum'").get()) {
+    if (!db.prepare('SELECT 1 FROM bagis_turleri').get() && !db.prepare('SELECT 1 FROM kategoriler').get()) for (const a of ['Genel bağış', 'Kurban', 'Su kuyusu']) db.prepare('INSERT OR IGNORE INTO kategoriler(ad) VALUES(?)').run(a);
+    if ((process.env.DEMO === '1' || process.env.TUR_SEED === '1') && !db.prepare('SELECT 1 FROM bagis_turleri').get()) { // yalnız demo ve testler için örnek türler
+      const g = db.prepare("INSERT INTO bagis_turleri(kat,ad) VALUES('Genel bağış',?)"); ['Fitre', 'Zekât', 'Sadaka'].forEach(x => g.run(x));
+      const k = db.prepare("INSERT INTO bagis_turleri(kat,ad,org,cap,fiyat,birim,tam,seri) VALUES('Kurban',?,'Kurban',?,?,?,?,?)");
+      ['Vacip', 'Adak', 'Akika'].forEach((tur) => { k.run(`${tur} · hisseli büyükbaş`, 7, 4000, 'Grup', 0, tur); k.run(`${tur} · küçükbaş`, 1, 7000, 'Kurban', 0, tur); k.run(`${tur} · tam büyükbaş`, 7, 4000, 'Grup', 1, tur); });
+      for (const a of ['Yetim Sponsorluğu', 'Hafız Sponsorluğu', 'Öğrenci Sponsorluğu']) db.prepare("INSERT OR IGNORE INTO bagis_turleri(kat,ad) VALUES('Sponsorluk',?)").run(a);
+    }
+    db.prepare("INSERT OR REPLACE INTO ayar(k,v) VALUES('ilk_kurulum','1')").run();
   }
 
   db.prepare("UPDATE bagis_turleri SET ad='Vacip · tam büyükbaş', seri='Vacip' WHERE ad='Tam büyükbaş (7 isim)' AND NOT EXISTS(SELECT 1 FROM bagis_turleri WHERE ad='Vacip · tam büyükbaş')").run();
