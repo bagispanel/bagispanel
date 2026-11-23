@@ -810,5 +810,10 @@ server.listen(0, async () => {
     assert.equal((await admin('PUT', '/api/moduller', { kapali: [] })).s, 200); assert.equal((await admin('GET', '/api/kumbara')).s, 200);
     const a = (await admin('GET', '/api/ana')).j; assert.ok(Array.isArray(a.isler));
   });
+  await t('gönderilen mesajlar: arama ve limit', async () => {
+    const hepsi = (await admin('GET', '/api/sms?limit=5000')).j, ilk = hepsi[0]; assert.ok(hepsi.length >= 1);
+    const ar = (await admin('GET', '/api/sms?q=' + encodeURIComponent(ilk.kime || ilk.mesaj.slice(0, 8)))).j; assert.ok(ar.length >= 1 && ar.length <= hepsi.length);
+    assert.equal((await admin('GET', '/api/sms?limit=50&q=yokboyleirmesaj')).j.length, 0);
+  });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });

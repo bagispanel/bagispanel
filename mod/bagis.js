@@ -107,7 +107,11 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
     db.prepare('UPDATE sms_sablon SET m=? WHERE k=?').run(m, c.m[1]); A.audit(c.user, 'sablon', c.m[1], ip(c.req)); return [200, { ok: 1 }];
   });
   R('PUT', '/api/dernek-adi', 'sablon', 'd', async (c) => { const a = str(c.body.ad, 80); if (!a) throw new Err(400, 'Dernek adını yazın.'); setA('dernek_adi', a); return [200, { ok: 1 }]; });
-  R('GET', '/api/sms', 'sms', 'g', async () => [200, db.prepare('SELECT * FROM sms_log ORDER BY id DESC LIMIT 300').all()]);
+  R('GET', '/api/sms', 'sms', 'g', async (c) => { // son 300 mesaj; q (kişi/metin), kanal ve limit (en çok 5000) ile aranır
+    const p = new URL(c.req.url, 'http://x').searchParams, W = [], A_ = [], q = (p.get('q') || '').trim().slice(0, 60), kn = p.get('kanal'), lim = Math.min(5000, Math.max(50, +p.get('limit') || 300));
+    if (q) { W.push('(kime LIKE ? OR mesaj LIKE ?)'); A_.push('%' + q + '%', '%' + q + '%'); } if (kn && kn !== 'Tümü') { W.push('kanal=?'); A_.push(kn); }
+    return [200, db.prepare(`SELECT * FROM sms_log ${W.length ? 'WHERE ' + W.join(' AND ') : ''} ORDER BY id DESC LIMIT ${lim}`).all(...A_)];
+  });
 
   // ---- bağışçılar
   R('GET', '/api/bagiscilar', 'bagisci|alin', 'g', async (c) => {
