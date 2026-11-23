@@ -358,3 +358,8 @@ Yapılacak (istenirse): toplu "aydınlatma bildirimi" SMS'i + panelde "aydınlat
 
 ## Sıradaki: KVKK incelemesi (Meriç ile birlikte, sonra)
 Temel hazır (aydınlatma, rıza kaydı, talepler, anonimleştirme, iz kaydı, yedek şifreleme). İnceleme gündemi: aydınlatma metninin kurum bilgisiyle düzeltilmesi, onay modeli (yukarıdaki not), mevcut bağışçılara toplu aydınlatma SMS'i, "aydınlatma iletilmeyen" göstergesi, hukukçu soruları, yapay zekâ (havale eşleştirme) kararı.
+
+## Fikir: aydınlatma bağlantısı SMS/WhatsApp ile (Meriç önerisi, 23 Kas; KVKK incelemesinde karara bağlanacak)
+- Bağışçıya kişiye özel link gider (izle.html'deki gibi token); sayfada yalnızca aydınlatma metni + isteğe bağlı iletişim izni kutuları görünür.
+- Sistem kaydı: gönderildi / açıldı (tarih) / izin verdi-vermedi. Aydınlatma için "onaylıyorum" kutusu ZORUNLU yapılmaz (aydınlatma rıza değil, bilgi); açılma = iletildi kanıtı. Kutu yalnızca iletişim izni için, ihtiyari.
+- Kullanım yerleri: bağış sonrası otomatik link (makbuz SMS'ine ek), bağışçı profilinden "Aydınlatmayı gönder", eski bağışçılara toplu gönderim, "aydınlatma iletilmeyen" göstergesi.
