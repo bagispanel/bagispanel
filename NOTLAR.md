@@ -333,3 +333,9 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - **Güvenlik:** noindex (api, izle, sponsor, sertifika, aydınlatma), HSTS (PUBLIC_URL https ise), yedek şifreleme (BACKUP_KEY, AES-256-GCM; KURULUM.md), anonimleştirilen kişi arama/gönderimden çıkar.
 - **Hukukçuyla netleştirilecek:** saklama süreleri; kurban/adak bağışının din ile ilişkisi (m.6 dernek istisnası); yurt dışı partner aktarımı; ticari ileti izni (İYS); VERBİS; veri işleme sözleşmesi; çocuk verisi (öğrenci kartı) ek önlemleri. Ekrandaki envanter/metinler taslaktır.
 - **Yapay zekâ (havale eşleştirme):** henüz yok; açılırsa varsayılan kapalı + yazılı onay.
+
+## Veri Aktarımı (23 Kas, yapıldı)
+- Kurum Yönetimi → **Veri Aktarımı**: geçmiş bağışlar ve kumbaralar (+ isteğe bağlı sayım geçmişi) Excel'den. Örnek şablon (bağış türleri sayfası dahil), önizleme (hatalı/mükerrer ayrı), onay.
+- Aktarımda SMS/sertifika/organizasyon kaydı/video OLUŞMAZ; bağış "Onaylı", kaynak "Excel aktarım (geçmiş)"; yeni bağışçıya rıza kaynağı "Kurum beyanı (Excel aktarım)". **Beyan kutusu zorunlu** (verinin hukuka uygun elde edildiği, aydınlatma yapıldığı) — KVKK sorumluluğu kuruma.
+- Mükerrer: Eski Bağış No varsa o, yoksa kişi+tarih+tür+para+tutar. Döviz bağışta TL karşılığı Excel'de yazılır (o günkü kur).
+- Her aktarım bir **parti**: "Aktarım geçmişi"nden geri alınır (kayıtlar silinmez → İptal; kumbara Pasif, sayımlar iptal; xid serbest kalır, düzeltilmiş dosya tekrar alınabilir).

@@ -34,7 +34,7 @@ INP.tf=(v,el)=>{tS().f[el.dataset.k]=v};INP.tm=(v,el)=>{tS().m[el.dataset.k]=v;{
 CHG.tf=(v,el)=>{const t=tS(),k=el.dataset.k;if(k=='son'){delete t.f.aktif_gun;delete t.f.pasif_gun;t.f.son=v;if(v[0]=='a')t.f.aktif_gun=v.slice(1);if(v[0]=='p')t.f.pasif_gun=v.slice(1)}else t.f[k]=v;t.hedef=null;draw()};
 CHG.tm=(v,el)=>{const t=tS();t.m[el.dataset.k]=v;if(el.dataset.k=='sablon')t.m.degisken=[];draw()};
 CHG.tdeg=(v,el)=>{tS().m.degisken[+el.dataset.k]=v;draw()};CHG.tonay=(v,el)=>{tS().m.onay=el.checked;draw()};
-CHG.tizin=v=>{const t=tS();t.f.izin=v?'sadece':'hepsi';t.hedef=null;draw()};
+CHG.tizin=(v,el)=>{const t=tS();t.f.izin=el.checked?'sadece':'hepsi';t.hedef=null;draw()};
 ACTS.thedef=async()=>{const t=tS();t.hedef=await api('POST','/api/toplu/hedef',{kanal:t.k,filtre:t.f});draw()};
 ACTS.tgonder=async()=>{const t=tS(),m=t.m;if(!t.hedef)t.hedef=await api('POST','/api/toplu/hedef',{kanal:t.k,filtre:t.f});if(!t.hedef.adet){draw();return toast('Seçilen süzgeçle alıcı yok.',1)}const mod=(t.oz||{}).mod=='canli';if(!confirm(`${TR(t.hedef.adet)} kişiye ${KAD[t.k]} ${mod?'gönderilecek':'(deneme modunda, gerçekte gitmeden) kaydedilecek'}. Devam edilsin mi?`))return;const r=await api('POST','/api/toplu',{kanal:t.k,ad:m.ad,konu:m.konu,mesaj:m.mesaj,sablon:m.sablon,degisken:m.degisken,filtre:t.f,onay:m.onay});toast(`${TR(r.adet)} alıcı sıraya alındı.`);t.m.onay=false;t.tab='gecmis';await load()};
 ACTS.tdet=async v=>{tS().det=await api('GET','/api/toplu/'+v);draw()};ACTS.tdetk=async()=>{tS().det=null;await load()};

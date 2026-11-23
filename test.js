@@ -3,7 +3,7 @@ process.env.DATA_DIR = require('fs').mkdtempSync(require('os').tmpdir() + '/bp-'
 const { server } = require('./server');
 const assert = require('assert');
 let fails = 0;
-const t = async (ad, f) => { try { await f(); console.log('  ok  ', ad); } catch (e) { fails++; console.log('  HATA', ad, '→', e.message); } };
+const t = async (ad, f) => { try { await f(); console.log('  ok  ', ad); } catch (e) { fails++; console.log('  HATA', ad, '→', e.message, process.env.TDEBUG ? e.stack.split('\n')[1] : ''); } };
 server.listen(0, async () => {
   const base = 'http://127.0.0.1:' + server.address().port;
   const mk = () => { let ck = ''; const q = async (m, p, b) => { const r = await fetch(base + p, { method: m, headers: { 'Content-Type': 'application/json', 'X-BP': '1', cookie: ck }, body: b ? JSON.stringify(b) : undefined }); const sc = r.headers.get('set-cookie'); if (sc) ck = sc.split(';')[0]; let j = {}; try { j = await r.json(); } catch (e) {} return { s: r.status, j }; }; return q; };
@@ -781,6 +781,24 @@ server.listen(0, async () => {
     const g = await admin('POST', '/api/gorev', { baslik: 'Ara: Hatırlatma Bağışçısı', bagisci_id: b.id, son_tarih: '2020-01-01' }); assert.equal(g.s, 200);
     const L = (await admin('GET', '/api/gorev?kutu=bana')).j.find(x => x.id === g.j.id); assert.equal(L.bagisci, 'Hatırlatma Bağışçısı');
     assert.ok((await admin('GET', '/api/bildirim')).j.sayac.gorevvade >= 1);
+  });
+  await t('veri aktarımı: geçmiş bağış + kumbara, önizleme, mükerrer, beyan, geri alma', async () => {
+    const X = require('./xlsx'), b64 = (a) => X.yaz([{ ad: 'S', satirlar: a, metinSutun: [1, 2, 3] }]).toString('base64');
+    assert.equal((await admin('GET', '/api/aktar/bagis-ornek')).s, 200); assert.equal((await admin('GET', '/api/aktar/kumbara-ornek')).s, 200);
+    const H = ['Tarih *', 'Ad Soyad *', 'Telefon *', 'Bağış Türü *', 'Tutar *', 'Para Birimi', 'TL Karşılığı', 'Ödeme Yöntemi', 'Adet', 'Not', 'Eski Bağış No'], T = X.oku(Buffer.from((await admin('GET', '/api/aktar/bagis-ornek')).j.dosya, 'base64')).satirlar[1][3];
+    const d = b64([H, ['15.03.2025', 'Aktarım Bir', '0541 888 00 01', T, '1.500', 'TL', '', 'Nakit', '', '', 'E-1'], ['02.06.2025', 'Aktarım İki', '0541 888 00 02', T, '100', 'EUR', '4150', 'Havale', '', '', 'E-2'], ['02.06.2025', 'Dövizli', '0541 888 00 03', T, '100', 'USD', '', 'Nakit', '', '', ''], ['01.01.2099', 'Gelecek', '0541 888 00 04', T, '5', 'TL', '', 'Nakit', '', '', ''], ['01.01.2025', 'Yok Tür', '0541 888 00 05', 'Olmayan', '5', 'TL', '', 'Nakit', '', '', ''], ['15.03.2025', 'Aktarım Bir', '0541 888 00 01', T, '1500', 'TL', '', 'Nakit', '', '', 'E-1']]);
+    const on = (await admin('POST', '/api/aktar/bagis', { dosya: d, mod: 'onizle' })).j; assert.equal(on.ozet.yeni, 2); assert.equal(on.ozet.hatali, 3); assert.equal(on.ozet.mukerrer, 1); assert.equal(on.ozet.yeniBagisci, 2);
+    assert.equal((await admin('POST', '/api/aktar/bagis', { dosya: d, mod: 'aktar' })).s, 400); // beyan şart
+    const ak = (await admin('POST', '/api/aktar/bagis', { dosya: d, mod: 'aktar', beyan: 1, dosya_adi: 'x.xlsx' })); assert.equal(ak.s, 200); const parti = ak.j.parti;
+    assert.equal((await admin('POST', '/api/aktar/bagis', { dosya: d, mod: 'onizle' })).j.ozet.yeni, 0); // ikinci kez: mükerrer
+    const ara = (await admin('GET', '/api/bagiscilar?q=Aktar%C4%B1m')).j; assert.ok(JSON.stringify(ara).includes('Aktarım Bir'));
+    const k = b64([['Kumbara Yeri *', 'Tür', 'İl', 'İlçe', 'Yetkili Kişi', 'Telefon', 'Adres', 'Yerleştirme Tarihi', 'Durum', 'Sayım Tarihi', 'Sayım Tutarı', 'Para Birimi'], ['Aktarım Market', 'Esnaf', 'Konya', 'Selçuklu', '', '', '', '01.03.2024', 'Aktif', '15.06.2025', '1.250,50', 'TL'], ['Aktarım Market', '', 'Konya', 'Selçuklu', '', '', '', '', '', '20.12.2025', '1780', 'TL'], ['Bozuk Tür', 'Uzay', '', '', '', '', '', '', '', '', '', '']]);
+    const kon = (await admin('POST', '/api/aktar/kumbara', { dosya: k, mod: 'onizle' })).j; assert.equal(kon.ozet.yeni, 1); assert.equal(kon.ozet.sayim, 2); assert.equal(kon.ozet.hatali, 1);
+    const kak = await admin('POST', '/api/aktar/kumbara', { dosya: k, mod: 'aktar', beyan: 1 }); assert.equal(kak.s, 200);
+    assert.equal((await admin('POST', '/api/aktar/kumbara', { dosya: k, mod: 'onizle' })).j.ozet.sayim, 0);
+    const g = (await admin('GET', '/api/aktar/gecmis')).j; assert.equal(g.length >= 2, true);
+    assert.equal((await admin('POST', `/api/aktar/${parti}/iptal`, {})).s, 400); assert.equal((await admin('POST', `/api/aktar/${parti}/iptal`, { neden: 'deneme' })).s, 200); assert.equal((await admin('POST', `/api/aktar/${parti}/iptal`, { neden: 'deneme' })).s, 409);
+    assert.equal((await admin('POST', '/api/aktar/bagis', { dosya: d, mod: 'onizle' })).j.ozet.yeni, 2); // iptal edilenler tekrar alınabilir
   });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });
