@@ -706,6 +706,14 @@ server.listen(0, async () => {
     const pg = await (await fetch(base + '/api/izle/' + tk)).json(); assert.equal(pg.ad, 'Video Sahibi'); assert.equal(pg.src, '/api/izle/' + tk + '/dosya');
     const fl = await fetch(base + pg.src, { headers: { range: 'bytes=4-7' } }); assert.equal(fl.status, 206); assert.equal(Buffer.from(await fl.arrayBuffer()).toString(), 'ftyp');
     assert.equal((await fetch(base + '/api/izle/yanlisjeton123')).status, 404); assert.equal((await fetch(base + '/api/izle/' + tk + '/../x')).status === 200, false);
+    { // organizasyonda tamamlanmamış video profile düşmez, profilden gönderilemez
+      const b2 = await bag({ tur_id: k, tel: '541 300 77 02', ad: 'Video Bekleyen' }); assert.equal(b2.s, 201);
+      const w = (await admin('GET', '/api/org/kurban?q=Video Bekleyen')).j.liste[0];
+      assert.equal((await admin('POST', '/api/org/islem', { a: 'c', ids: [w.id], ulke: 'Çad' })).s, 200); assert.equal((await admin('POST', '/api/org/islem', { a: 'k', ids: [w.id] })).s, 200); assert.equal((await admin('POST', '/api/org/islem', { a: 'v', ids: [w.id], video: j.ref })).s, 200);
+      const wb = (await admin('GET', '/api/bagiscilar?q=Video Bekleyen')).j, wid = (wb.liste || wb).find(x => x.ad === 'Video Bekleyen').id;
+      const wp = Object.values((await admin('GET', '/api/bagiscilar/' + wid)).j.detay).flatMap(d => d.paylar || [])[0]; assert.equal(wp.video, false);
+      assert.equal((await admin('POST', '/api/org/pay-video/' + wp.pid, {})).s, 409);
+    }
     const bc = (await admin('GET', '/api/bagiscilar?q=Video Sahibi')).j, bid = (bc.liste || bc).find(x => x.ad === 'Video Sahibi').id;
     const dy = Object.values((await admin('GET', '/api/bagiscilar/' + bid)).j.detay).flatMap(d => d.paylar || []).find(x => x.video); assert.ok(dy, 'detay: ' + JSON.stringify((await admin('GET', '/api/bagiscilar/' + bid)).j.detay).slice(0, 400)); assert.ok(dy.pid && dy.yuklu && dy.link.startsWith('/api/org/video/'));
     const nOnce = (await admin('GET', '/api/sms')).j.filter(x => x.sablon === 'video').length; const rs = await admin('POST', '/api/org/pay-video/' + dy.pid, {}); assert.equal(rs.s, 200); assert.match(rs.j.msg, /yeniden/);

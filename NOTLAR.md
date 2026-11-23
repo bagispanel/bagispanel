@@ -312,4 +312,5 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - "Videoyu kaldır" yalnızca bağlantıyı çözer, dosya diskte kalır (geriye dönük raporlama ilkesi). Temizlik aracı yok; ileride gerekirse "bağlı olmayan videolar" listesi eklenir.
 
 ## Bağışçı profilinde video (23 Kas)
-- Bağışçı profili → Bağışlar: videosu olan her payda "Videoyu izle" (açılır oynatıcı, yüklenen videolar için), "Yeni sekmede aç" ve "SMS gönder / SMS'i tekrar gönder" düğmesi. Endpoint: POST /api/org/pay-video/:payId (bağışçı düzenleme yetkisi; paylar.vs işaretlenir, denetim kaydı `video_sms`). Telefon yoksa 409.
+- Video, organizasyonda gönderim aşamasına (adim>=4: "Kontrol tamam, gönder") gelince profile düşer; öncesinde profilde "video yok" görünür ve profilden gönderim 409 verir.
+- Bağışçı profili → Bağışlar: gönderim aşamasındaki her payda "Videoyu izle" (açılır oynatıcı, yüklenen videolar için), "Yeni sekmede aç" ve "SMS gönder / SMS'i tekrar gönder" düğmesi. Endpoint: POST /api/org/pay-video/:payId (bağışçı düzenleme yetkisi; paylar.vs işaretlenir, denetim kaydı `video_sms`). Telefon yoksa 409.
