@@ -184,3 +184,8 @@ input[type=file]{padding:6px;background:var(--sf);color:var(--mu);font-size:14px
  table.rt td:not([data-l])::before{content:none}
  table.rt td:empty{display:none}
 }
+
+@keyframes zsal{0%,100%{transform:translateX(0)}15%{transform:translateX(-8px)}35%{transform:translateX(8px)}55%{transform:translateX(-6px)}75%{transform:translateX(5px)}}
+.zor{outline:2px solid var(--er);outline-offset:3px;border-radius:14px;animation:zsal .55s ease-in-out}
+@media(prefers-reduced-motion:reduce){.zor{animation:none}}
+.zof{opacity:.55;cursor:not-allowed}

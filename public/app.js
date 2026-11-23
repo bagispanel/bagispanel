@@ -74,3 +74,6 @@ INP.ukadi=(v,el)=>{el.dataset.el=v?'1':''};
 
 // Telefonda tablolar kart görünümüne döner: başlıklar her hücreye etiket olarak yazılır (CSS ≤640px'te yığar).
 AFT.push(()=>{document.querySelectorAll('.tw table,.card>table,.card table.tb').forEach(t=>{if(t.dataset.lb)return;const th=[...t.querySelectorAll('thead th, tr:first-child th')].map(x=>x.textContent.trim());if(!th.length||th.length>9)return;t.dataset.lb='1';t.classList.add('rt');t.querySelectorAll('tbody tr, tr').forEach(r=>{if(r.querySelector('th'))return;[...r.children].forEach((c,i)=>{if(c.tagName=='TD'&&th[i]&&!c.hasAttribute('colspan'))c.setAttribute('data-l',th[i])})})})});
+
+// Zorunlu adım atlandığında ilgili alanı sallayıp vurgular (hareketli uyarı); hareket azaltma tercihinde yalnızca çerçeve.
+function zor(sel,msg){const e=typeof sel=='string'?document.querySelector(sel):sel;if(msg)toast(msg,1);if(!e)return;try{e.scrollIntoView({block:'center',behavior:'smooth'})}catch(_){}e.classList.remove('zor');void e.offsetWidth;e.classList.add('zor');clearTimeout(e._zt);e._zt=setTimeout(()=>e.classList.remove('zor'),1800)}
