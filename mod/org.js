@@ -14,6 +14,15 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   const sts = (u) => { if (u.adim === 1 && u.ulke && u.org === 'Su kuyusu') return 2; return u.adim < 3 ? u.adim : u.adim === 3 ? (u.video ? 4 : 3) : 5; };
   try { db.exec('ALTER TABLE birimler_org ADD COLUMN kno_m TEXT'); } catch { /* var */ }
 
+  // Bağışçı profilinden tek paya video SMS'i (ilk gönderim ya da yeniden gönderim). Kurumun ekranındaki toplu akışla uyumlu: paylar.vs işaretlenir.
+  R('POST', '/api/org/pay-video/([0-9]+)', 'orgK|orgS|orgD|bagisci', 'e', async (c) => {
+    const s = db.prepare('SELECT p.*, g.no bno, b.tel btel FROM paylar p JOIN bagislar g ON g.id=p.bagis_id JOIN bagiscilar b ON b.id=g.bagisci_id WHERE p.id=?').get(+c.m[1]); if (!s) throw new Err(404, 'Kayıt bulunamadı.');
+    const u = db.prepare('SELECT * FROM birimler_org WHERE id=?').get(s.birim_id), t = tur(u.tur_id); if (!(s.video || u.video)) throw new Err(409, 'Bu bağış için video bağlanmamış.');
+    const hedef = s.tel || s.btel; if (!hedef) throw new Err(409, 'Bağışçının telefonu yok.');
+    const bu = !!s.vs; ctx.sms(T1[t.org], msgVars(u, s, t), s.ad, c.user.kadi, hedef); db.prepare('UPDATE paylar SET vs=? WHERE id=?').run(iso(), s.id);
+    A.audit(c.user, 'video_sms', `${s.no || s.id} ${bu ? '(yeniden)' : ''} profilden`, ip(c.req)); return [200, { ok: 1, msg: bu ? 'Video bağlantısı yeniden gönderildi' : 'Video bağlantısı gönderildi' }];
+  });
+
   function yukle(org, p) {
     const q = nm(p.get('q')), qd = q.replace(/\D/g, '');
     const rows = db.prepare('SELECT u.*, t.ad turad, t.kat, t.org, t.seri, t.kuyu kj FROM birimler_org u JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org=? ORDER BY u.id DESC').all(org);

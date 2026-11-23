@@ -706,6 +706,10 @@ server.listen(0, async () => {
     const pg = await (await fetch(base + '/api/izle/' + tk)).json(); assert.equal(pg.ad, 'Video Sahibi'); assert.equal(pg.src, '/api/izle/' + tk + '/dosya');
     const fl = await fetch(base + pg.src, { headers: { range: 'bytes=4-7' } }); assert.equal(fl.status, 206); assert.equal(Buffer.from(await fl.arrayBuffer()).toString(), 'ftyp');
     assert.equal((await fetch(base + '/api/izle/yanlisjeton123')).status, 404); assert.equal((await fetch(base + '/api/izle/' + tk + '/../x')).status === 200, false);
+    const bc = (await admin('GET', '/api/bagiscilar?q=Video Sahibi')).j, bid = (bc.liste || bc).find(x => x.ad === 'Video Sahibi').id;
+    const dy = Object.values((await admin('GET', '/api/bagiscilar/' + bid)).j.detay).flatMap(d => d.paylar || []).find(x => x.video); assert.ok(dy, 'detay: ' + JSON.stringify((await admin('GET', '/api/bagiscilar/' + bid)).j.detay).slice(0, 400)); assert.ok(dy.pid && dy.yuklu && dy.link.startsWith('/api/org/video/'));
+    const nOnce = (await admin('GET', '/api/sms')).j.filter(x => x.sablon === 'video').length; const rs = await admin('POST', '/api/org/pay-video/' + dy.pid, {}); assert.equal(rs.s, 200); assert.match(rs.j.msg, /yeniden/);
+    assert.equal((await admin('GET', '/api/sms')).j.filter(x => x.sablon === 'video').length, nOnce + 1); assert.equal((await admin('POST', '/api/org/pay-video/999999', {})).s, 404);
     assert.ok(JSON.stringify((await admin('GET', '/api/audit')).j).includes('video_yukle'));
   });
   await t('hatırlatma: görev bağışçıya bağlanır, vadesi gelen zil sayacı', async () => {

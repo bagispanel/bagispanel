@@ -310,3 +310,6 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - Bağışçıya SMS'te `{link}` = `…/izle.html?t=<rastgele jeton>`: kurum logolu sayfa, giriş yok, Range destekli. Jeton pay başınadır (paylar.vtoken); ilk/son izleme ve izlenme sayısı tutulur (viz_ilk, viz_son, viz_say) — henüz ekranda gösterilmiyor, istenirse "bağışçı izledi" rozeti eklenir.
 - Videolar DB yedeğine girmez: KURULUM.md'ye rclone copy adımı eklendi. Render ücretsiz test ortamında disk kalıcı değil, video orada kaybolur (yalnız deneme).
 - "Videoyu kaldır" yalnızca bağlantıyı çözer, dosya diskte kalır (geriye dönük raporlama ilkesi). Temizlik aracı yok; ileride gerekirse "bağlı olmayan videolar" listesi eklenir.
+
+## Bağışçı profilinde video (23 Kas)
+- Bağışçı profili → Bağışlar: videosu olan her payda "Videoyu izle" (açılır oynatıcı, yüklenen videolar için), "Yeni sekmede aç" ve "SMS gönder / SMS'i tekrar gönder" düğmesi. Endpoint: POST /api/org/pay-video/:payId (bağışçı düzenleme yetkisi; paylar.vs işaretlenir, denetim kaydı `video_sms`). Telefon yoksa 409.
