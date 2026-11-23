@@ -321,6 +321,6 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 
 ## Giriş ve kullanıcı adı (23 Kas)
 - Giriş: kullanıcı adı ya da e-posta (e-posta yalnızca tek kullanıcıya aitse eşleşir). Telefonla giriş yok (ortak telefon, format karışıklığı); ileride SMS doğrulama kodu (2. adım) olarak telefon eklenebilir.
-- Yönetici kullanıcıyı açarken ad soyad, kullanıcı adı/e-posta, şifre ve yetkiyi kendisi girer; kullanıcıya ilk girişte yalnızca yeni şifre sordurulur. Ad soyad sorusu yalnızca varsayılan "Yönetici" hesabında çıkar (ilk kurulum): ana sayfadaki "Hoş geldiniz, …" ve kayıtlardaki "Sorumlu/Giren" bu ad olur. Bağış Raporları'nda "Giriş yapan sorumlu" zaten kullanıcı adını (ad soyad) gösterir.
+- İlk girişte kimseye ad sorulmaz. Yönetici kullanıcıyı açarken ad soyad, kullanıcı adı/e-posta, şifre ve yetkiyi kendisi girer. Varsayılan "Yönetici" hesabının adı Profilim → Profil Bilgilerim'den değiştirilir (Ad soyad alanı yalnızca Kullanıcı Yönetimi yetkisi olanlara görünür); diğer kullanıcıların adını yönetici Kullanıcı Yönetimi'nden değiştirir.
 - Yeni kullanıcı formunda ad soyaddan kullanıcı adı önerilir (Meriç Çümen → meric.cumen).
 - .card içinde başlık+açıklama boşluğu genel CSS ile düzeltildi.

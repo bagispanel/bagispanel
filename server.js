@@ -64,11 +64,11 @@ R('POST', '/api/logout', 'auth', null, async (c) => { A.endSession(c.token); A.a
 R('GET', '/api/saglik', null, null, async () => [200, { ok: 1, surum: process.env.GIT_SHA || 'yerel', ortam: process.env.ORTAM || 'yerel' }]);
 R('GET', '/api/me', 'auth', null, async (c) => [200, { demo: process.env.DEMO === '1', surum: process.env.GIT_SHA || 'yerel', ortam: process.env.ORTAM || 'yerel', user: { id: c.user.id, ad: c.user.ad, kadi: c.user.kadi, birim: c.user.birim_ad, must_change: !!c.user.must_change, telefon: c.user.telefon, eposta: c.user.eposta, foto: !!c.user.foto }, perms: c.perms, menu: A.MENU }]);
 R('POST', '/api/sifre', 'auth', null, async (c) => {
-  const { eski, yeni } = c.body; const yadi = c.user.must_change && /^(yönetici|admin)$/i.test(c.user.ad) ? str(c.body.ad, 80) : ''; // ilk girişte kişi kendi ad soyadını yazar (varsayılan "Yönetici" yerine)
+  const { eski, yeni } = c.body; 
   if (!A.verify(String(eski || ''), c.user.pass)) throw new Err(400, 'Mevcut şifre hatalı.');
   const e = A.pwErr(yeni); if (e) throw new Err(400, e);
   if (yeni === eski) throw new Err(400, 'Yeni şifre eskisiyle aynı olamaz.');
-  db.prepare('UPDATE users SET pass=?,must_change=0 WHERE id=?').run(A.hash(yeni), c.user.id); if (yadi && yadi.length >= 3) db.prepare('UPDATE users SET ad=? WHERE id=?').run(yadi, c.user.id);
+  db.prepare('UPDATE users SET pass=?,must_change=0 WHERE id=?').run(A.hash(yeni), c.user.id);
   db.prepare('DELETE FROM sessions WHERE user_id=? AND token<>?').run(c.user.id, require('crypto').createHash('sha256').update(c.token).digest('hex'));
   A.audit(c.user, 'sifre_degisti', null, ip(c.req)); return [200, { ok: 1 }];
 });
@@ -85,7 +85,9 @@ R('GET', '/api/users/:id/foto', 'auth', null, async (c) => {
 R('PUT', '/api/profil', 'auth', null, async (c) => { // kişi kendi iletişim bilgisi ve fotoğrafını günceller
   const tel = vTel(c.body.telefon), mail = vMail(c.body.eposta); let foto = c.user.foto;
   if (c.body.foto) { rmFoto(foto); foto = saveFoto(c.user.id, c.body.foto); } else if (c.body.foto_sil) { rmFoto(foto); foto = null; }
-  db.prepare('UPDATE users SET telefon=?,eposta=?,foto=? WHERE id=?').run(tel, mail, foto, c.user.id); A.audit(c.user, 'profil_guncellendi', null, ip(c.req)); return [200, { ok: 1 }]; });
+  const yad = A.can(c.perms, 'kullanici', 'd') ? str(c.body.ad, 80) : ''; // ad soyadı yalnızca kullanıcı yönetimi yetkisi olan kişi kendisi için değiştirebilir (başkaları yöneticiden ister)
+  if (yad && yad.length < 3) throw new Err(400, 'Ad soyadı en az 3 karakter olmalı.');
+  db.prepare('UPDATE users SET telefon=?,eposta=?,foto=?,ad=COALESCE(?,ad) WHERE id=?').run(tel, mail, foto, yad || null, c.user.id); A.audit(c.user, 'profil_guncellendi', null, ip(c.req)); return [200, { ok: 1 }]; });
 R('POST', '/api/users', 'kullanici', 'e', async (c) => {
   const ad = str(c.body.ad), kadi = str(c.body.kadi, 30).toLowerCase(), b = +c.body.birim_id;
   if (!ad) throw new Err(400, 'Ad soyadı yazın.');
