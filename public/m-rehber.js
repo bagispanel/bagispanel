@@ -29,6 +29,7 @@ const RH=[
 ['Sistem','PDF çıktısında logo, bayrak ve başlık nasıl gelir?',['Kurum logosu Kurum Bilgileri’nden alınır.','Sol üstte Türkiye, sağ üstte seçilen ülkenin bayrağı çıkar.','Sistem Ayarları → PDF Şablonları’nda tasarım ve sayfadaki isim sayısını seçin.'],'pdfay'],
 ['Sistem','Yedek nasıl alınır, kontrol edilir?',['Sistem Ayarları → Yedekleme’yi açın.','Durum “Yedekleme düzenli” olmalı. “Şimdi yedek al” ile anında alın.','Yedeği indirip sunucu dışında saklayın.'],'yedek'],
 ['Sistem','Kim ne yaptı, nasıl görürüm?',['Sistem Ayarları → Denetim Kayıtları’nı açın.','Tarih, kullanıcı ve işleme göre süzün. Silme/iptal, yetki ve giriş işlemleri burada kayıtlıdır.'],'denetim'],
+['Kurum','Bağışçı silinmesini ya da bilgi vermemi isterse (KVKK) ne yaparım?',['Bağışçı kartını açın → “İletişim izinleri” sekmesi → Kişisel veri bölümü.','“Veri talebi kaydet” ile talebi kaydedin; yasal süre (30 gün) takip edilir. Kurum Yönetimi → KVKK ve Veri Talepleri’nde görünür.','Bilgi isterse “Veri dökümünü indir”. Silme isterse “Anonimleştir”: adı, telefonu ve adresi silinir, bağış tutarları raporlarda kalır.','Aktif sponsorluğu varsa önce sponsorluğu iptal edin.'],'kvkk'],
 ['Hesabım','Şifremi nasıl değiştiririm?',['Profilim → Şifre ve Güvenlik’i açın.','Mevcut ve yeni şifreyi girin. Şifreniz tahmin edilmesi zor olmalıdır.'],'sifre'],
 ];
 ST.rh=ST.rh||{q:'',a:-1};

@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
     return [200, L.slice(0, 500)];
   });
   R('GET', '/api/bagiscilar/:id', 'bagisci', 'g', async (c) => {
-    const b = db.prepare('SELECT * FROM bagiscilar WHERE id=?').get(+c.m[1]); if (!b) throw new Err(404, 'Bağışçı yok.');
+    const b = db.prepare('SELECT * FROM bagiscilar WHERE id=?').get(+c.m[1]); if (!b) throw new Err(404, 'Bağışçı yok.'); ctx.kvkkIzle(c.user, b, c.req);
     const L = db.prepare(SEL + ' WHERE g.bagisci_id=? ORDER BY g.tl DESC, g.id DESC').all(b.id).map(bagisSatir), ok = L.filter(x => x.durum === 'Onaylı');
     const sayi = (org) => db.prepare(`SELECT COUNT(DISTINCT p.birim_id) u, COUNT(*) h, COUNT(DISTINCT CASE WHEN u.adim>=3 THEN p.birim_id END) t FROM paylar p JOIN birimler_org u ON u.id=p.birim_id JOIN bagis_turleri t ON t.id=u.tur_id JOIN bagislar g ON g.id=p.bagis_id WHERE g.bagisci_id=? AND g.durum='Onaylı' AND t.org=?`).get(b.id, org);
     const son = ok.reduce((m, x) => x.tarih > m ? x.tarih : m, ''), ilk = ok.reduce((m, x) => !m || x.tarih < m ? x.tarih : m, '');
@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS ayar(k TEXT PRIMARY KEY, v TEXT NOT NULL);
   });
   R('GET', '/api/bagiscilar/ara', 'alin', 'g', async (c) => { // telefondan kayıtlı bağışçıyı bul
     const t = new URL(c.req.url, 'http://x').searchParams; let tel; try { tel = normPh(t.get('kod'), t.get('tel')); } catch (e) { return [200, null]; }
-    return [200, db.prepare('SELECT id,tel,ad,eposta,adres FROM bagiscilar WHERE tel=?').get(tel) || null];
+    return [200, db.prepare('SELECT id,tel,ad,eposta,adres,riza_tarih FROM bagiscilar WHERE tel=? AND anonim=0').get(tel) || null];
   });
 
   // ---- tür yardımcıları
@@ -244,9 +244,11 @@ CREATE TABLE IF NOT EXISTS kn_sayac(k TEXT PRIMARY KEY, n INTEGER NOT NULL);`);
     if (!useNames && !kendi) { adinaAd = str(b.adina_ad, 80); if (!adinaAd) throw new Err(400, 'Adına bağış yapılan kişinin adını girin.'); if (b.adina_tel && String(b.adina_tel).trim()) adinaTel = normPh('+90', b.adina_tel); }
     if (o.grp && org && t.cap > 1 && !t.tam) { const g = db.prepare('SELECT * FROM birimler_org WHERE id=? AND tur_id=? AND adim=0').get(o.grp, t.id); if (g && t.cap - cnt(g) < q) throw new Err(400, `Seçilen grupta ${t.cap - cnt(g)} boş hisse var, ${q} hisse sığmaz.`); }
     if (t.tam && q !== 7) b.adet = 7;
+    ctx.rizaKontrol(db.prepare('SELECT id, riza_tarih FROM bagiscilar WHERE tel=?').get(tel), b, kaynak || 'Manuel (CRM)');
     return tx(() => {
       let bg = db.prepare('SELECT id FROM bagiscilar WHERE tel=?').get(tel), yeni = false;
       if (!bg) { bg = { id: +db.prepare('INSERT INTO bagiscilar(tel,ad,eposta,adres) VALUES(?,?,?,?)').run(tel, ad, str(b.eposta, 120) || null, str(b.adres, 160) || null).lastInsertRowid }; yeni = true; }
+      ctx.rizaKaydet(bg.id, b, kaynak || 'Manuel (CRM)');
       const id = +db.prepare('INSERT INTO bagislar(bagisci_id,tur_id,adet,para,tutar,tl,kendi,adina_ad,adina_tel,notu,odeme,banka_id,durum,tarih,kaynak,xid,secenek,kullanici) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
         .run(bg.id, t.id, t.tam ? 7 : q, para, tutar, tutar * RATE[para], kendi ? 1 : 0, adinaAd, adinaTel, str(b.notu, 400) || null, odeme, banka || null, durum, iso(), kaynak || 'Manuel (CRM)', xid || null, JSON.stringify(o), user.kadi).lastInsertRowid;
       if (b.vekalet && t.org === 'Kurban') db.prepare('UPDATE bagislar SET vekalet=? WHERE id=?').run(VY.includes(b.vekalet_yontem) ? b.vekalet_yontem : 'Telefon', id);

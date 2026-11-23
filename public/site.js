@@ -24,7 +24,7 @@
   function el(t, txt, st) { var x = document.createElement(t); if (txt != null) x.textContent = txt; if (st) x.style.cssText = st; return x; }
   f.addEventListener('submit', function (e) {
     e.preventDefault(); var er = $('[data-er]'), btn = f.querySelector('button.bt:not([type=button])'); er.textContent = '';
-    var o = opt(), body = { tur_id: +tur.value, ad: f.elements.ad.value, tel: f.elements.tel.value, eposta: f.elements.eposta.value, adet: +(f.elements.adet.value || 1), tutar: +(f.elements.tutar.value || 0), web2: f.elements.web2.value, kvkk: f.elements.kvkk.checked };
+    var o = opt(), body = { tur_id: +tur.value, ad: f.elements.ad.value, tel: f.elements.tel.value, eposta: f.elements.eposta.value, adet: +(f.elements.adet.value || 1), tutar: +(f.elements.tutar.value || 0), web2: f.elements.web2.value, kvkk: f.elements.kvkk.checked, iletisim: !!(f.elements.iletisim && f.elements.iletisim.checked) };
     var p = f.querySelector('input[name=periyot]:checked'); if (p) body.periyot = p.value; if (f.elements.vekalet) body.vekalet = f.elements.vekalet.checked && o.dataset.org === 'Kurban'; if (f.elements.banka_id) body.banka_id = +f.elements.banka_id.value;
     btn.disabled = true;
     fetch('/api/site/bagis', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-BP': '1' }, body: JSON.stringify(body) })

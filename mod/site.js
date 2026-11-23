@@ -82,7 +82,7 @@ module.exports = function (ctx) {
     if (!(tutar >= 1) || tutar > 1e7) throw new Err(400, 'Geçerli bir tutar girin.');
     const not = [aylik ? 'Her ay bağış talebi (site)' : '', str(b.not, 200)].filter(Boolean).join(' · ');
     const kod = /^\+\d{1,3}$/.test(String(b.kod || '')) ? b.kod : '+90';
-    const r = ctx.bagisOlustur({ kod, tel: b.tel, ad: b.ad, eposta: b.eposta, tur_id: t.id, adet, tutar, odeme: 'Havale/EFT', banka_id: hes.id, durum: 'Bekleyen', notu: not, vekalet: a.form.vekalet && t.org === 'Kurban' && b.vekalet ? true : false, vekalet_yontem: 'Online' }, { id: null, kadi: 'site' }, 'Web sitesi', 'SITE-' + require('crypto').randomBytes(8).toString('hex'), c.req);
+    const r = ctx.bagisOlustur({ kod, tel: b.tel, ad: b.ad, eposta: b.eposta, tur_id: t.id, adet, tutar, odeme: 'Havale/EFT', banka_id: hes.id, durum: 'Bekleyen', notu: not, vekalet: a.form.vekalet && t.org === 'Kurban' && b.vekalet ? true : false, vekalet_yontem: 'Online', riza: { ayd: true, kaynak: 'Web formu', iletisim: !!b.iletisim } }, { id: null, kadi: 'site' }, 'Web sitesi', 'SITE-' + require('crypto').randomBytes(8).toString('hex'), c.req);
     return [201, { no: r.no, tutar, tur: t.ad, aylik, hesaplar: a.goster.hesap ? hs : [hes] }];
   });
 
@@ -146,7 +146,8 @@ ${a.form.aylik ? `<div class="sg" style="margin-top:10px"><label class="on"><inp
 ${a.form.vekalet ? `<label class="ck" data-g="vekalet" hidden><input type="checkbox" name="vekalet"> Kurbanımın kesimi için derneğe vekâlet veriyorum.</label>` : ''}
 ${hs.length > 1 ? `<label>Ödeme yapacağınız hesap<select name="banka_id">${hs.map(h => `<option value="${h.id}">${esc(h.banka)} · ${esc(h.hesap)} (${esc(h.para)})</option>`).join('')}</select></label>` : ''}
 <input class="hp" name="web2" tabindex="-1" autocomplete="off" aria-hidden="true">
-<label class="ck"><input type="checkbox" name="kvkk" required> Kişisel verilerimin bağış işlemi ve bilgilendirme amacıyla işlenmesini kabul ediyorum.</label>
+<label class="ck"><input type="checkbox" name="kvkk" required> <a href="/aydinlatma.html" target="_blank" rel="noopener">Aydınlatma metnini</a> okudum, kişisel verilerimin bağış işlemi için işlenmesini anladım.</label>
+<label class="ck"><input type="checkbox" name="iletisim"> Bağış ve proje bilgilendirme mesajlarını (SMS, WhatsApp, e-posta) almak istiyorum. <small>(İsteğe bağlı, istediğiniz zaman durdurabilirsiniz.)</small></label>
 <p class="er" data-er></p><button class="bt" style="width:100%">Bağış kaydını oluştur</button><p class="hs" style="margin:10px 0 0;color:var(--mu)">Bağışınız kaydedilir ve ödeme için banka bilgileri gösterilir. Havale/EFT açıklamasına bağış numaranızı yazın. Kartla ödeme yakında.</p><div data-sonuc hidden></div></form>` : `<div class="card" id="bagis"><h2>Bağış</h2><p>Bağış türleri henüz tanımlı değil.</p></div>`;
     return `<section class="hero"><div class="w">${gorsel}<div><h1>${esc(a.hero.baslik)}</h1><p>${esc(a.hero.alt)}</p><a class="bt" href="#bagis">${esc(a.hero.dugme)}</a></div>${form}</div></section>
 ${a.goster.kategori && kats.length ? `<section class="sc"><div class="w"><h2>Nasıl destek olabilirsiniz?</h2><div class="gr">${kats.map(kt => `<a class="kt" href="#bagis" data-kat="${esc(kt)}"><b>${esc(kt)}</b><span>${T.filter(t => t.kat === kt).slice(0, 3).map(t => esc(t.ad)).join(' · ')}</span></a>`).join('')}</div></div></section>` : ''}

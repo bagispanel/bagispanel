@@ -1,5 +1,5 @@
 // Otomatik test: geçici veri klasöründe sunucuyu açar, yetki ve güvenlik kurallarını dener.
-process.env.DATA_DIR = require('fs').mkdtempSync(require('os').tmpdir() + '/bp-'); process.env.ADMIN_PASSWORD = 'Gecici123'; process.env.KUR_OTO = '0';
+process.env.DATA_DIR = require('fs').mkdtempSync(require('os').tmpdir() + '/bp-'); process.env.ADMIN_PASSWORD = 'Gecici123'; process.env.KUR_OTO = '0'; process.env.KVKK_ZORUNLU = '0';
 const { server } = require('./server');
 const assert = require('assert');
 let fails = 0;
@@ -735,6 +735,45 @@ server.listen(0, async () => {
     const me0 = await (await fetch(base + '/api/me', { headers: H })).json(); assert.ok(me0.user.must_change); assert.equal((await fetch(base + '/api/sifre', { method: 'POST', headers: H, body: JSON.stringify({ eski: 'Deneme1234', yeni: 'Yeni12345x' }) })).status, 200);
     const pf = (b) => fetch(base + '/api/profil', { method: 'PUT', headers: H, body: JSON.stringify(b) }); await pf({ ad: 'Başka Isim' }); assert.equal((await (await fetch(base + '/api/me', { headers: H })).json()).user.ad, 'Deneme Kisi', 'yetkisiz kişi adını değiştiremez');
     assert.equal((await admin('PUT', '/api/profil', { ad: 'Meriç Çümen' })).s, 200); assert.equal((await admin('GET', '/api/me')).j.user.ad, 'Meriç Çümen'); assert.equal((await admin('PUT', '/api/profil', { ad: 'ab' })).s, 400);
+  });
+  await t('KVKK: aydınlatma onayı zorunlu, rıza kaydı, talep süresi, veri dökümü, anonimleştirme, dışa aktarma izi', async () => {
+    assert.equal((await admin('PUT', '/api/kvkk/ayar', { zorunlu: true })).s, 200);
+    const t1 = await turId('Adak · küçükbaş'), ilk = { tur_id: t1, tel: '541 600 00 01', ad: 'Rıza Deneme' };
+    const r0 = await bag(ilk); assert.equal(r0.s, 400); assert.match(r0.j.hata, /Aydınlatma/);
+    const r1 = await bag({ ...ilk, riza: { ayd: true, iletisim: true } }); assert.equal(r1.s, 201, JSON.stringify(r1.j));
+    const bc = (await admin('GET', '/api/bagiscilar?q=Rıza Deneme')).j, kisi = (bc.liste || bc).find(x => x.ad === 'Rıza Deneme');
+    const pr = (await admin('GET', '/api/bagiscilar/' + kisi.id)).j.bagisci; assert.ok(pr.riza_tarih); assert.equal(pr.aydinlatma_surum, 0); assert.equal(JSON.parse(pr.izin).sms, 'izinli');
+    assert.equal((await bag({ ...ilk, tutar: 10 })).s, 201, 'rıza kaydı olan bağışçı yeniden onay istemez');
+    const ar = await admin('GET', '/api/bagiscilar/ara?kod=%2B90&tel=5416000001'); assert.ok(ar.j.riza_tarih);
+    // aydınlatma metni sürümlenir; herkese açık
+    const pub = await fetch(base + '/api/kvkk/aydinlatma'); assert.equal(pub.status, 200); assert.ok((await pub.json()).metin.includes('KVKK'));
+    assert.equal((await admin('PUT', '/api/kvkk/aydinlatma', { metin: 'kısa' })).s, 400);
+    const yeni = await admin('PUT', '/api/kvkk/aydinlatma', { metin: 'AYDINLATMA\n' + 'Bu özel bir metindir. '.repeat(20) }); assert.equal(yeni.s, 200); assert.equal(yeni.j.surum, 1);
+    // talep: 30 gün, kapatırken sonuç şart
+    const tl = await admin('POST', '/api/kvkk/talep', { bagisci_id: kisi.id, tur: 'Bilgi talebi (erişim)', kaynak: 'Telefon' }); assert.equal(tl.s, 201); assert.ok(tl.j.son_tarih > new Date().toISOString().slice(0, 10));
+    assert.equal((await admin('PUT', '/api/kvkk/talep/' + tl.j.id, { durum: 'Tamamlandı' })).s, 400);
+    assert.equal((await admin('PUT', '/api/kvkk/talep/' + tl.j.id, { durum: 'Tamamlandı', sonuc: 'Döküm verildi' })).s, 200);
+    assert.equal((await admin('POST', '/api/kvkk/talep', { tur: 'Düzeltme' })).s, 400);
+    // veri dökümü
+    const dk = (await admin('GET', '/api/kvkk/dokum/' + kisi.id)).j, d = JSON.parse(Buffer.from(dk.dosya, 'base64').toString()); assert.equal(d.bagisci.ad, 'Rıza Deneme'); assert.ok(d.bagislar.length >= 2);
+    // anonimleştirme
+    assert.equal((await admin('POST', '/api/kvkk/anonimlestir/' + kisi.id, {})).s, 400);
+    const toplamOnce = (await admin('GET', '/api/bagiscilar/' + kisi.id)).j.toplam;
+    assert.equal((await admin('POST', '/api/kvkk/anonimlestir/' + kisi.id, { neden: 'KVKK silme talebi' })).s, 200);
+    const an = (await admin('GET', '/api/bagiscilar/' + kisi.id)).j; assert.equal(an.bagisci.ad, 'Anonim bağışçı #' + kisi.id); assert.equal(an.bagisci.eposta, null); assert.ok(an.bagisci.tel.startsWith('anon-')); assert.equal(an.toplam, toplamOnce, 'mali kayıt kalır');
+    assert.equal((await admin('POST', '/api/kvkk/anonimlestir/' + kisi.id, { neden: 'x' })).s, 409);
+    assert.equal((await admin('GET', '/api/bagiscilar/ara?kod=%2B90&tel=5416000001')).j, null);
+    // izler
+    await admin('POST', '/api/kvkk/disa-aktar', { ne: 'Deneme CSV', adet: 3 });
+    const au = JSON.stringify((await admin('GET', '/api/audit')).j); for (const k of ['kvkk_anonimlestirildi', 'kvkk_veri_dokumu', 'disa_aktarim', 'bagisci_goruntule', 'kvkk_aydinlatma_guncellendi']) assert.ok(au.includes(k), k);
+    // robots + yönetim ekranı
+    assert.match((await fetch(base + '/api/kvkk/aydinlatma')).headers.get('x-robots-tag') || '', /noindex/);
+    const ov = (await admin('GET', '/api/kvkk')).j; assert.ok(ov.sayi.anonim >= 1 && ov.zorunlu === true);
+    assert.equal((await admin('PUT', '/api/kvkk/ayar', { zorunlu: false })).s, 200);
+  });
+  await t('yedek şifreleme: AES-256-GCM gidiş-dönüş, yanlış anahtar açamaz', async () => {
+    const bk = require('./backup.js'), veri = Buffer.from('gizli veritabanı içeriği '.repeat(50)), e = bk.sifrele(veri, 'uzun-bir-yedek-anahtari-123');
+    assert.equal(e.subarray(0, 4).toString(), 'BPY1'); assert.ok(!e.includes(Buffer.from('gizli'))); assert.deepEqual(bk.coz(e, 'uzun-bir-yedek-anahtari-123'), veri); assert.throws(() => bk.coz(e, 'yanlis-anahtar-yanlis-anahtar'));
   });
   await t('hatırlatma: görev bağışçıya bağlanır, vadesi gelen zil sayacı', async () => {
     const b = (await admin('POST', '/api/bagiscilar', { ad: 'Hatırlatma Bağışçısı', tel: '0533 900 00 01' })).j; assert.ok(b.id);

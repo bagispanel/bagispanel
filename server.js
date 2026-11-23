@@ -187,13 +187,15 @@ ctx.call = async (m, p, body) => { // yalnızca sunucu içi (deneme verisi): rot
   const user = db.prepare('SELECT * FROM users ORDER BY id LIMIT 1').get(); const c = { req: { url: p, headers: {}, socket: { remoteAddress: '127.0.0.1' } }, m: p.split('?')[0].match(r.re), body: body || {}, user, perms: A.effective(user.id) };
   return (await r.h(c))[1];
 };
-['ayarlar', 'bagis', 'excel', 'kurum', 'org', 'video', 'ana', 'iletisim', 'calisma', 'sube', 'gonullu', 'eser', 'sponsor', 'banka', 'vekalet', 'site', 'kur', 'yedek', 'kumbara', 'sertifika', 'bildirim', 'ara', 'analiz', 'demo'].forEach(m => require('./mod/' + m)(ctx));
+['ayarlar', 'bagis', 'excel', 'kurum', 'org', 'video', 'kvkk', 'ana', 'iletisim', 'calisma', 'sube', 'gonullu', 'eser', 'sponsor', 'banka', 'vekalet', 'site', 'kur', 'yedek', 'kumbara', 'sertifika', 'bildirim', 'ara', 'analiz', 'demo'].forEach(m => require('./mod/' + m)(ctx));
 
 // ---- sunucu
 const server = http.createServer(async (req, res) => {
   res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('X-Frame-Options', 'DENY'); res.setHeader('Referrer-Policy', 'same-origin');
   res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:");
   const url = new URL(req.url, 'http://x');
+  if (/^\/(api\/|izle\.html|sponsor\.html|sertifika\/|aydinlatma\.html)/.test(url.pathname)) res.setHeader('X-Robots-Tag', 'noindex, nofollow'); // kişisel veri içeren bağlantılar arama motoruna kapalı
+  if (req.headers['x-forwarded-proto'] === 'https' || /^https:/i.test(process.env.PUBLIC_URL || '')) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   if (!/^(localhost|127\.|\[::1\])/.test(req.headers.host || '')) ctx.sonHost = (req.headers['x-forwarded-proto'] || 'http') + '://' + req.headers.host; else ctx.sonHost = 'http://' + req.headers.host;
   if (url.pathname.startsWith('/sertifika/') && ctx.sertServe) return ctx.sertServe(req, res, url);
   if (ctx.siteServe && !url.pathname.startsWith('/api/') && url.pathname !== '/site.js' && await ctx.siteServe(req, res, url)) return;

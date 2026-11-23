@@ -324,3 +324,12 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - İlk girişte kimseye ad sorulmaz. Yönetici kullanıcıyı açarken ad soyad, kullanıcı adı/e-posta, şifre ve yetkiyi kendisi girer. Varsayılan "Yönetici" hesabının adı Profilim → Profil Bilgilerim'den değiştirilir (Ad soyad alanı yalnızca Kullanıcı Yönetimi yetkisi olanlara görünür); diğer kullanıcıların adını yönetici Kullanıcı Yönetimi'nden değiştirir.
 - Yeni kullanıcı formunda ad soyaddan kullanıcı adı önerilir (Meriç Çümen → meric.cumen).
 - .card içinde başlık+açıklama boşluğu genel CSS ile düzeltildi.
+
+## KVKK uygulaması (23 Kas, yapıldı; hukukçu kontrolü şart)
+- **Rıza/aydınlatma kaydı:** Bağış Al'da kayıtsız/rızasız bağışçı için "Aydınlatma metni okundu/iletildi" kutusu zorunlu (Kurum Yönetimi → KVKK'dan kapatılabilir, önerilmez); kayıt: tarih, kaynak (Panel/Web formu/Kurum beyanı), metin sürümü. İletişim izni ayrı ve isteğe bağlı kutu. Web formunda "aydınlatma metnini okudum" (zorunlu) + isteğe bağlı iletişim izni; ayrı herkese açık sayfa `/aydinlatma.html` (metin panelden düzenlenir, sürümlenir).
+- **Bağışçı hakları:** Kurum Yönetimi → KVKK ve Veri Talepleri: talep kaydı (30 gün süre takibi, geciken uyarısı, kapatırken sonuç/gerekçe zorunlu). Bağışçı kartında: veri dökümü indir (erişim hakkı), veri talebi kaydet, **anonimleştir** (ad/telefon/e-posta/adres silinir, adına bağış yapılanlar, notlar, mesaj metinleri, WhatsApp konuşmaları, izleme/sertifika/sponsor bağlantıları kapanır; bağış tutarı/tarih/tür raporlarda KALIR; aktif sponsorluk varsa engel).
+- **İzler:** bağışçı kartı görüntüleme (15 dk'da bir), veri dökümü, anonimleştirme, dışa aktarma (CSV'ler dahil), aydınlatma metni değişikliği Denetim Kayıtları'nda.
+- **Toplu mesaj:** varsayılan "yalnızca iletişim izni vermiş bağışçılara"; kapatılırsa uyarı. (Makbuz/sertifika/video mesajları hizmet mesajı sayılır, bundan etkilenmez.)
+- **Güvenlik:** noindex (api, izle, sponsor, sertifika, aydınlatma), HSTS (PUBLIC_URL https ise), yedek şifreleme (BACKUP_KEY, AES-256-GCM; KURULUM.md), anonimleştirilen kişi arama/gönderimden çıkar.
+- **Hukukçuyla netleştirilecek:** saklama süreleri; kurban/adak bağışının din ile ilişkisi (m.6 dernek istisnası); yurt dışı partner aktarımı; ticari ileti izni (İYS); VERBİS; veri işleme sözleşmesi; çocuk verisi (öğrenci kartı) ek önlemleri. Ekrandaki envanter/metinler taslaktır.
+- **Yapay zekâ (havale eşleştirme):** henüz yok; açılırsa varsayılan kapalı + yazılı onay.
