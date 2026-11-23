@@ -222,10 +222,12 @@ CREATE TABLE IF NOT EXISTS kn_sayac(k TEXT PRIMARY KEY, n INTEGER NOT NULL);`);
   const bankaIban = (id) => { const b = id && db.prepare('SELECT * FROM banka_hesaplari WHERE id=?').get(id); return b ? b.iban : ''; };
   const bagisSatir = (r) => ({ id: r.id, bagisci_id: r.bagisci_id, iban: bankaIban(r.banka_id), no: r.no, tel: r.tel, ad: r.ad, tur_id: r.tur_id, tur: r.turad, kat: r.kat, org: r.org, adet: r.adet, para: r.para, tutar: r.tutar, tl: r.tl, kendi: !!r.kendi, adina_ad: r.adina_ad, adina_tel: r.adina_tel, notu: r.notu, odeme: r.odeme, banka: bankaAd(r.banka_id), durum: r.durum, tarih: r.tarih, kaynak: r.kaynak, kanal: r.kaynak === 'Manuel (CRM)' ? 'CRM' : r.kaynak, sorumlu: r.sorumlu_ad || String(r.kullanici || '').replace(/^api:/, ''), xid: r.xid, iptal_sebep: r.iptal_sebep, iptal_tarih: r.iptal_tarih, adlar: (JSON.parse(r.secenek || '{}').names || []).map(x => x.n) });
   const SEL = `SELECT g.*, b.ad ad, b.tel tel, t.ad turad, t.kat kat, t.org org, us.ad sorumlu_ad FROM bagislar g JOIN bagiscilar b ON b.id=g.bagisci_id JOIN bagis_turleri t ON t.id=g.tur_id LEFT JOIN users us ON us.kadi=g.kullanici`;
+  // çift tıklama koruması: aynı kişi aynı bağışı 8 sn içinde ikinci kez gönderirse reddedilir
+  const SON = new Map(), cift = (c) => { const b = c.body || {}, k = [c.user.kadi, b.kod, b.tel, b.tur_id, b.tutar, b.adet, b.para, b.odeme, b.durum, b.ad].join('|'), n = Date.now(); for (const [x, t] of SON) if (n - t > 8000) SON.delete(x); if (SON.has(k)) throw new Err(409, 'Aynı bağış az önce kaydedildi (çift tıklama olabilir). Gerçekten ikinci bir bağışsa birkaç saniye sonra tekrar deneyin.'); return () => SON.set(k, n); };
   function bagisOlustur(b, user, kaynak, xid, req) {
     const tel = normPh(b.kod, b.tel), ad = str(b.ad, 80); if (!ad) throw new Err(400, 'Ad soyad zorunlu.');
     const t = tur(+b.tur_id), q = Math.max(1, Math.floor(+b.adet || 1)), para = ['TL', 'USD', 'EUR'].includes(b.para) ? b.para : 'TL';
-    let tutar = +b.tutar; if (t.fiyat && !(t.k && t.k.bicim === 'Fon')) tutar = q * t.fiyat; if (!(tutar > 0)) throw new Err(400, 'Toplam tutarı girin.');
+    let tutar = +b.tutar; if (t.fiyat && !(t.k && t.k.bicim === 'Fon')) tutar = q * t.fiyat; if (!(tutar > 0)) throw new Err(400, 'Toplam tutarı girin.'); if (tutar > 1e8) throw new Err(400, 'Tutar çok büyük görünüyor; lütfen kontrol edin.'); if (q > 10000) throw new Err(400, 'Adet çok büyük görünüyor; lütfen kontrol edin.');
     const odeme = ['Nakit', 'Havale/EFT', 'Kredi kartı / online'].includes(b.odeme) ? b.odeme : 'Nakit', durum = b.durum === 'Bekleyen' ? 'Bekleyen' : 'Onaylı';
     let banka = 0; if (odeme === 'Havale/EFT') { banka = +b.banka_id || 0; if (!db.prepare('SELECT 1 FROM banka_hesaplari WHERE id=?').get(banka)) throw new Err(400, 'Hangi banka hesabına geldiğini seçin (Ayarlar → Banka hesapları).'); }
     const fon = t.k && t.k.bicim === 'Fon', org = t.org !== 'Genel';
@@ -258,7 +260,7 @@ CREATE TABLE IF NOT EXISTS kn_sayac(k TEXT PRIMARY KEY, n INTEGER NOT NULL);`);
     });
   }
   ctx.bagisOlustur = bagisOlustur;
-  R('POST', '/api/bagislar', 'alin', 'e', async (c) => { const r = bagisOlustur(c.body, c.user, 'Manuel (CRM)', '', c.req); return [201, r]; });
+  R('POST', '/api/bagislar', 'alin', 'e', async (c) => { const isle = cift(c); const r = bagisOlustur(c.body, c.user, 'Manuel (CRM)', '', c.req); isle(); return [201, r]; });
   R('GET', '/api/bagislar', 'rapor|bekleyen', 'g', async (c) => {
     const p = new URL(c.req.url, 'http://x').searchParams, W = [], A_ = [], f = (k) => { const v = p.get(k); return v && v !== 'Tümü' ? v : null; };
     if (f('kat')) { W.push('t.kat=?'); A_.push(f('kat')); } if (f('tur')) { W.push('g.tur_id=?'); A_.push(+f('tur')); }

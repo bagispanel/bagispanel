@@ -55,7 +55,7 @@ document.addEventListener('click',async ev=>{const t=ev.target.closest('[data-a]
 }catch(e){toast(e.message,1)}});
 document.addEventListener('input',ev=>{const i=ev.target.closest('[data-i]');if(i&&INP[i.dataset.i])INP[i.dataset.i](i.value,i,ev)});
 document.addEventListener('change',async ev=>{const cc=ev.target.closest('[data-c]');if(cc&&CHG[cc.dataset.c]){try{await CHG[cc.dataset.c](cc.value,cc,ev)}catch(e){toast(e.message,1)}return}const fi=ev.target.closest('[data-foto]');if(fi){try{if(fi.files[0]){ST.foto=await resizeImg(fi.files[0]);$('#fprev').innerHTML=`<img src="${ST.foto}" width="56" height="56" style="border-radius:50%;object-fit:cover" alt="">`}}catch(e){toast(e.message,1)}return}const c=ev.target.closest('[data-b]');if(!c)return;const [k,ac]=c.dataset.b.split('.');const q=x=>document.querySelector(`[data-b="${k}.${x}"]`);if(ac=='g'&&!c.checked)['e','d','s'].forEach(x=>q(x).checked=false);else if(ac!='g'&&c.checked)q('g').checked=true});
-document.addEventListener('submit',async ev=>{const f=ev.target.closest('[data-f]');if(!f)return;ev.preventDefault();const d=Object.fromEntries(new FormData(f)),k=f.dataset.f;try{
+document.addEventListener('submit',async ev=>{const f=ev.target.closest('[data-f]');if(!f)return;ev.preventDefault();if(f._busy)return;f._busy=1;const d=Object.fromEntries(new FormData(f)),k=f.dataset.f;try{
  if(FORMS[k]){await FORMS[k](d,f);return}
  if(k=='login'){try{await api('POST','/api/login',d);msg='';await boot()}catch(e){msg=e.message;draw()}return}
  if(k=='sifre'){if(d.yeni!=d.yeni2)return toast('Yeni şifreler aynı değil.',1);await api('POST','/api/sifre',{eski:d.eski,yeni:d.yeni});toast('Şifre değiştirildi.');await boot();go('home');return}
@@ -63,7 +63,7 @@ document.addEventListener('submit',async ev=>{const f=ev.target.closest('[data-f
   if(ST.ud){await api('PUT','/api/users/'+ST.ud.id,body);if(d.sifre)await api('POST','/api/users/'+ST.ud.id+'/sifre',{sifre:d.sifre});ST.ud=null;ST.foto=null;ST.fv=Date.now();toast('Kullanıcı kaydedildi.');ST.users=await api('GET','/api/users');ST.birimler=await api('GET','/api/birimler');draw()}
   else{body.kadi=d.kadi;body.sifre=d.sifre;const r=await api('POST','/api/users',body);ST.foto=null;ST.users=await api('GET','/api/users');ST.birimler=await api('GET','/api/birimler');const y=await api('GET','/api/users/'+r.id+'/yetki');ST.uy={id:r.id,...y};toast('Kullanıcı eklendi. Şimdi isterseniz kişiye özel yetki ekleyip çıkarabilirsiniz.');draw()}return}
  if(k=='birim'){await api('POST','/api/birimler',{ad:d.ad,kopya_id:+d.kopya_id});toast('Birim eklendi.');ST.birimler=await api('GET','/api/birimler');draw()}
-}catch(e){toast(e.message,1)}});
+}catch(e){toast(e.message,1)}finally{setTimeout(()=>{f._busy=0},800)}});
 (document.readyState==="complete"?boot:()=>addEventListener("load",boot))(); // tüm m-*.js dosyaları yüklendikten sonra başla
 
 document.addEventListener('click',e=>{const s=document.querySelector('.side.o');if(s&&!e.target.closest('.side')&&!e.target.closest('[data-a=mnu]'))s.classList.remove('o')});
@@ -77,3 +77,6 @@ AFT.push(()=>{document.querySelectorAll('.tw table,.card>table,.card table.tb').
 
 // Zorunlu adım atlandığında ilgili alanı sallayıp vurgular (hareketli uyarı); hareket azaltma tercihinde yalnızca çerçeve.
 function zor(sel,msg){const e=typeof sel=='string'?document.querySelector(sel):sel;if(msg)toast(msg,1);if(!e)return;try{e.scrollIntoView({block:'center',behavior:'smooth'})}catch(_){}e.classList.remove('zor');void e.offsetWidth;e.classList.add('zor');clearTimeout(e._zt);e._zt=setTimeout(()=>e.classList.remove('zor'),1800)}
+
+// CSV hücresi: tırnaklar kaçırılır; =, +, -, @ ile başlayan METİNLER Excel'de formül sayılmasın diye başına ' konur (CSV enjeksiyonu önlemi).
+function csvQ(x){let s=String(x==null?'':x);if(typeof x=='string'&&/^[=+\-@\t\r]/.test(s)&&!/^[+-]?\d[\d.,]*$/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'}

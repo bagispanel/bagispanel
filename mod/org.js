@@ -159,7 +159,8 @@ CREATE TABLE IF NOT EXISTS api_anahtar(id INTEGER PRIMARY KEY, ad TEXT NOT NULL,
   const dis = (req) => { const k = req.headers['x-api-key']; const r = k && db.prepare('SELECT * FROM api_anahtar WHERE hash=? AND aktif=1').get(crypto.createHash('sha256').update(String(k)).digest('hex')); if (!r) throw new Err(401, 'API anahtarı geçersiz.'); return r; };
   R('GET', '/api/dis/turler', null, null, async (c) => { dis(c.req); return [200, db.prepare('SELECT id,kat,ad,org,fiyat FROM bagis_turleri WHERE web=1').all()]; });
   R('POST', '/api/dis/bagis', null, null, async (c) => { // dış sistemden gelen bağış her zaman “Bekleyen” düşer; xid ile mükerrer önlenir
-    const k = dis(c.req), b = { ...c.body, durum: 'Bekleyen' }, xid = str(b.xid, 80); if (b.vekalet) b.vekalet_yontem = 'Online'; // sitedeki “kurban vekâleti veriyorum” kutusu if (!xid) throw new Err(400, 'xid (dış kimlik) zorunlu.');
+    const k = dis(c.req), b = { ...c.body, durum: 'Bekleyen' }, xid = str(b.xid, 80); if (b.vekalet) b.vekalet_yontem = 'Online'; // sitedeki “kurban vekâleti veriyorum” kutusu
+    if (!xid) throw new Err(400, 'xid (dış kimlik) zorunlu.');
     const var_ = db.prepare('SELECT id,no FROM bagislar WHERE kaynak=? AND xid=?').get(k.ad, xid); if (var_) return [200, { ...var_, tekrar: true }];
     const r = ctx.bagisOlustur(b, { id: null, kadi: 'api:' + k.ad }, k.ad, xid, c.req); return [201, r];
   });
