@@ -64,7 +64,7 @@ R('POST', '/api/logout', 'auth', null, async (c) => { A.endSession(c.token); A.a
 R('GET', '/api/saglik', null, null, async () => [200, { ok: 1, surum: process.env.GIT_SHA || 'yerel', ortam: process.env.ORTAM || 'yerel' }]);
 R('GET', '/api/me', 'auth', null, async (c) => [200, { demo: process.env.DEMO === '1', surum: process.env.GIT_SHA || 'yerel', ortam: process.env.ORTAM || 'yerel', user: { id: c.user.id, ad: c.user.ad, kadi: c.user.kadi, birim: c.user.birim_ad, must_change: !!c.user.must_change, telefon: c.user.telefon, eposta: c.user.eposta, foto: !!c.user.foto }, perms: c.perms, menu: A.MENU }]);
 R('POST', '/api/sifre', 'auth', null, async (c) => {
-  const { eski, yeni } = c.body; const yadi = c.user.must_change ? str(c.body.ad, 80) : ''; // ilk girişte kişi kendi ad soyadını yazar (varsayılan "Yönetici" yerine)
+  const { eski, yeni } = c.body; const yadi = c.user.must_change && /^(yönetici|admin)$/i.test(c.user.ad) ? str(c.body.ad, 80) : ''; // ilk girişte kişi kendi ad soyadını yazar (varsayılan "Yönetici" yerine)
   if (!A.verify(String(eski || ''), c.user.pass)) throw new Err(400, 'Mevcut şifre hatalı.');
   const e = A.pwErr(yeni); if (e) throw new Err(400, e);
   if (yeni === eski) throw new Err(400, 'Yeni şifre eskisiyle aynı olamaz.');

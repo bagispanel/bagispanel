@@ -732,7 +732,7 @@ server.listen(0, async () => {
     const r1 = await lg({ kadi: 'Deneme.Kisi@Ornek.org', sifre: 'Deneme1234' }); assert.equal(r1.status, 200, 'e-posta ile giriş');
     assert.equal((await lg({ kadi: 'yok@ornek.org', sifre: 'Deneme1234' })).status, 401); assert.equal((await lg({ kadi: 'deneme.kisi@ornek.org', sifre: 'yanlis' })).status, 401);
     const ck = r1.headers.get('set-cookie').split(';')[0], H = { 'Content-Type': 'application/json', 'X-BP': '1', cookie: ck };
-    const me0 = await (await fetch(base + '/api/me', { headers: H })).json(); if (me0.user.must_change) { assert.equal((await fetch(base + '/api/sifre', { method: 'POST', headers: H, body: JSON.stringify({ eski: 'Deneme1234', yeni: 'Yeni12345x', ad: 'Meriç Çümen' }) })).status, 200); assert.equal((await (await fetch(base + '/api/me', { headers: H })).json()).user.ad, 'Meriç Çümen'); }
+    const me0 = await (await fetch(base + '/api/me', { headers: H })).json(); assert.ok(me0.user.must_change); assert.equal((await fetch(base + '/api/sifre', { method: 'POST', headers: H, body: JSON.stringify({ eski: 'Deneme1234', yeni: 'Yeni12345x', ad: 'Başka Isim' }) })).status, 200); assert.equal((await (await fetch(base + '/api/me', { headers: H })).json()).user.ad, 'Deneme Kisi', 'yönetici adını yazdıysa kişi değiştiremez/sorulmaz');
   });
   await t('hatırlatma: görev bağışçıya bağlanır, vadesi gelen zil sayacı', async () => {
     const b = (await admin('POST', '/api/bagiscilar', { ad: 'Hatırlatma Bağışçısı', tel: '0533 900 00 01' })).j; assert.ok(b.id);
