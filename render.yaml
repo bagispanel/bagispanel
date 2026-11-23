@@ -9,6 +9,6 @@ services:
     healthCheckPath: /api/saglik
     envVars:
       - { key: ORTAM, value: test }
-      - { key: DEMO, value: "1" }
+      - { key: DEMO, value: "0" }   # "1" yapılırsa her açılışta örnek bağışçı/bağış verisi yüklenir; boş kurum için 0
       - { key: SECURE, value: "1" }
       - { key: ADMIN_PASSWORD, sync: false }   # Render ekranında siz yazarsınız
