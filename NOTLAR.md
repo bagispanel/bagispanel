@@ -355,3 +355,6 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 **Bağışçıya özel olan yalnızca:** talepler (silme/bilgi) ve izin kaydı — talep gelince tek kişi için işlenir.
 **Hukukçuya sorulacak:** dernek için dini/inanç verisi (kurban/adak) istisnası, mevcut bağışçılara toplu aydınlatmanın biçimi, İYS kaydı gerekli mi.
 Yapılacak (istenirse): toplu "aydınlatma bildirimi" SMS'i + panelde "aydınlatma iletilmeyen bağışçı sayısı" göstergesi.
+
+## Sıradaki: KVKK incelemesi (Meriç ile birlikte, sonra)
+Temel hazır (aydınlatma, rıza kaydı, talepler, anonimleştirme, iz kaydı, yedek şifreleme). İnceleme gündemi: aydınlatma metninin kurum bilgisiyle düzeltilmesi, onay modeli (yukarıdaki not), mevcut bağışçılara toplu aydınlatma SMS'i, "aydınlatma iletilmeyen" göstergesi, hukukçu soruları, yapay zekâ (havale eşleştirme) kararı.
