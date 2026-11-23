@@ -800,5 +800,15 @@ server.listen(0, async () => {
     assert.equal((await admin('POST', `/api/aktar/${parti}/iptal`, {})).s, 400); assert.equal((await admin('POST', `/api/aktar/${parti}/iptal`, { neden: 'deneme' })).s, 200); assert.equal((await admin('POST', `/api/aktar/${parti}/iptal`, { neden: 'deneme' })).s, 409);
     assert.equal((await admin('POST', '/api/aktar/bagis', { dosya: d, mod: 'onizle' })).j.ozet.yeni, 2); // iptal edilenler tekrar alınabilir
   });
+  await t('modüller aç/kapa: kapalı modül menüden ve API\'den kalkar, veri kalır', async () => {
+    const L = (await admin('GET', '/api/moduller')).j; assert.ok(L.length >= 8 && L.every(x => x.acik));
+    const kb = (await admin('GET', '/api/kumbara')).s; assert.equal(kb, 200);
+    assert.equal((await admin('PUT', '/api/moduller', { kapali: ['kumbara', 'yok'] })).s, 200);
+    assert.equal((await admin('GET', '/api/kumbara')).s, 403); assert.ok(!((await admin('GET', '/api/me')).j.perms.kumbara || {}).g);
+    assert.equal((await admin('GET', '/api/ana')).s, 200);
+    assert.equal((await admin('PUT', '/api/moduller', { kapali: 'x' })).s, 400);
+    assert.equal((await admin('PUT', '/api/moduller', { kapali: [] })).s, 200); assert.equal((await admin('GET', '/api/kumbara')).s, 200);
+    const a = (await admin('GET', '/api/ana')).j; assert.ok(Array.isArray(a.isler));
+  });
   console.log(fails ? `\n${fails} test başarısız` : '\nTüm testler geçti'); server.close(); process.exit(fails ? 1 : 0);
 });

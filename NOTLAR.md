@@ -339,3 +339,9 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - Aktarımda SMS/sertifika/organizasyon kaydı/video OLUŞMAZ; bağış "Onaylı", kaynak "Excel aktarım (geçmiş)"; yeni bağışçıya rıza kaynağı "Kurum beyanı (Excel aktarım)". **Beyan kutusu zorunlu** (verinin hukuka uygun elde edildiği, aydınlatma yapıldığı) — KVKK sorumluluğu kuruma.
 - Mükerrer: Eski Bağış No varsa o, yoksa kişi+tarih+tür+para+tutar. Döviz bağışta TL karşılığı Excel'de yazılır (o günkü kur).
 - Her aktarım bir **parti**: "Aktarım geçmişi"nden geri alınır (kayıtlar silinmez → İptal; kumbara Pasif, sayımlar iptal; xid serbest kalır, düzeltilmiş dosya tekrar alınabilir).
+
+## Sadeleştirme (23 Kas, yapıldı)
+- **Modüller aç/kapa** (Kurum Bilgileri altı): kurban, kuyu, videolu, eser, kumbara, sponsorluk, gönüllü, web sitesi, WhatsApp, çağrı merkezi, toplu e-posta. Kapalı modül menüden ve API'den kalkar (yetki süzgeci), veri silinmez. Çekirdek modüller kapatılamaz. Not: web sitesi kapatılsa bile kamuya açık bağış formu API'si çalışır (ayrıca kapatmak gerekirse yapılır).
+- **Bekleyen işler** kartına "Takip" grubu: ödemesi geciken sponsorluk, 60+ gün sayılmayan kumbara, vadesi gelen görevlerim, süresi dolan KVKK talebi.
+- **Telefonda tablolar kart satırı** olur (≤640px; başlıklar etiket). Genel kural, tüm listeler.
+- Kalan cila fikirleri: koyu tema kontrast taraması, sayfa geçişleri, ortak boş durum metinleri.

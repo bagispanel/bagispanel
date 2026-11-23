@@ -71,3 +71,6 @@ document.addEventListener('click',e=>{const s=document.querySelector('.side.o');
 const TRK=s=>String(s).toLocaleLowerCase('tr-TR').replace(/ç/g,'c').replace(/ğ/g,'g').replace(/ı/g,'i').replace(/ö/g,'o').replace(/ş/g,'s').replace(/ü/g,'u').replace(/[^a-z0-9 ]/g,'').trim().split(/\s+/).filter(Boolean);
 INP.uad=(v,el)=>{const k=document.querySelector('[data-i=ukadi]');if(!k||k.readOnly||k.dataset.el)return;const p=TRK(v);k.value=p.length>1?p[0]+'.'+p[p.length-1]:p[0]||''};
 INP.ukadi=(v,el)=>{el.dataset.el=v?'1':''};
+
+// Telefonda tablolar kart görünümüne döner: başlıklar her hücreye etiket olarak yazılır (CSS ≤640px'te yığar).
+AFT.push(()=>{document.querySelectorAll('.tw table,.card>table,.card table.tb').forEach(t=>{if(t.dataset.lb)return;const th=[...t.querySelectorAll('thead th, tr:first-child th')].map(x=>x.textContent.trim());if(!th.length||th.length>9)return;t.dataset.lb='1';t.classList.add('rt');t.querySelectorAll('tbody tr, tr').forEach(r=>{if(r.querySelector('th'))return;[...r.children].forEach((c,i)=>{if(c.tagName=='TD'&&th[i]&&!c.hasAttribute('colspan'))c.setAttribute('data-l',th[i])})})})});

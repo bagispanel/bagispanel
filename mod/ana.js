@@ -38,6 +38,13 @@ module.exports = function (ctx) {
       [1, 2, 3, 4].forEach(i => { if (cnt[i]) isler.push({ k: r + i, grup: NAD[r], etiket: ETK[r][i], n: cnt[i], git: r + ':' + i }); });
     });
     if (g('vekrap')) { const vb = q("SELECT COUNT(*) n FROM paylar p JOIN birimler_org u ON u.id=p.birim_id JOIN bagis_turleri t ON t.id=u.tur_id WHERE t.org='Kurban' AND p.vekalet IS NULL AND p.bagis_id IN (SELECT id FROM bagislar WHERE durum<>'İptal')").n; if (vb) isler.push({ k: 'orgKvk', grup: 'Kurban', etiket: 'Vekâlet alınmadı', n: vb, git: 'vekrap' }); }
+    { // Takip işleri (geciken / unutulan)
+      const T = 'Takip', n1 = (sql, ...p) => (db.prepare(sql).get(...p) || {}).n || 0;
+      if (g('sptak') && ctx.sponsor) { let n = 0; for (const s of db.prepare("SELECT * FROM sp_sponsorluk WHERE durum='Aktif'").all()) { try { if (ctx.sponsor.hesap(s).gecikme_ay >= 1) n++; } catch { /* atla */ } } if (n) isler.push({ k: 'spgec', grup: T, etiket: 'Ödemesi geciken sponsorluk', n, git: 'sptak' }); }
+      if (g('kumbara')) { const n = n1("SELECT COUNT(*) n FROM kumbaralar k WHERE k.durum='Aktif' AND COALESCE((SELECT MAX(tarih) FROM kumbara_sayim WHERE kumbara_id=k.id AND iptal=0), k.yerlesim, substr(k.zaman,1,10)) < ?", gun(-60)); if (n) isler.push({ k: 'kmgec', grup: T, etiket: '60 günden uzun süredir sayılmayan kumbara', n, git: 'kumbara' }); }
+      { const n = n1("SELECT COUNT(*) n FROM gorev WHERE atanan_id=? AND durum<>'Tamamlandı' AND son_tarih IS NOT NULL AND son_tarih<=?", c.user.id, iso(new Date())); if (n) isler.push({ k: 'gvade', grup: T, etiket: 'Vadesi gelen görevim', n, git: 'gorev' }); }
+      if (g('kvkk')) { const n = n1("SELECT COUNT(*) n FROM kvkk_talep WHERE durum NOT IN ('Tamamlandı','Reddedildi') AND son_tarih<=?", gun(5)); if (n) isler.push({ k: 'kvsure', grup: T, etiket: 'KVKK talebi: süresi dolmak üzere / geçmiş', n, git: 'kvkk' }); }
+    }
     out.isler = isler;
     // Hedefe yaklaşan kuyular
     if (g('orgS')) {
