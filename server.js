@@ -50,7 +50,8 @@ const dupTc = (tc, skip) => { if (tc && db.prepare('SELECT 1 FROM users WHERE tc
 R('POST', '/api/login', null, null, async (c) => {
   const kadi = str(c.body.kadi, 40).toLowerCase(), key = kadi + '|' + ip(c.req);
   const left = A.lockLeft(key); if (left) throw new Err(429, `Çok fazla hatalı deneme. ${left} dakika sonra tekrar deneyin.`);
-  const u = db.prepare('SELECT * FROM users WHERE kadi=?').get(kadi);
+  let u = db.prepare('SELECT * FROM users WHERE kadi=?').get(kadi); // kullanıcı adı ya da (tek kullanıcıya aitse) e-posta ile giriş
+  if (!u && kadi.includes('@')) { const m = db.prepare('SELECT * FROM users WHERE lower(eposta)=?').all(kadi); if (m.length === 1) u = m[0]; }
   const ok = u && A.verify(String(c.body.sifre || ''), u.pass);
   if (!ok) { A.failed(key); A.audit(null, 'giris_hatali', kadi, ip(c.req)); throw new Err(401, 'Kullanıcı adı veya şifre hatalı.'); }
   if (!u.aktif) throw new Err(403, 'Bu hesap pasif. Yöneticinize başvurun.');
@@ -63,11 +64,11 @@ R('POST', '/api/logout', 'auth', null, async (c) => { A.endSession(c.token); A.a
 R('GET', '/api/saglik', null, null, async () => [200, { ok: 1, surum: process.env.GIT_SHA || 'yerel', ortam: process.env.ORTAM || 'yerel' }]);
 R('GET', '/api/me', 'auth', null, async (c) => [200, { demo: process.env.DEMO === '1', surum: process.env.GIT_SHA || 'yerel', ortam: process.env.ORTAM || 'yerel', user: { id: c.user.id, ad: c.user.ad, kadi: c.user.kadi, birim: c.user.birim_ad, must_change: !!c.user.must_change, telefon: c.user.telefon, eposta: c.user.eposta, foto: !!c.user.foto }, perms: c.perms, menu: A.MENU }]);
 R('POST', '/api/sifre', 'auth', null, async (c) => {
-  const { eski, yeni } = c.body;
+  const { eski, yeni } = c.body; const yadi = c.user.must_change ? str(c.body.ad, 80) : ''; // ilk girişte kişi kendi ad soyadını yazar (varsayılan "Yönetici" yerine)
   if (!A.verify(String(eski || ''), c.user.pass)) throw new Err(400, 'Mevcut şifre hatalı.');
   const e = A.pwErr(yeni); if (e) throw new Err(400, e);
   if (yeni === eski) throw new Err(400, 'Yeni şifre eskisiyle aynı olamaz.');
-  db.prepare('UPDATE users SET pass=?,must_change=0 WHERE id=?').run(A.hash(yeni), c.user.id);
+  db.prepare('UPDATE users SET pass=?,must_change=0 WHERE id=?').run(A.hash(yeni), c.user.id); if (yadi && yadi.length >= 3) db.prepare('UPDATE users SET ad=? WHERE id=?').run(yadi, c.user.id);
   db.prepare('DELETE FROM sessions WHERE user_id=? AND token<>?').run(c.user.id, require('crypto').createHash('sha256').update(c.token).digest('hex'));
   A.audit(c.user, 'sifre_degisti', null, ip(c.req)); return [200, { ok: 1 }];
 });

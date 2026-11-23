@@ -318,3 +318,9 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 ## Profil sadeleştirme ve gönderim önizlemesi (23 Kas)
 - Bağışçı profili → Bağışlar: çok hisseli bağışta tek özet satır ("7 hisse · Tamamlandı · Çad · 7 vekâlet eksik · video 7/7 gönderildi"), hisse ayrıntısı açılır liste içinde. Tek hissede tek satır.
 - Profildeki tüm SMS düğmeleri (video, sponsor kartı linki, ödeme hatırlatma) önce önizleme penceresi açar: metin + alıcı + Gönder/Vazgeç. Önizleme uç noktaları SMS kaydı oluşturmaz (GET .../onizleme).
+
+## Giriş ve kullanıcı adı (23 Kas)
+- Giriş: kullanıcı adı ya da e-posta (e-posta yalnızca tek kullanıcıya aitse eşleşir). Telefonla giriş yok (ortak telefon, format karışıklığı); ileride SMS doğrulama kodu (2. adım) olarak telefon eklenebilir.
+- İlk girişte (zorunlu şifre değişimi) kişi kendi Ad Soyadını yazar; ana sayfadaki "Hoş geldiniz, …" ve kayıtlardaki "Sorumlu/Giren" bu ad olur. Bağış Raporları'nda "Giriş yapan sorumlu" zaten kullanıcı adını (ad soyad) gösterir.
+- Yeni kullanıcı formunda ad soyaddan kullanıcı adı önerilir (Meriç Çümen → meric.cumen).
+- .card içinde başlık+açıklama boşluğu genel CSS ile düzeltildi.

@@ -725,6 +725,15 @@ server.listen(0, async () => {
     assert.equal((await admin('GET', '/api/sms')).j.filter(x => x.sablon === 'video').length, nOnce + 1); assert.equal((await admin('POST', '/api/org/pay-video/999999', {})).s, 404);
     assert.ok(JSON.stringify((await admin('GET', '/api/audit')).j).includes('video_yukle'));
   });
+  await t('giriş: e-posta ile giriş, ilk girişte ad soyad yazılır', async () => {
+    const bi = (await admin('GET', '/api/birimler')).j; const bid = (bi.birimler || bi)[0].id;
+    const cu = await admin('POST', '/api/users', { ad: 'Deneme Kisi', kadi: 'deneme.kisi', birim_id: bid, sifre: 'Deneme1234', eposta: 'deneme.kisi@ornek.org' }); assert.ok(cu.s < 300, JSON.stringify(cu.j));
+    const lg = (b) => fetch(base + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-BP': '1' }, body: JSON.stringify(b) });
+    const r1 = await lg({ kadi: 'Deneme.Kisi@Ornek.org', sifre: 'Deneme1234' }); assert.equal(r1.status, 200, 'e-posta ile giriş');
+    assert.equal((await lg({ kadi: 'yok@ornek.org', sifre: 'Deneme1234' })).status, 401); assert.equal((await lg({ kadi: 'deneme.kisi@ornek.org', sifre: 'yanlis' })).status, 401);
+    const ck = r1.headers.get('set-cookie').split(';')[0], H = { 'Content-Type': 'application/json', 'X-BP': '1', cookie: ck };
+    const me0 = await (await fetch(base + '/api/me', { headers: H })).json(); if (me0.user.must_change) { assert.equal((await fetch(base + '/api/sifre', { method: 'POST', headers: H, body: JSON.stringify({ eski: 'Deneme1234', yeni: 'Yeni12345x', ad: 'Meriç Çümen' }) })).status, 200); assert.equal((await (await fetch(base + '/api/me', { headers: H })).json()).user.ad, 'Meriç Çümen'); }
+  });
   await t('hatırlatma: görev bağışçıya bağlanır, vadesi gelen zil sayacı', async () => {
     const b = (await admin('POST', '/api/bagiscilar', { ad: 'Hatırlatma Bağışçısı', tel: '0533 900 00 01' })).j; assert.ok(b.id);
     assert.equal((await admin('POST', '/api/gorev', { baslik: 'Ara', bagisci_id: 999999 })).s, 404);
