@@ -110,7 +110,7 @@ server.listen(0, async () => {
   await t('bağış: genel bağış alınır, bağışçı otomatik kaydolur, sms yazılır', async () => {
     const r = await bag({ tur_id: await turId('Fitre'), tutar: 100 }); assert.equal(r.s, 201); assert.ok(r.j.yeni); assert.match(r.j.no, /^BG-\d{4}-\d{5}$/);
     assert.equal((await bag({ tur_id: await turId('Zekât'), tutar: 50 })).j.yeni, false);
-    assert.ok((await admin('GET', '/api/sms')).j.some(x => x.mesaj.includes('alınmıştır')));
+    assert.ok((await admin('GET', '/api/sms?limit=5000')).j.some(x => x.mesaj.includes('alınmıştır')));
   });
   await t('bağış: hatalı telefon / tutar / havalede banka zorunlu', async () => {
     const f = await turId('Fitre');
@@ -135,7 +135,7 @@ server.listen(0, async () => {
     assert.equal((await admin('POST', '/api/org/islem', { a: 'g', ids: [u.id] })).s, 409);
     assert.equal((await admin('POST', '/api/org/islem', { a: 'v', ids: [u.id], video: 'kurban1.mp4' })).s, 200);
     assert.equal((await admin('POST', '/api/org/islem', { a: 'g', ids: [u.id] })).s, 200);
-    assert.ok((await admin('GET', '/api/sms')).j.filter(x => x.sablon === 'video').length >= 7);
+    assert.ok((await admin('GET', '/api/sms?limit=5000')).j.filter(x => x.sablon === 'video').length >= 7);
   });
   await t('iptal: kesilmiş kurbanın bağışı iptal edilemez, bekleyen iptal olur', async () => {
     const v = await turId('Vacip · hisseli'), b = (await admin('GET', '/api/bagislar')).j.liste.find(x => x.tur_id === v && x.ad === 'K0');
@@ -228,7 +228,7 @@ server.listen(0, async () => {
     assert.equal((await admin('POST', '/api/toplu', { kanal: 'sms', mesaj: 'Merhaba {ad}', filtre: {} })).s, 400);
     const r = await admin('POST', '/api/toplu', { kanal: 'sms', ad: 'deneme', mesaj: 'Merhaba {ad}, {dernek}', onay: true, filtre: {} }); assert.equal(r.s, 201); assert.equal(r.j.mod, 'deneme');
     const g = await bekleG(r.j.id); assert.equal(g.deneme, r.j.adet); assert.equal(smsGelen.length, 0);
-    const log = (await admin('GET', '/api/sms')).j; assert.ok(log.some(x => x.kanal === 'SMS' && x.sablon === 'toplu:' + r.j.id && /Merhaba/.test(x.mesaj)));
+    const log = (await admin('GET', '/api/sms?limit=5000')).j; assert.ok(log.some(x => x.kanal === 'SMS' && x.sablon === 'toplu:' + r.j.id && /Merhaba/.test(x.mesaj)));
   });
   await t('toplu SMS canlı: sağlayıcıya gider, ret edenler atlanır', async () => {
     assert.equal((await admin('PUT', '/api/iletisim/ayar', { mod: 'canli', sms: { saglayici: 'ozel', url: `http://127.0.0.1:${mport}/sms`, baslik: 'DERNEK', sifre: 'gizli' } })).s, 200);
@@ -368,9 +368,9 @@ server.listen(0, async () => {
     let d = (await admin('GET', '/api/sp/sponsorluk/' + sp.j.id)).j; assert.equal(d.odenen, 500); assert.ok(d.gecikme_ay >= 3 && d.odeme_durum === 'Gecikmiş', JSON.stringify([d.gecikme_ay, d.odeme_durum]));
     let rp = (await admin('GET', '/api/sp/rapor')).j; assert.equal(rp.kpi.gecikmis, 1); assert.equal(rp.odemeyenler.length, 1);
     { // önizleme göndermeden metni verir, SMS kaydı oluşturmaz
-      const nSms = (await admin('GET', '/api/sms')).j.length, o1 = await admin('GET', `/api/sp/sponsorluk/${sp.j.id}/onizleme?tip=hatirlat`), o2 = await admin('GET', `/api/sp/sponsorluk/${sp.j.id}/onizleme?tip=link`);
+      const nSms = (await admin('GET', '/api/sms?limit=5000')).j.length, o1 = await admin('GET', `/api/sp/sponsorluk/${sp.j.id}/onizleme?tip=hatirlat`), o2 = await admin('GET', `/api/sp/sponsorluk/${sp.j.id}/onizleme?tip=link`);
       assert.equal(o1.s, 200); assert.ok(o1.j.mesaj && !/\{\w+\}/.test(o1.j.mesaj) && o1.j.tel); assert.equal(o2.s, 200); assert.ok(/sertifika|kart|sp|http/i.test(o2.j.mesaj));
-      assert.equal((await admin('GET', '/api/sms')).j.length, nSms, 'önizleme SMS göndermemeli');
+      assert.equal((await admin('GET', '/api/sms?limit=5000')).j.length, nSms, 'önizleme SMS göndermemeli');
     }
     { const hr = await admin('POST', `/api/sp/sponsorluk/${sp.j.id}/hatirlat`); assert.equal(hr.s, 200, JSON.stringify(hr.j)); }
     assert.equal((await admin('POST', '/api/sp/hatirlat-toplu', { esik: 2 })).j.gonderilen, 0); // bugün zaten hatırlatıldı
@@ -382,11 +382,11 @@ server.listen(0, async () => {
     assert.equal((await admin('POST', `/api/sp/ogrenci/${o.j.id}/not`, { metin: 'Bakara tamamlandı', cuz: 6, bildir: true })).j.bildirilen, 1);
     assert.equal((await admin('POST', `/api/sp/ogrenci/${o.j.id}/tamamla`, { tur: 'Hafızlığı', bildir: true })).j.bildirilen, 1);
     const g = (await admin('GET', '/api/sp/ogrenci/' + o.j.id)).j; assert.equal(g.durum, 'Tamamladı'); assert.equal(g.cuz, 30);
-    assert.ok((await admin('GET', '/api/sms')).j.some(x => x.sablon === 'sptamam'));
-    { const sm = (await admin('GET', '/api/sms')).j.find(x => x.sablon === 'sptamam'); assert.ok(sm.mesaj.includes('/sertifika/' + tok + '?k=tamam'), 'tamamlama bağlantısı sertifika sayfası');
+    assert.ok((await admin('GET', '/api/sms?limit=5000')).j.some(x => x.sablon === 'sptamam'));
+    { const sm = (await admin('GET', '/api/sms?limit=5000')).j.find(x => x.sablon === 'sptamam'); assert.ok(sm.mesaj.includes('/sertifika/' + tok + '?k=tamam'), 'tamamlama bağlantısı sertifika sayfası');
       const ph = await (await fetch(base + '/sertifika/' + tok + '?k=tamam')).text(); assert.ok(ph.includes('Tamamlama Sertifikası') && ph.includes('Ahmed Musa') && ph.includes('Hafızlık Sponsorluğu'));
       const bh = await (await fetch(base + '/sertifika/' + tok)).text(); assert.ok(bh.includes('Sponsorluk Belgesi') && bh.includes('Ahmed Musa'));
-      assert.equal((await admin('POST', `/api/sp/sponsorluk/${sp.j.id}/belge`, { k: 'sms' })).s, 200); assert.ok((await admin('GET', '/api/sms')).j.some(x => x.sablon === 'spbelge' && x.mesaj.includes('?k=belge')));
+      assert.equal((await admin('POST', `/api/sp/sponsorluk/${sp.j.id}/belge`, { k: 'sms' })).s, 200); assert.ok((await admin('GET', '/api/sms?limit=5000')).j.some(x => x.sablon === 'spbelge' && x.mesaj.includes('?k=belge')));
       const wb = await admin('POST', `/api/sp/sponsorluk/${sp.j.id}/belge`, { k: 'wa' }); assert.equal(wb.s, 200); assert.ok(wb.j.link.startsWith('https://wa.me/'));
       assert.equal((await admin('POST', '/api/sp/sponsorluk/99999/belge', {})).s, 404); }
     assert.equal((await admin('DELETE', '/api/sp/ogrenci/' + o.j.id)).s, 409);
@@ -589,14 +589,14 @@ server.listen(0, async () => {
   });
   await t('sertifika: sertifikalı türde onayda tek SMS, tutarsız sayfa, yeniden gönderme', async () => {
     { const tr = await admin('POST', '/api/turler', { sec: 'genel', kat: 'Test Kategori', ad: 'Sertifikalı Fidan', tutar: 100, sertifika: true }); assert.equal(tr.s, 201, JSON.stringify(tr.j)); }
-    const tid = await turId('Sertifikalı Fidan'), smsSay = async (f) => (await admin('GET', '/api/sms')).j.filter(f).length;
+    const tid = await turId('Sertifikalı Fidan'), smsSay = async (f) => (await admin('GET', '/api/sms?limit=5000')).j.filter(f).length;
     const k0 = await smsSay(x => x.sablon === 'kabul'), s0 = await smsSay(x => x.sablon === 'sertifika');
     const r = await bag({ tur_id: tid, tutar: 123456, ad: 'Sertifika Sahibi', tel: '541 300 00 77', durum: 'Bekleyen' }); assert.equal(r.s, 201, JSON.stringify(r.j));
     assert.equal(await smsSay(x => x.sablon === 'sertifika'), s0, 'onaydan önce sertifika gitmez');
     assert.equal((await admin('GET', `/api/bagislar/${r.j.id}/mesaj`)).j.sertifika, false);
     assert.equal((await admin('POST', '/api/bagislar/onayla', { ids: [r.j.id] })).s, 200);
     assert.equal(await smsSay(x => x.sablon === 'sertifika'), s0 + 1, 'sertifika bağlantılı mesaj gitti'); assert.equal(await smsSay(x => x.sablon === 'kabul'), k0, 'ayrı kabul SMS’i gitmedi (israf yok)');
-    const sm = (await admin('GET', '/api/sms')).j.find(x => x.sablon === 'sertifika' && x.mesaj.includes('Sertifika Sahibi')); assert.ok(/alınmıştır/.test(sm.mesaj)); const link = /https?:\/\/\S+\/sertifika\/([A-Za-z0-9_-]+)/.exec(sm.mesaj); assert.ok(link, sm.mesaj);
+    const sm = (await admin('GET', '/api/sms?limit=5000')).j.find(x => x.sablon === 'sertifika' && x.mesaj.includes('Sertifika Sahibi')); assert.ok(/alınmıştır/.test(sm.mesaj)); const link = /https?:\/\/\S+\/sertifika\/([A-Za-z0-9_-]+)/.exec(sm.mesaj); assert.ok(link, sm.mesaj);
     const pg = await fetch(base + '/sertifika/' + link[1]); assert.equal(pg.status, 200); const h = await pg.text();
     assert.ok(h.includes('Sertifika Sahibi') && h.includes('Sertifikalı Fidan') && h.includes('Bağış Sertifikası')); assert.ok(!h.includes('123456') && !h.includes('123.456'), 'tutar sertifikada görünmez');
     assert.equal((await fetch(base + '/sertifika/yanlis-kod-yok')).status, 404); assert.equal((await fetch(base + '/sertifika/' + link[1].slice(0, -1) + 'x')).status, 404);
@@ -609,7 +609,7 @@ server.listen(0, async () => {
     { // tür adında fiyat varsa sertifikada görünmez
       assert.equal((await admin('POST', '/api/turler', { sec: 'kuyu', ad: 'Sertifikaistan - Kuyu', bicim: 'Tam fiyat', fiyat: 12000, sertifika: true })).s, 201);
       const kt = await turId('Sertifikaistan'), kr = await bag({ tur_id: kt, adet: 1, tutar: 12000, ad: 'Kuyu Sahibi', tel: '541 300 00 79' }); assert.equal(kr.s, 201, JSON.stringify(kr.j));
-      const ks = (await admin('GET', '/api/sms')).j.find(x => x.sablon === 'sertifika' && x.mesaj.includes('Kuyu Sahibi')); const kh = await (await fetch(/https?:\/\/\S+\/sertifika\/[A-Za-z0-9_-]+/.exec(ks.mesaj)[0].replace(/^https?:\/\/[^/]+/, base))).text();
+      const ks = (await admin('GET', '/api/sms?limit=5000')).j.find(x => x.sablon === 'sertifika' && x.mesaj.includes('Kuyu Sahibi')); const kh = await (await fetch(/https?:\/\/\S+\/sertifika\/[A-Za-z0-9_-]+/.exec(ks.mesaj)[0].replace(/^https?:\/\/[^/]+/, base))).text();
       assert.ok(kh.includes('Sertifikaistan - Kuyu') && !/12\.000|₺|Tam fiyat/.test(kh.replace(/<style>[\s\S]*?<\/style>/, '')), 'fiyat ve biçim eki görünmez'); }
     { // sertifikası kapalı türde de elle sertifika gönderilir (SMS penceresindeki Sertifika seçeneği)
       const fr = await bag({ tur_id: await turId('Fitre'), tutar: 15, ad: 'Elle Sertifika', tel: '541 300 00 92' }); assert.equal(fr.s, 201);
@@ -630,7 +630,7 @@ server.listen(0, async () => {
     assert.equal((await admin('POST', '/api/turler', { sec: 'genel', kat: 'Test Kategori', ad: 'Modern Fidan', tutar: 50, sertifika: true, sert_tasarim: 'modern' })).s, 201);
     const tid = await turId('Modern Fidan'); assert.equal((await admin('GET', '/api/turler')).j.turler.find(x => x.id === tid).sert_tasarim, 'modern');
     const r = await bag({ tur_id: tid, tutar: 50, ad: 'Mehmet Modern', tel: '541 300 00 91' }); assert.equal(r.s, 201);
-    const sm = (await admin('GET', '/api/sms')).j.find(x => x.sablon === 'sertifika' && x.mesaj.includes('Mehmet Modern')); const kod = /\/sertifika\/([A-Za-z0-9_-]+)/.exec(sm.mesaj)[1];
+    const sm = (await admin('GET', '/api/sms?limit=5000')).j.find(x => x.sablon === 'sertifika' && x.mesaj.includes('Mehmet Modern')); const kod = /\/sertifika\/([A-Za-z0-9_-]+)/.exec(sm.mesaj)[1];
     const h = await (await fetch(base + '/sertifika/' + kod)).text();
     assert.ok(h.includes('t-modern') && h.includes('Hayır Belgesi') && h.includes('Ali Veli') && h.includes('Başkan') && h.includes('#7a1f2b') && h.includes(png), 'seçilen tasarım ve ayarlar sayfada');
     assert.equal((await admin('PUT', `/api/turler/${tid}/sertifika`, { tasarim: 'zarif' })).s, 200); assert.ok((await (await fetch(base + '/sertifika/' + kod)).text()).includes('t-zarif'));
@@ -644,7 +644,7 @@ server.listen(0, async () => {
       assert.equal((await admin('PUT', '/api/sertifika/ayar', { baslik: 'x', renk: 'kurum', sponsor_tasarim: 'klasik' })).s, 200);
       assert.equal((await admin('PUT', `/api/turler/${tid}/sertifika`, { tasarim: 'klasik' })).s, 200);
       const r2 = await bag({ tur_id: tid, tutar: 50, ad: 'Renk Deneme', tel: '541 300 00 93' }); assert.equal(r2.s, 201);
-      const k2 = /\/sertifika\/([A-Za-z0-9_-]+)/.exec((await admin('GET', '/api/sms')).j.find(x => x.mesaj.includes('Renk Deneme')).mesaj); assert.ok(k2);
+      const k2 = /\/sertifika\/([A-Za-z0-9_-]+)/.exec((await admin('GET', '/api/sms?limit=5000')).j.find(x => x.mesaj.includes('Renk Deneme')).mesaj); assert.ok(k2);
       assert.ok((await (await fetch(base + '/sertifika/' + k2[1])).text()).includes('#336699'), 'sertifika kurum rengiyle'); }
     assert.equal((await fetch(base + '/sertifika/onizleme?t=modern')).status, 404, 'önizleme girişsiz açılmaz');
   });
@@ -706,7 +706,7 @@ server.listen(0, async () => {
     assert.equal((await admin('POST', '/api/org/islem', { a: 'v', ids: [u.id], video: j.ref })).s, 200);
     const u2 = (await admin('GET', '/api/org/kurban?q=Video Sahibi')).j.liste[0]; assert.equal(u2.vid.yuklu, true); assert.equal(u2.vid.ad, 'kurban1.mp4');
     assert.equal((await admin('POST', '/api/org/islem', { a: 'g', ids: [u.id] })).s, 200);
-    const sms = (await admin('GET', '/api/sms')).j.find(x => x.sablon === 'video' && /izle\.html\?t=/.test(x.mesaj || x.metin || JSON.stringify(x))); assert.ok(sms, 'SMS izleme bağlantısı içermeli');
+    const sms = (await admin('GET', '/api/sms?limit=5000')).j.find(x => x.sablon === 'video' && /izle\.html\?t=/.test(x.mesaj || x.metin || JSON.stringify(x))); assert.ok(sms, 'SMS izleme bağlantısı içermeli');
     const tk = /izle\.html\?t=([\w-]+)/.exec(JSON.stringify(sms))[1];
     const pg = await (await fetch(base + '/api/izle/' + tk)).json(); assert.equal(pg.ad, 'Video Sahibi'); assert.equal(pg.src, '/api/izle/' + tk + '/dosya');
     const fl = await fetch(base + pg.src, { headers: { range: 'bytes=4-7' } }); assert.equal(fl.status, 206); assert.equal(Buffer.from(await fl.arrayBuffer()).toString(), 'ftyp');
@@ -721,8 +721,8 @@ server.listen(0, async () => {
     }
     const bc = (await admin('GET', '/api/bagiscilar?q=Video Sahibi')).j, bid = (bc.liste || bc).find(x => x.ad === 'Video Sahibi').id;
     const dy = Object.values((await admin('GET', '/api/bagiscilar/' + bid)).j.detay).flatMap(d => d.paylar || []).find(x => x.video); assert.ok(dy, 'detay: ' + JSON.stringify((await admin('GET', '/api/bagiscilar/' + bid)).j.detay).slice(0, 400)); assert.ok(dy.pid && dy.yuklu && dy.link.startsWith('/api/org/video/'));
-    const nOnce = (await admin('GET', '/api/sms')).j.filter(x => x.sablon === 'video').length; const rs = await admin('POST', '/api/org/pay-video/' + dy.pid, {}); assert.equal(rs.s, 200); assert.match(rs.j.msg, /yeniden/);
-    assert.equal((await admin('GET', '/api/sms')).j.filter(x => x.sablon === 'video').length, nOnce + 1); assert.equal((await admin('POST', '/api/org/pay-video/999999', {})).s, 404);
+    const nOnce = (await admin('GET', '/api/sms?limit=5000')).j.filter(x => x.sablon === 'video').length; const rs = await admin('POST', '/api/org/pay-video/' + dy.pid, {}); assert.equal(rs.s, 200); assert.match(rs.j.msg, /yeniden/);
+    assert.equal((await admin('GET', '/api/sms?limit=5000')).j.filter(x => x.sablon === 'video').length, nOnce + 1); assert.equal((await admin('POST', '/api/org/pay-video/999999', {})).s, 404);
     assert.ok(JSON.stringify((await admin('GET', '/api/audit')).j).includes('video_yukle'));
   });
   await t('giriş: e-posta ile giriş, ilk girişte ad soyad yazılır', async () => {
