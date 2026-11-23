@@ -345,3 +345,13 @@ Karar: KVKK konuları tek tek tüm ekran ve akışlarda ele alınacak. Teknik ko
 - **Bekleyen işler** kartına "Takip" grubu: ödemesi geciken sponsorluk, 60+ gün sayılmayan kumbara, vadesi gelen görevlerim, süresi dolan KVKK talebi.
 - **Telefonda tablolar kart satırı** olur (≤640px; başlıklar etiket). Genel kural, tüm listeler.
 - Kalan cila fikirleri: koyu tema kontrast taraması, sayfa geçişleri, ortak boş durum metinleri.
+
+## KVKK: "her bağışçıdan tek tek onay mı?" — netleştirme (23 Kas, Meriç dönecek)
+**Kısa cevap: hayır, tek tek imza/onay toplanmaz.** Üç ayrı şey var:
+1. **Aydınlatma (bilgilendirme)** — onay DEĞİL, bilgi verme yükümlülüğü. Herkese aynı metin: web formunda link, telefonda/elden bağışta söz + SMS/makbuzda link. Sistem "iletildi" kaydı tutar (tarih, kaynak, metin sürümü). Bağış alırken tek kutu; bağışçıdan imza istenmez. Zaten kayıtlıysa tekrar sorulmaz; metin değişirse (sürüm) yeniden bildirilir.
+2. **Açık rıza** — çoğu zaman GEREKMEZ. Bağış makbuzu, sertifika, video gönderimi, sponsorluk bilgisi = "sözleşmenin ifası / hukuki yükümlülük / meşru menfaat" dayanağı; rıza şart değil.
+3. **İletişim izni (kampanya/tanıtım SMS, arama, e-posta)** — ticari elektronik ileti rejimi (İYS/6563). Bağış anında tek ihtiyari kutu ("Bilgilendirme mesajı almak istiyorum"). İşaretlemeyenlere toplu kampanya gitmez (sistem süzer); makbuz/sertifika/video yine gider.
+**Toplu geçiş:** mevcut/eski bağışçılar için tek tek onay yok → tek seferlik aydınlatma SMS'i (toplu) + isteyen çıkabilsin linki; Excel aktarımda "kurum beyanı" ile kayıt (yapıldı).
+**Bağışçıya özel olan yalnızca:** talepler (silme/bilgi) ve izin kaydı — talep gelince tek kişi için işlenir.
+**Hukukçuya sorulacak:** dernek için dini/inanç verisi (kurban/adak) istisnası, mevcut bağışçılara toplu aydınlatmanın biçimi, İYS kaydı gerekli mi.
+Yapılacak (istenirse): toplu "aydınlatma bildirimi" SMS'i + panelde "aydınlatma iletilmeyen bağışçı sayısı" göstergesi.
